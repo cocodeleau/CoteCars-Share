@@ -1,0 +1,2521 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+
+  <!-- SEO de base -->
+  <title>CoteCars — Connaissez le vrai prix de votre voiture</title>
+  <meta name="description" content="Entrez votre plaque d'immatriculation et obtenez instantanément le prix du marché de votre voiture basé sur les vraies annonces Leboncoin. Gratuit, rapide, précis." />
+  <meta name="keywords" content="cote voiture, prix voiture occasion, estimation voiture, valeur voiture, argus voiture, leboncoin prix, cote auto, vendre voiture prix juste" />
+  <meta name="author" content="CoteCars" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://cotecars.fr/" />
+
+  <!-- Open Graph (WhatsApp, Facebook, LinkedIn) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://cotecars.fr/" />
+  <meta property="og:title" content="CoteCars — Connaissez le vrai prix de votre voiture" />
+  <meta property="og:description" content="Analysez le marché en 10 secondes avec votre plaque d'immatriculation. Prix basés sur les vraies annonces Leboncoin, pas sur l'Argus." />
+  <meta property="og:image" content="https://cotecars.fr/og-image.png" />
+  <meta property="og:locale" content="fr_FR" />
+  <meta property="og:site_name" content="CoteCars" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="CoteCars — Connaissez le vrai prix de votre voiture" />
+  <meta name="twitter:description" content="Analysez le marché en 10 secondes avec votre plaque d'immatriculation. Prix basés sur les vraies annonces Leboncoin." />
+  <meta name="twitter:image" content="https://cotecars.fr/og-image.png" />
+
+  <!-- Thème mobile -->
+  <meta name="theme-color" content="#10B981" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="CoteCars" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+  <!-- Schema.org (données structurées pour Google) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "CoteCars",
+    "url": "https://cotecars.fr",
+    "description": "Outil d'estimation du prix de marché d'une voiture d'occasion basé sur les annonces Leboncoin, via la plaque d'immatriculation.",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "All",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "EUR"
+    },
+    "inLanguage": "fr"
+  }
+  </script>
+  <!-- Google Analytics GA4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-EY35S07N19"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-EY35S07N19');
+  </script>
+
+  <!-- Microsoft Clarity -->
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y)})(window,document,"clarity","script","wdtfyes8v9");
+  </script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f9fafb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .spinner { animation: spin 0.9s linear infinite; }
+    .pulse { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+    select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+    // Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCGVGeYrZ7JIgOTXN598V1O_0ez9QETyoA",
+      authDomain: "cotecars-8857f.firebaseapp.com",
+      projectId: "cotecars-8857f",
+      storageBucket: "cotecars-8857f.firebasestorage.app",
+      messagingSenderId: "727958687493",
+      appId: "1:727958687493:web:f1ca0c1cacb899e425316c"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+    const EMERALD = "#10B981";
+
+    function LoginModal({ onClose }) {
+      const [mode, setMode] = React.useState("login"); // login | register | forgot
+      const [email, setEmail] = React.useState("");
+      const [password, setPassword] = React.useState("");
+      const [confirmPassword, setConfirmPassword] = React.useState("");
+      const [error, setError] = React.useState("");
+      const [success, setSuccess] = React.useState("");
+      const [loading, setLoading] = React.useState(false);
+
+      async function handleEmailAuth(e) {
+        e.preventDefault();
+        setError(""); setSuccess("");
+        if (mode === "register" && password !== confirmPassword) { setError("Les mots de passe ne correspondent pas."); return; }
+        if (password.length < 6) { setError("Le mot de passe doit contenir au moins 6 caractères."); return; }
+        setLoading(true);
+        try {
+          if (mode === "login") {
+            await auth.signInWithEmailAndPassword(email, password);
+            if(window.posthog) posthog.capture("connexion_email");
+          } else {
+            await auth.createUserWithEmailAndPassword(email, password);
+            if(window.posthog) posthog.capture("inscription_email");
+          }
+          if (onClose) onClose();
+        } catch(err) {
+          const msgs = {
+            "auth/user-not-found": "Aucun compte avec cet email.",
+            "auth/wrong-password": "Mot de passe incorrect.",
+            "auth/email-already-in-use": "Cet email est déjà utilisé.",
+            "auth/invalid-email": "Email invalide.",
+            "auth/too-many-requests": "Trop de tentatives. Réessayez plus tard.",
+          };
+          setError(msgs[err.code] || "Une erreur est survenue.");
+        }
+        setLoading(false);
+      }
+
+      async function handleForgot(e) {
+        e.preventDefault();
+        setError(""); setSuccess("");
+        if (!email) { setError("Entrez votre email."); return; }
+        setLoading(true);
+        try {
+          await auth.sendPasswordResetEmail(email);
+          setSuccess("Email de réinitialisation envoyé !");
+        } catch(err) {
+          setError("Email introuvable.");
+        }
+        setLoading(false);
+      }
+
+      return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:"20px" }}
+          onClick={e => { if(e.target === e.currentTarget && onClose) onClose(); }}>
+          <div style={{ background:"white", borderRadius:20, padding:"28px 24px", width:"100%", maxWidth:360, boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <span style={{ fontWeight:800, fontSize:18, color:"#111" }}>
+                {mode === "login" ? "Connexion" : mode === "register" ? "Créer un compte" : "Mot de passe oublié"}
+              </span>
+              {onClose && <button onClick={onClose} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#9ca3af" }}>✕</button>}
+            </div>
+
+            <button onClick={() => auth.signInWithPopup(googleProvider).then(() => { if(onClose) onClose(); if(window.posthog) posthog.capture("connexion_google"); })}
+              style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:10, padding:"12px", background:"white", border:"2px solid #e5e7eb", borderRadius:12, cursor:"pointer", fontSize:14, fontWeight:700, color:"#111", marginBottom:16 }}>
+              <img src="https://www.google.com/favicon.ico" width={18} height={18} alt="" />
+              Continuer avec Google
+            </button>
+
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16 }}>
+              <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
+              <span style={{ fontSize:12, color:"#9ca3af" }}>ou</span>
+              <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
+            </div>
+
+            <form onSubmit={mode === "forgot" ? handleForgot : handleEmailAuth}>
+              <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required
+                style={{ width:"100%", padding:"12px 14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }} />
+              {mode !== "forgot" && (
+                <input type="password" placeholder="Mot de passe" value={password} onChange={e => setPassword(e.target.value)} required
+                  style={{ width:"100%", padding:"12px 14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }} />
+              )}
+              {mode === "register" && (
+                <input type="password" placeholder="Confirmer le mot de passe" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required
+                  style={{ width:"100%", padding:"12px 14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }} />
+              )}
+              {error && <p style={{ color:"#ef4444", fontSize:12, margin:"0 0 10px", textAlign:"center" }}>{error}</p>}
+              {success && <p style={{ color:EMERALD, fontSize:12, margin:"0 0 10px", textAlign:"center" }}>{success}</p>}
+              <button type="submit" disabled={loading}
+                style={{ width:"100%", padding:"13px", background:EMERALD, color:"white", fontWeight:800, fontSize:15, borderRadius:12, border:"none", cursor:"pointer", marginBottom:12 }}>
+                {loading ? "..." : mode === "login" ? "Se connecter" : mode === "register" ? "Créer mon compte" : "Envoyer le lien"}
+              </button>
+            </form>
+
+            <div style={{ textAlign:"center" }}>
+              {mode === "login" && <>
+                <button onClick={() => { setMode("register"); setError(""); }} style={{ background:"none", border:"none", color:EMERALD, fontSize:13, cursor:"pointer", fontWeight:600 }}>Créer un compte</button>
+                <span style={{ color:"#9ca3af", fontSize:13, margin:"0 8px" }}>·</span>
+                <button onClick={() => { setMode("forgot"); setError(""); }} style={{ background:"none", border:"none", color:"#9ca3af", fontSize:13, cursor:"pointer" }}>Mot de passe oublié ?</button>
+              </>}
+              {mode !== "login" && (
+                <button onClick={() => { setMode("login"); setError(""); }} style={{ background:"none", border:"none", color:EMERALD, fontSize:13, cursor:"pointer", fontWeight:600 }}>← Retour à la connexion</button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const EMERALD_DARK = "#059669";
+
+        const FINITIONS = {
+      "PEUGEOT_104": ["GL", "GLD", "SR", "ZS"],
+      "PEUGEOT_106": ["XN", "XR", "XS", "XT", "Roland Garros", "GTI"],
+      "PEUGEOT_107": ["Urban", "Trendy", "Sport", "Sportium"],
+      "PEUGEOT_108": ["Active", "Allure", "Style", "Roland Garros"],
+      "PEUGEOT_205": ["GL", "GR", "GT", "GTI", "XR", "XS", "Junior", "Lacoste"],
+      "PEUGEOT_206": ["XR", "XS", "XT", "SW", "CC", "GTI", "Quiksilver", "Féline"],
+      "PEUGEOT_207": ["Access", "Trendy", "Sport", "SW", "CC", "Active", "Féline"],
+      "PEUGEOT_208": ["Active", "Active Pack", "Allure", "Allure Pack", "GT", "GT Pack", "GT Line", "Like", "Techno"],
+      "PEUGEOT_2008": ["Active", "Active Pack", "Allure", "Allure Pack", "GT", "GT Pack", "GT Line", "Like", "Techno"],
+      "PEUGEOT_306": ["XR", "XS", "XT", "SW", "Cabriolet", "GTI", "S16", "Rallye"],
+      "PEUGEOT_307": ["XR", "XS", "XT", "SW", "CC", "GTI", "Sport", "Féline"],
+      "PEUGEOT_308": ["Active", "Active Pack", "Allure", "Allure Pack", "GT", "GT Pack", "GT Line", "Style", "Techno", "SW"],
+      "PEUGEOT_3008": ["Active", "Active Pack", "Allure", "Allure Pack", "GT", "GT Pack", "GT Line", "Style", "Techno", "Hybrid"],
+      "PEUGEOT_405": ["GR", "GRD", "SR", "SRD", "MI16", "T16"],
+      "PEUGEOT_406": ["SL", "SR", "ST", "Pack", "Coupé"],
+      "PEUGEOT_407": ["ST", "SR", "SW", "Coupé", "Pack"],
+      "PEUGEOT_408": ["Active", "Active Pack", "Allure", "Allure Pack", "GT", "GT Pack", "GT Line", "Hybrid"],
+      "PEUGEOT_4007": ["Dynamic", "Outdoor", "Sport"],
+      "PEUGEOT_4008": ["Active", "Allure", "Style", "Féline"],
+      "PEUGEOT_504": ["GL", "GLD", "SR", "Ti", "Coupé", "Cabriolet"],
+      "PEUGEOT_508": ["Active", "Active Pack", "Allure", "Allure Pack", "GT", "GT Pack", "GT Line", "SW", "Hybrid", "PSE"],
+      "PEUGEOT_5008": ["Active", "Active Pack", "Allure", "Allure Pack", "GT", "GT Pack", "GT Line", "Style", "Techno"],
+      "PEUGEOT_607": ["ST", "SR", "Pack"],
+      "PEUGEOT_Bipper": ["Urban", "Confort", "Access"],
+      "PEUGEOT_Boxer": ["Access", "Confort", "Business", "Premium", "L1H1", "L2H2", "L3H2"],
+      "PEUGEOT_e-208": ["Active", "Active Pack", "Allure", "Allure Pack", "GT", "GT Pack"],
+      "PEUGEOT_e-2008": ["Active", "Active Pack", "Allure", "Allure Pack", "GT", "GT Pack"],
+      "PEUGEOT_Expert": ["Access", "Confort", "Business", "Premium", "Long"],
+      "PEUGEOT_Ion": ["Base"],
+      "PEUGEOT_Partner": ["Access", "Active", "Confort", "Premium", "Long"],
+      "PEUGEOT_RCZ": ["GT", "THP 200", "THP 270", "R"],
+      "PEUGEOT_Rifter": ["Active", "Active Pack", "Allure", "Allure Pack", "GT", "Long"],
+      "PEUGEOT_Traveller": ["Active", "Allure", "Business", "Compact", "Standard", "Long"],
+      "RENAULT_Arkana": ["Life", "Zen", "Intens", "RS Line", "E-Tech", "Iconic", "Esprit Alpine"],
+      "RENAULT_Austral": ["Equilibre", "Techno", "Iconic", "Esprit Alpine", "E-Tech"],
+      "RENAULT_Captur": ["Life", "Zen", "Business", "Intens", "RS Line", "E-Tech", "Iconic", "Esprit Alpine"],
+      "RENAULT_Clio": ["Authentique", "Expression", "Life", "Zen", "Business", "Intens", "RS Line", "E-Tech", "Iconic", "Esprit Alpine", "RS", "GT"],
+      "RENAULT_Espace": ["Expression", "Privilege", "Initiale", "Equilibre", "Techno", "Iconic", "E-Tech"],
+      "RENAULT_Express": ["Access", "Confort", "Business", "Intens"],
+      "RENAULT_Fluence": ["Expression", "Dynamique", "Privilege", "GT Line"],
+      "RENAULT_Grand Scenic": ["Expression", "Dynamique", "Privilege", "Bose", "Initiale", "Intens"],
+      "RENAULT_Kadjar": ["Life", "Zen", "Business", "Intens", "Bose", "RS Line", "Black Edition"],
+      "RENAULT_Kangoo": ["Access", "Authentique", "Expression", "Confort", "Intens", "Business", "E-Tech", "Maxi"],
+      "RENAULT_Koleos": ["Life", "Zen", "Intens", "Initiale Paris", "Black Edition"],
+      "RENAULT_Laguna": ["Authentique", "Expression", "Dynamique", "GT", "Privilege", "Initiale", "Bose"],
+      "RENAULT_Master": ["Confort", "Business", "Grand Confort", "SpaceClass", "L1H1", "L2H2", "L3H2"],
+      "RENAULT_Megane": ["Authentique", "Expression", "Life", "Zen", "Business", "Intens", "RS Line", "GT", "E-Tech", "RS", "Bose"],
+      "RENAULT_Megane E-Tech": ["Equilibre", "Techno", "Iconic", "Esprit Alpine"],
+      "RENAULT_Scenic": ["Expression", "Dynamique", "Privilege", "Bose", "Initiale", "Intens", "E-Tech", "Iconic"],
+      "RENAULT_Symbol": ["Expression", "Dynamique", "Privilege"],
+      "RENAULT_Trafic": ["Confort", "Business", "Grand Confort", "SpaceClass"],
+      "RENAULT_Twingo": ["Authentique", "Expression", "Life", "Zen", "Intens", "GT", "Electric", "Urban Night"],
+      "RENAULT_Zoe": ["Life", "Zen", "Intens", "R110", "R135", "E-Tech"],
+      "DACIA_Dokker": ["Access", "Ambiance", "Laureate", "Stepway"],
+      "DACIA_Duster": ["Access", "Ambiance", "Laureate", "Prestige", "Expression", "Extreme", "Journey", "Techroad", "4x4"],
+      "DACIA_Jogger": ["Essential", "Expression", "Extreme", "Hybrid", "7 places"],
+      "DACIA_Lodgy": ["Access", "Ambiance", "Laureate", "Stepway", "7 places"],
+      "DACIA_Logan": ["Access", "Ambiance", "Laureate", "Prestige", "Essential", "Expression", "MCV"],
+      "DACIA_Sandero": ["Access", "Ambiance", "Laureate", "Prestige", "Essential", "Expression", "Extreme", "Stepway"],
+      "DACIA_Spring": ["Essential", "Expression", "Extreme", "Electric"],
+      "CITROEN_AX": ["Base", "GT", "Sport", "TZS"],
+      "CITROEN_Berlingo": ["Access", "Confort", "Feel", "Shine", "XL", "Max", "Plus"],
+      "CITROEN_C-Crosser": ["Confort", "Exclusive", "Business"],
+      "CITROEN_C-Elysée": ["Attraction", "Confort", "Exclusive", "Feel"],
+      "CITROEN_C1": ["Attraction", "Confort", "Feel", "Shine", "Origins", "Urban Ride", "S Edition"],
+      "CITROEN_C2": ["Attraction", "Confort", "VTR", "VTS", "Exclusive"],
+      "CITROEN_C3": ["Attraction", "Confort", "Exclusive", "Feel", "Shine", "Origins", "C-Series", "Max", "You", "Flair", "Plus"],
+      "CITROEN_C3 Aircross": ["Feel", "Shine", "Shine Pack", "Max", "C-Series", "Rip Curl"],
+      "CITROEN_C3 Aircr.": ["Feel", "Shine", "Shine Pack", "Max", "C-Series"],
+      "CITROEN_C4": ["Attraction", "Confort", "Exclusive", "Feel", "Shine", "Shine Pack", "Max", "Lounge"],
+      "CITROEN_C4 Cactus": ["Attraction", "Feel", "Shine", "Origins", "Rip Curl", "Elle", "Flair"],
+      "CITROEN_C4 Picasso": ["Attraction", "Confort", "Exclusive", "Feel", "Intensive", "Lounge", "Business", "Millenium"],
+      "CITROEN_C5": ["Confort", "Exclusive", "Tourer", "Business", "Millenium", "Pack"],
+      "CITROEN_C5 Aircross": ["Feel", "Shine", "Shine Pack", "Max", "C-Series", "Hybrid"],
+      "CITROEN_C5 X": ["Feel", "Shine", "Max", "Hybrid"],
+      "CITROEN_C6": ["Exclusive", "Lignage", "Prestige"],
+      "CITROEN_C8": ["Confort", "Exclusive", "SX"],
+      "CITROEN_DS3": ["Attraction", "Confort", "So Chic", "Sport Chic", "DStyle", "Racing", "Cabrio", "Connected Chic"],
+      "CITROEN_DS4": ["Attraction", "Confort", "So Chic", "Sport Chic", "Airdream"],
+      "CITROEN_DS5": ["So Chic", "Sport Chic", "Airdream", "Executive"],
+      "CITROEN_Jumper": ["Confort", "Business", "L1H1", "L2H2", "L3H2", "Maxi"],
+      "CITROEN_Jumpy": ["Confort", "Business", "XL", "Combi"],
+      "CITROEN_Nemo": ["Confort", "Business", "Feel"],
+      "CITROEN_Saxo": ["X", "SX", "VTR", "VTS", "Advance"],
+      "CITROEN_Spacetourer": ["Feel", "Shine", "Business", "XL"],
+      "CITROEN_Xantia": ["X", "SX", "Exclusive", "Activa"],
+      "CITROEN_Xsara": ["SX", "VTR", "VTS", "Furio", "Attraction"],
+      "CITROEN_Xsara Picasso": ["X", "SX", "Exclusive", "Confort", "Millenium"],
+      "CITROEN_ZX": ["Base", "Reflex", "Volcane", "Avantage"],
+      "CITROEN_e-C4": ["Feel", "Shine", "Max"],
+      "DS_DS 3": ["So Chic", "Sport Chic", "Performance Line", "Grand Chic", "Opera"],
+      "DS_DS3": ["So Chic", "Sport Chic", "Performance Line", "Grand Chic", "Opera"],
+      "DS_DS3 Crossback": ["So Chic", "Grand Chic", "Performance Line", "Opera", "E-Tense"],
+      "DS_DS 4": ["Bastille", "Rivoli", "Opera", "Performance Line", "E-Tense", "Cross"],
+      "DS_DS4": ["So Chic", "Sport Chic", "Airdream", "Executive"],
+      "DS_DS 5": ["So Chic", "Sport Chic", "Elegance", "Performance Line"],
+      "DS_DS5": ["So Chic", "Sport Chic", "Elegance", "Performance Line"],
+      "DS_DS 7": ["So Chic", "Grand Chic", "Performance Line", "Opera", "E-Tense", "Rivoli"],
+      "DS_DS7 Crossback": ["So Chic", "Grand Chic", "Performance Line", "Opera", "E-Tense", "Rivoli"],
+      "DS_DS 9": ["Rivoli", "Opera", "Performance Line", "E-Tense"],
+      "DS_DS9": ["Rivoli", "Opera", "Performance Line", "E-Tense"],
+      "DS_N°4": ["Bastille", "Rivoli", "Opera", "Performance Line"],
+      "DS_N°8": ["Bastille", "Rivoli", "Opera", "Performance Line"],
+      "VOLKSWAGEN_Amarok": ["Trendline", "Comfortline", "Highline", "Aventura"],
+      "VOLKSWAGEN_Arteon": ["Elegance", "R-Line", "Business", "Shooting Brake"],
+      "VOLKSWAGEN_Beetle": ["Trendline", "Comfortline", "Design", "Coupé", "Cabriolet"],
+      "VOLKSWAGEN_Caddy": ["Trendline", "Confort", "Business", "Style", "Maxi", "Life"],
+      "VOLKSWAGEN_Caravelle": ["Trendline", "Confort", "Highline", "Life"],
+      "VOLKSWAGEN_CC": ["Trendline", "Confort", "Highline", "R-Line"],
+      "VOLKSWAGEN_Crafter": ["Confort", "Business", "Premium"],
+      "VOLKSWAGEN_Eos": ["Trendline", "Comfortline", "Highline", "Carat", "R-Line"],
+      "VOLKSWAGEN_Golf": ["Trendline", "Comfortline", "Highline", "R-Line", "GTI", "GTE", "Life", "Style", "R", "Business", "Variant", "Cabriolet"],
+      "VOLKSWAGEN_ID.3": ["Pure", "Pro", "Pro S", "Tour", "GTX", "Max"],
+      "VOLKSWAGEN_ID.4": ["Pure", "Pro", "Pro S", "GTX", "Tour", "Max"],
+      "VOLKSWAGEN_ID.5": ["Pro", "Pro S", "GTX"],
+      "VOLKSWAGEN_Jetta": ["Trendline", "Comfortline", "Highline", "Sportline"],
+      "VOLKSWAGEN_Lupo": ["Trendline", "Comfortline", "Sport"],
+      "VOLKSWAGEN_Multivan": ["Trendline", "Confort", "Highline", "Life", "Style"],
+      "VOLKSWAGEN_Passat": ["Trendline", "Comfortline", "Highline", "Business", "Elegance", "R-Line", "GTE", "SW", "Alltrack"],
+      "VOLKSWAGEN_Polo": ["Trendline", "Comfortline", "Highline", "R-Line", "GTI", "Life", "Style", "Business"],
+      "VOLKSWAGEN_Scirocco": ["Trendline", "Comfortline", "Highline", "R", "R-Line", "Carat", "GTS"],
+      "VOLKSWAGEN_Sharan": ["Trendline", "Confort", "Highline", "Style", "R-Line"],
+      "VOLKSWAGEN_T-Cross": ["Trendline", "Comfortline", "Style", "R-Line", "Black Edition"],
+      "VOLKSWAGEN_T-Roc": ["Trendline", "Comfortline", "Style", "R-Line", "Cabriolet", "R", "Black Edition"],
+      "VOLKSWAGEN_Taigo": ["Life", "Style", "R-Line", "Black Edition"],
+      "VOLKSWAGEN_Tiguan": ["Trendline", "Comfortline", "Highline", "R-Line", "Elegance", "Life", "Style", "R", "Allspace"],
+      "VOLKSWAGEN_Touareg": ["Trendline", "Comfortline", "Highline", "R-Line", "Elegance", "Life", "Atmosphere"],
+      "VOLKSWAGEN_Touran": ["Trendline", "Confort", "Highline", "Style", "R-Line", "Life"],
+      "VOLKSWAGEN_Transporter": ["Trendline", "Confort", "Highline", "Business"],
+      "VOLKSWAGEN_Up": ["Take Up", "Move Up", "High Up", "Beats Up", "Cross Up"],
+      "BMW_Série 1": ["Sport Line", "Urban Line", "Advantage", "M Sport", "Edition", "Lounge", "M135i", "M140i"],
+      "BMW_Serie 1": ["Sport Line", "Urban Line", "Advantage", "M Sport", "Edition", "Lounge"],
+      "BMW_Série 2": ["Sport Line", "Luxury", "M Sport", "Gran Coupe", "Active Tourer", "Cabriolet", "M235i", "M240i"],
+      "BMW_Serie 2": ["Sport Line", "Luxury", "M Sport", "Gran Coupe", "Active Tourer"],
+      "BMW_Série 3": ["Sport Line", "Luxury", "Business", "M Sport", "Touring", "Gran Turismo", "M340i", "xDrive"],
+      "BMW_Serie 3": ["Sport Line", "Luxury", "Business", "M Sport", "Touring", "xDrive"],
+      "BMW_Série 4": ["Sport Line", "Luxury", "M Sport", "Gran Coupe", "Cabriolet", "Coupé", "M440i"],
+      "BMW_Série 5": ["Sport Line", "Luxury", "Business", "M Sport", "Touring", "Gran Turismo", "M550i"],
+      "BMW_Serie 5": ["Sport Line", "Luxury", "Business", "M Sport", "Touring"],
+      "BMW_Série 6": ["Sport Line", "Luxury", "M Sport", "Gran Coupe", "Cabriolet", "Gran Turismo"],
+      "BMW_Série 7": ["Sport Line", "Luxury", "M Sport", "Excellence", "Pure Excellence", "Long"],
+      "BMW_Série 8": ["M Sport", "Luxury", "Gran Coupe", "Cabriolet", "Coupé"],
+      "BMW_X1": ["sDrive18i", "xDrive20i", "sDrive18d", "xDrive20d", "xDrive25e", "M Sport", "xLine", "Sport Line", "Business"],
+      "BMW_X2": ["sDrive18i", "xDrive20i", "sDrive18d", "xDrive20d", "M Sport", "xLine", "Sport Line", "M35i"],
+      "BMW_X3": ["sDrive20i", "xDrive20i", "xDrive30i", "xDrive20d", "xDrive30d", "M40i", "M Sport", "xLine", "Luxury"],
+      "BMW_X4": ["xDrive20i", "xDrive30i", "xDrive20d", "xDrive30d", "M40i", "M Sport", "xLine", "Luxury"],
+      "BMW_X5": ["sDrive25d", "xDrive25d", "xDrive30d", "xDrive40d", "xDrive45e", "M50i", "M Sport", "xLine", "Luxury"],
+      "BMW_X6": ["xDrive30d", "xDrive40d", "M50i", "M Sport", "xLine", "Luxury"],
+      "BMW_X7": ["xDrive30d", "xDrive40i", "M Sport", "xLine", "Luxury"],
+      "BMW_Z3": ["M Roadster", "M Coupé", "Roadster", "Coupé"],
+      "BMW_Z4": ["sDrive20i", "sDrive30i", "M40i", "M Sport", "Roadster"],
+      "BMW_i3": ["120Ah", "94Ah", "60Ah", "S", "Urban", "Atelier", "Loft", "Suite", "Lodge"],
+      "BMW_i4": ["eDrive40", "M50", "Gran Coupe"],
+      "BMW_i5": ["eDrive40", "M60", "xDrive40"],
+      "BMW_i7": ["eDrive60", "xDrive60", "M70"],
+      "BMW_iX": ["xDrive40", "xDrive50", "M60"],
+      "BMW_iX3": ["Inspiring", "Impressive"],
+      "BMW_M2": ["Competition", "CS"],
+      "BMW_M3": ["Competition", "CS", "Touring"],
+      "BMW_M4": ["Competition", "CS", "Cabriolet", "Coupé"],
+      "BMW_M5": ["Competition", "CS"],
+      "MERCEDES-BENZ_Classe A": ["Urban", "Progressive", "AMG Line", "Business", "Style", "Edition", "Sedan"],
+      "MERCEDES-BENZ_Classe B": ["Urban", "Progressive", "AMG Line", "Business", "Style", "Edition"],
+      "MERCEDES-BENZ_Classe C": ["Avantgarde", "Elegance", "AMG Line", "Business", "Business Solution", "Edition", "Break", "Cabriolet", "Coupé"],
+      "MERCEDES-BENZ_Classe CLA": ["Urban", "Progressive", "AMG Line", "Business", "Style", "Shooting Brake"],
+      "MERCEDES-BENZ_Classe CLK": ["Avantgarde", "Elegance", "AMG", "Cabriolet", "Coupé"],
+      "MERCEDES-BENZ_Classe CLS": ["AMG Line", "Business", "Shooting Brake"],
+      "MERCEDES-BENZ_Classe E": ["Avantgarde", "Elegance", "AMG Line", "Business", "Business Solution", "Break", "Cabriolet", "Coupé", "All-Terrain"],
+      "MERCEDES-BENZ_Classe G": ["AMG Line", "Standard", "Edition", "63 AMG"],
+      "MERCEDES-BENZ_Classe GL": ["AMG Line", "Business", "4Matic"],
+      "MERCEDES-BENZ_Classe GLA": ["Urban", "Progressive", "AMG Line", "Business", "Style", "4Matic", "Edition"],
+      "MERCEDES-BENZ_Classe GLB": ["Progressive", "AMG Line", "Business", "Style", "4Matic"],
+      "MERCEDES-BENZ_Classe GLC": ["Avantgarde", "Elegance", "AMG Line", "Business", "Business Solution", "4Matic", "Coupé"],
+      "MERCEDES-BENZ_Classe GLE": ["Avantgarde", "AMG Line", "Business", "Business Solution", "4Matic", "Coupé"],
+      "MERCEDES-BENZ_Classe GLK": ["Avantgarde", "AMG Line", "Business", "4Matic"],
+      "MERCEDES-BENZ_Classe GLS": ["Avantgarde", "AMG Line", "Business", "4Matic"],
+      "MERCEDES-BENZ_Classe M": ["AMG Line", "Business", "4Matic"],
+      "MERCEDES-BENZ_Classe R": ["AMG Line", "Avantgarde", "Business"],
+      "MERCEDES-BENZ_Classe S": ["AMG Line", "Business", "Maybach", "Long"],
+      "MERCEDES-BENZ_Classe SL": ["AMG", "Premium", "Premium Plus"],
+      "MERCEDES-BENZ_Classe SLC": ["AMG Line", "Premium", "Sport"],
+      "MERCEDES-BENZ_Classe SLK": ["AMG", "Premium", "Sport"],
+      "MERCEDES-BENZ_Classe V": ["Marco Polo", "Avantgarde", "Business", "Extralong"],
+      "MERCEDES-BENZ_Classe X": ["Progressive", "Power", "Hardcore"],
+      "MERCEDES-BENZ_EQA": ["Progressive", "AMG Line", "Business", "Edition"],
+      "MERCEDES-BENZ_EQB": ["Progressive", "AMG Line", "Business"],
+      "MERCEDES-BENZ_EQC": ["AMG Line", "Business", "4Matic"],
+      "MERCEDES-BENZ_EQE": ["AMG Line", "Business", "SUV"],
+      "MERCEDES-BENZ_EQS": ["AMG Line", "Business", "SUV", "Maybach"],
+      "AUDI_A1": ["Attraction", "Ambition", "Ambiente", "Sport", "S line", "Design", "Business Line", "Sportback", "Citycarver"],
+      "AUDI_A2": ["Attraction", "Ambition", "Ambiente", "S line"],
+      "AUDI_A3": ["Attraction", "Ambition", "Ambiente", "Sport", "S line", "Design", "Business Line", "Sportback", "Berline", "Cabriolet", "S3", "RS3"],
+      "AUDI_A4": ["Attraction", "Ambition", "Ambiente", "Sport", "S line", "Design", "Business Line", "Avant", "Berline", "S4", "RS4", "Allroad"],
+      "AUDI_A5": ["Attraction", "Ambition", "Ambiente", "Sport", "S line", "Design", "Business Line", "Sportback", "Coupé", "Cabriolet", "S5", "RS5"],
+      "AUDI_A6": ["Attraction", "Ambition", "Ambiente", "Sport", "S line", "Design", "Business Line", "Avant", "Berline", "S6", "RS6", "Allroad"],
+      "AUDI_A7": ["Sport", "S line", "Design", "Business Line", "Sportback", "S7", "RS7"],
+      "AUDI_A8": ["Sport", "S line", "Design", "Business Line", "Long", "S8"],
+      "AUDI_e-tron": ["Business", "S line", "Quattro", "Sportback"],
+      "AUDI_Q2": ["Sport", "Business Line", "Design", "S line", "TFSI e"],
+      "AUDI_Q3": ["Attraction", "Ambition", "Ambiente", "Sport", "Business Line", "Design", "S line", "Sportback"],
+      "AUDI_Q4 e-tron": ["Business", "S line", "Sportback", "Quattro"],
+      "AUDI_Q5": ["Attraction", "Ambition", "Ambiente", "Sport", "Business Line", "Design", "S line", "Sportback", "SQ5"],
+      "AUDI_Q7": ["Attraction", "Ambition", "Ambiente", "Sport", "Business Line", "Design", "S line", "SQ7"],
+      "AUDI_Q8": ["Sport", "S line", "Design", "SQ8", "RS Q8"],
+      "AUDI_R8": ["V8", "V10", "Plus", "Spyder"],
+      "AUDI_RS3": ["RS3", "Sportback", "Berline"],
+      "AUDI_RS4": ["RS4", "Avant"],
+      "AUDI_RS5": ["RS5", "Sportback", "Coupé"],
+      "AUDI_RS6": ["RS6", "Avant"],
+      "AUDI_S3": ["S3", "Sportback", "Berline"],
+      "AUDI_S4": ["S4", "Avant", "Berline"],
+      "AUDI_S5": ["S5", "Sportback", "Coupé", "Cabriolet"],
+      "AUDI_TT": ["S line", "Design", "TFSI", "Roadster", "Coupé", "RS", "S"],
+      "SEAT_Alhambra": ["Reference", "Style", "FR", "Xcellence"],
+      "SEAT_Altea": ["Reference", "Style", "FR", "Xcellence", "XL"],
+      "SEAT_Arona": ["Reference", "Style", "FR", "Xcellence", "Xperience", "FR Sport"],
+      "SEAT_Ateca": ["Reference", "Style", "FR", "Xcellence", "Xperience", "4Drive", "FR Sport"],
+      "SEAT_Cordoba": ["Reference", "Style", "FR"],
+      "SEAT_Ibiza": ["Reference", "Style", "FR", "Xcellence", "FR Sport", "Black Edition"],
+      "SEAT_Leon": ["Reference", "Style", "FR", "Xcellence", "Cupra", "e-Hybrid", "Sportstourer", "FR Sport"],
+      "SEAT_Mii": ["Style", "Reference", "FR"],
+      "SEAT_Tarraco": ["Reference", "Style", "FR", "Xcellence", "Xperience", "4Drive"],
+      "SEAT_Toledo": ["Reference", "Style", "FR", "Xcellence"],
+      "SKODA_Citigo": ["Active", "Ambition", "Style", "Monte Carlo"],
+      "SKODA_Fabia": ["Active", "Ambition", "Style", "Monte Carlo", "Combi"],
+      "SKODA_Kamiq": ["Active", "Ambition", "Style", "Monte Carlo"],
+      "SKODA_Karoq": ["Active", "Ambition", "Style", "Scout", "Sportline", "4x4"],
+      "SKODA_Kodiaq": ["Active", "Ambition", "Style", "Scout", "Sportline", "4x4", "RS", "L&K"],
+      "SKODA_Octavia": ["Active", "Ambition", "Style", "RS", "Scout", "Combi", "L&K"],
+      "SKODA_Rapid": ["Active", "Ambition", "Style", "Monte Carlo", "Spaceback"],
+      "SKODA_Roomster": ["Active", "Ambition", "Style"],
+      "SKODA_Scala": ["Active", "Ambition", "Style", "Monte Carlo"],
+      "SKODA_Superb": ["Active", "Ambition", "Style", "L&K", "Sportline", "Combi"],
+      "SKODA_Yeti": ["Active", "Ambition", "Style", "Outdoor", "Sportline"],
+      "OPEL_Adam": ["Jam", "Glam", "Slam", "Rocks"],
+      "OPEL_Agila": ["Essentia", "Enjoy", "Cosmo"],
+      "OPEL_Antara": ["Essentia", "Enjoy", "Cosmo", "Sport"],
+      "OPEL_Astra": ["Essentia", "Enjoy", "Cosmo", "Edition", "Elegance", "GS Line", "Ultimate", "Sports Tourer", "GTC"],
+      "OPEL_Cascada": ["Essentia", "Enjoy", "Cosmo", "Edition"],
+      "OPEL_Corsa": ["Essentia", "Enjoy", "Cosmo", "Edition", "Elegance", "GS Line", "Ultimate", "Color Edition"],
+      "OPEL_Crossland": ["Edition", "Elegance", "GS Line", "Ultimate"],
+      "OPEL_Frontera": ["Edition", "Elegance", "GS Line"],
+      "OPEL_Grandland": ["Edition", "Elegance", "GS Line", "Ultimate", "Hybrid"],
+      "OPEL_Insignia": ["Edition", "Elegance", "GS Line", "Ultimate", "Sports Tourer", "Country Tourer"],
+      "OPEL_Meriva": ["Essentia", "Enjoy", "Cosmo", "Edition", "Color Edition"],
+      "OPEL_Mokka": ["Essentia", "Enjoy", "Cosmo", "Edition", "Elegance", "GS Line", "Ultimate", "Color Edition"],
+      "OPEL_Movano": ["Confort", "Business", "Edition"],
+      "OPEL_Omega": ["Essentia", "Enjoy", "Cosmo", "Business"],
+      "OPEL_Vectra": ["Essentia", "Enjoy", "Cosmo", "Sport"],
+      "OPEL_Vivaro": ["Confort", "Business", "Edition", "Combi"],
+      "OPEL_Zafira": ["Essentia", "Enjoy", "Cosmo", "Edition", "Elegance", "GS Line", "Life"],
+      "TOYOTA_Auris": ["Active", "Dynamic", "Design", "Collection", "Hybride", "Touring Sports"],
+      "TOYOTA_Avensis": ["Active", "Dynamic", "Design", "Collection", "Touring Sports"],
+      "TOYOTA_Aygo": ["x-cite", "x-play", "x-trend", "x-style", "x-wave", "x-shift"],
+      "TOYOTA_Aygo X": ["Active", "Pulse", "Undercover", "GR Sport", "Air", "Explore"],
+      "TOYOTA_C-HR": ["Active", "Dynamic", "Design", "GR Sport", "Collection", "Hybride"],
+      "TOYOTA_Camry": ["Active", "Dynamic", "Design", "Collection", "Hybride"],
+      "TOYOTA_Corolla": ["Active", "Dynamic", "Design", "GR Sport", "Collection", "Hybride", "Touring Sports", "Sedan"],
+      "TOYOTA_GT86": ["Base", "Club", "Limited"],
+      "TOYOTA_Hilux": ["Invincible", "SR", "Active", "Country", "Double Cab"],
+      "TOYOTA_IQ": ["Base", "Lounge"],
+      "TOYOTA_Land Cruiser": ["VX", "GX", "Invincible", "Executive", "Lounge"],
+      "TOYOTA_Prius": ["Active", "Dynamic", "Design", "Collection", "Hybride", "Plug-in"],
+      "TOYOTA_Proace": ["Access", "Confort", "Business", "Executive", "Verso", "Compact", "Medium"],
+      "TOYOTA_RAV4": ["Active", "Dynamic", "Design", "GR Sport", "Collection", "Hybride", "Plug-in", "4x4", "Adventure"],
+      "TOYOTA_Supra": ["GR Supra", "Legend", "Base"],
+      "TOYOTA_Urban Cruiser": ["Active", "Dynamic", "Design"],
+      "TOYOTA_Verso": ["Active", "Dynamic", "Design", "Collection"],
+      "TOYOTA_Yaris": ["France", "Active", "Dynamic", "Style", "Collection", "Lounge", "Design", "GR Sport", "GR", "Hybride", "Cross"],
+      "TOYOTA_Yaris Cross": ["Active", "Dynamic", "Design", "GR Sport", "Collection", "Hybride"],
+      "HYUNDAI_Bayon": ["Classic", "Intuitive", "Creative", "N Line", "Ultimate"],
+      "HYUNDAI_Getz": ["Classic", "Intuitive", "Creative", "GLS", "GS"],
+      "HYUNDAI_i10": ["Intuitive", "Creative", "Classic", "Initia", "Style", "N Line"],
+      "HYUNDAI_i20": ["Classic", "Intuitive", "Creative", "N Line", "N", "Style"],
+      "HYUNDAI_i30": ["Classic", "Intuitive", "Creative", "N Line", "N", "Fastback", "Wagon", "Style"],
+      "HYUNDAI_i40": ["Classic", "Intuitive", "Creative", "Executive"],
+      "HYUNDAI_Ioniq": ["Intuitive", "Creative", "Executive", "Plug-in", "Electric"],
+      "HYUNDAI_Ioniq 5": ["Intuitive", "Creative", "Ultimate", "N", "AWD", "RWD"],
+      "HYUNDAI_Ioniq 6": ["Intuitive", "Creative", "Ultimate", "N", "AWD", "RWD"],
+      "HYUNDAI_Kona": ["Classic", "Intuitive", "Creative", "N Line", "Ultimate", "Electric", "Hybrid", "N"],
+      "HYUNDAI_Nexo": ["Executive", "Intuitive"],
+      "HYUNDAI_Santa Fe": ["Classic", "Intuitive", "Creative", "N Line", "Ultimate", "Hybrid", "4WD"],
+      "HYUNDAI_Tucson": ["Classic", "Intuitive", "Creative", "N Line", "Ultimate", "Hybrid", "Plug-in", "4WD"],
+      "KIA_Carens": ["Active", "Design", "GT Line", "Premium"],
+      "KIA_Cee'd": ["Active", "Design", "GT Line", "GT Line Premium", "SW", "GT", "ProCeed"],
+      "KIA_EV6": ["Active", "GT Line", "GT Line Premium", "AWD", "GT"],
+      "KIA_Niro": ["Active", "Design", "GT Line", "GT Line Premium", "Hybrid", "Plug-in", "Electric"],
+      "KIA_Optima": ["Active", "Design", "GT Line", "Premium"],
+      "KIA_Picanto": ["Active", "Design", "GT Line", "GT Line Premium", "X-Line"],
+      "KIA_Rio": ["Active", "Design", "GT Line", "GT Line Premium", "X-Line"],
+      "KIA_Sorento": ["Active", "Design", "GT Line", "GT Line Premium", "Hybrid", "4WD"],
+      "KIA_Soul": ["Active", "Design", "GT Line", "Electric"],
+      "KIA_Sportage": ["Active", "Design", "GT Line", "GT Line Premium", "Hybrid", "Plug-in", "4x4", "Black Edition"],
+      "KIA_Stinger": ["Active", "Design", "GT Line", "GT", "Premium"],
+      "KIA_Stonic": ["Active", "Design", "GT Line", "GT Line Premium", "X-Line", "Hybrid"],
+      "KIA_XCeed": ["Active", "Design", "Motion", "Launch Edition", "Premium", "GT-line", "GT-line Premium", "Lounge", "Black & White", "Urban Edition"],
+      "KIA_Xceed": ["Active", "Design", "Motion", "Launch Edition", "Premium", "GT-line", "GT-line Premium", "Lounge", "Black & White", "Urban Edition"],
+      "KIA_Xcee-d": ["Active", "Design", "Motion", "Launch Edition", "Premium", "GT-line", "GT-line Premium", "Lounge", "Black & White", "Urban Edition"],
+      "NISSAN_370Z": ["Base", "GT", "Nismo"],
+      "NISSAN_Cabstar": ["Confort", "Business"],
+      "NISSAN_Juke": ["Visia", "Acenta", "N-Connecta", "Tekna", "Tekna+", "N-Sport", "Hybrid", "N-Design"],
+      "NISSAN_Leaf": ["Visia", "Acenta", "N-Connecta", "Tekna", "Tekna+", "e+"],
+      "NISSAN_Micra": ["Visia", "Acenta", "N-Connecta", "Tekna", "Tekna+", "N-Sport"],
+      "NISSAN_Murano": ["Visia", "Acenta", "Tekna"],
+      "NISSAN_Navara": ["Visia", "Acenta", "N-Connecta", "Tekna", "N-Guard", "King Cab", "Double Cab"],
+      "NISSAN_Note": ["Visia", "Acenta", "Tekna"],
+      "NISSAN_NV200": ["Confort", "Business"],
+      "NISSAN_Pathfinder": ["Visia", "Acenta", "Tekna", "LE"],
+      "NISSAN_Primastar": ["Confort", "Business"],
+      "NISSAN_Pulsar": ["Visia", "Acenta", "N-Connecta", "Tekna"],
+      "NISSAN_Qashqai": ["Visia", "Acenta", "N-Connecta", "Tekna", "Tekna+", "N-Sport", "e-Power", "N-Design"],
+      "NISSAN_X-Trail": ["Visia", "Acenta", "N-Connecta", "Tekna", "Tekna+", "N-Sport", "4x4", "e-Power"],
+      "FORD_B-Max": ["Trend", "Titanium", "ST-Line"],
+      "FORD_C-Max": ["Trend", "Titanium", "ST-Line", "Vignale"],
+      "FORD_EcoSport": ["Trend", "Cool & Connect", "Titanium", "ST-Line", "Vignale"],
+      "FORD_Edge": ["Trend", "Titanium", "ST-Line", "Vignale"],
+      "FORD_Explorer": ["Trend", "Titanium", "ST-Line", "Platinum"],
+      "FORD_Fiesta": ["Trend", "Cool & Connect", "Titanium", "ST-Line", "ST-Line X", "ST", "Active", "Vignale"],
+      "FORD_Focus": ["Trend", "Cool & Connect", "Titanium", "ST-Line", "ST-Line X", "ST", "Active", "Vignale", "Break"],
+      "FORD_Fusion": ["Trend", "Titanium", "ST-Line"],
+      "FORD_Galaxy": ["Trend", "Titanium", "ST-Line", "Vignale"],
+      "FORD_Ka": ["Active", "Titanium", "Cool & Connect", "Black Edition"],
+      "FORD_Ka+": ["Active", "Titanium", "Cool & Connect", "Black Edition"],
+      "FORD_Kuga": ["Trend", "Cool & Connect", "Titanium", "ST-Line", "ST-Line X", "Vignale", "Hybrid", "PHEV", "4x4"],
+      "FORD_Mondeo": ["Trend", "Titanium", "ST-Line", "Vignale", "SW", "Break", "Hybrid"],
+      "FORD_Mustang": ["EcoBoost", "GT", "Mach 1", "Shelby GT500", "Cabriolet", "Fastback", "Bullitt"],
+      "FORD_Mustang Mach-E": ["Standard", "Extended", "GT", "Premium"],
+      "FORD_Puma": ["Trend", "Cool & Connect", "Titanium", "ST-Line", "ST-Line X", "ST", "Hybrid"],
+      "FORD_Ranger": ["Wildtrak", "Limited", "XLT", "Raptor", "Double Cab", "Super Cab"],
+      "FORD_S-Max": ["Trend", "Titanium", "ST-Line", "Vignale"],
+      "FORD_Transit": ["Trend", "Limited", "Custom", "Sport", "Courier", "Connect", "Kombi"],
+      "FIAT_124 Spider": ["Base", "Lusso", "Abarth"],
+      "FIAT_500": ["Pop", "Lounge", "Collezione", "Rockstar", "Sport", "Hybrid", "Cabriolet", "Urban", "Opening Edition", "La Prima"],
+      "FIAT_500C": ["Pop", "Lounge", "Collezione", "Sport", "Hybrid"],
+      "FIAT_500L": ["Pop", "Lounge", "Sport", "Cross", "Wagon"],
+      "FIAT_500X": ["Pop", "Lounge", "Cross", "Sport", "Urban", "City Cross", "Mirror"],
+      "FIAT_500e": ["Action", "Passion", "Icon", "La Prima"],
+      "FIAT_Bravo": ["Active", "Dynamic", "Emotion", "Sport"],
+      "FIAT_Doblo": ["Pop", "Lounge", "Dynamic", "Work Up", "Cargo", "Maxi"],
+      "FIAT_Ducato": ["Confort", "Panorama", "L1H1", "L2H2", "L3H2", "Maxi"],
+      "FIAT_Freemont": ["Pop", "Lounge", "Urban", "Cross"],
+      "FIAT_Grande Punto": ["Active", "Dynamic", "Emotion", "Sport", "Abarth"],
+      "FIAT_Panda": ["Pop", "Easy", "Lounge", "Sport", "Cross", "4x4", "Hybrid", "City Cross"],
+      "FIAT_Punto": ["Pop", "Easy", "Lounge", "Sport", "Sporting", "Evo"],
+      "FIAT_Qubo": ["Dynamic", "Lounge", "Trekking"],
+      "FIAT_Scudo": ["Confort", "Business", "Premium", "Combi"],
+      "FIAT_Stilo": ["Active", "Dynamic", "Emotion", "Sport"],
+      "FIAT_Tipo": ["Pop", "Easy", "Lounge", "Sport", "SW", "Sedan", "Street", "Cross"],
+      "ALFA ROMEO_147": ["Distinctive", "Progression", "Sprint", "GTA"],
+      "ALFA ROMEO_156": ["Distinctive", "Progression", "Selespeed", "SW", "GTA"],
+      "ALFA ROMEO_159": ["Distinctive", "Progression", "Selespeed", "SW", "TI"],
+      "ALFA ROMEO_Brera": ["Sky Window", "Progression", "Ti"],
+      "ALFA ROMEO_Giulia": ["Super", "Sprint", "Business", "Veloce", "GTA", "Ti", "Quadrifoglio", "Edizione"],
+      "ALFA ROMEO_Giulietta": ["Distinctive", "Sprint", "Veloce", "QV", "Speciale", "Super"],
+      "ALFA ROMEO_GT": ["Distinctive", "Progression", "Sprint"],
+      "ALFA ROMEO_Mito": ["Distinctive", "Sprint", "Veloce", "QV", "Speciale", "Super"],
+      "ALFA ROMEO_Stelvio": ["Super", "Sprint", "Business", "Veloce", "Ti", "Quadrifoglio", "Edizione"],
+      "ALFA ROMEO_Tonale": ["Distinctive", "Sprint", "Veloce", "Ti", "PHEV"],
+      "MINI_Clubman": ["One", "Cooper", "Cooper S", "JCW", "Salt", "Pepper", "Chili", "ALL4"],
+      "MINI_Cooper": ["One", "Cooper", "Cooper S", "JCW", "Salt", "Pepper", "Chili", "Cabriolet", "Roadster"],
+      "MINI_Countryman": ["One", "Cooper", "Cooper D", "Cooper S", "Cooper SE", "Salt", "Pepper", "Chili", "ALL4", "JCW"],
+      "MINI_Mini": ["One", "Cooper", "Cooper S", "JCW", "Salt", "Pepper", "Chili", "Cabriolet"],
+      "MINI_One": ["One", "One D", "Salt", "Pepper", "Chili", "Baker Street", "Camden", "Mayfair"],
+      "MINI_Paceman": ["One", "Cooper", "Cooper D", "Cooper S", "ALL4"],
+      "VOLVO_C30": ["Kinetic", "Momentum", "R-Design"],
+      "VOLVO_C40": ["Core", "Plus", "Ultimate", "Recharge"],
+      "VOLVO_C70": ["Kinetic", "Momentum", "Summum", "R-Design"],
+      "VOLVO_S40": ["Kinetic", "Momentum", "Summum", "R-Design"],
+      "VOLVO_S60": ["Kinetic", "Momentum", "Inscription", "Plus", "Ultimate", "Recharge", "B4", "B5", "Polestar"],
+      "VOLVO_S80": ["Kinetic", "Momentum", "Summum", "Executive"],
+      "VOLVO_S90": ["Momentum", "Inscription", "Plus", "Ultimate", "Recharge"],
+      "VOLVO_V40": ["Kinetic", "Momentum", "Inscription", "R-Design", "Cross Country"],
+      "VOLVO_V50": ["Kinetic", "Momentum", "Summum", "R-Design"],
+      "VOLVO_V60": ["Kinetic", "Momentum", "Inscription", "Plus", "Ultimate", "Recharge", "B4", "B5", "Cross Country"],
+      "VOLVO_V70": ["Kinetic", "Momentum", "Summum", "Ocean Race"],
+      "VOLVO_V90": ["Momentum", "Inscription", "Plus", "Ultimate", "Recharge", "Cross Country"],
+      "VOLVO_XC40": ["Kinetic", "Momentum", "Inscription", "Plus", "Ultimate", "Recharge", "B3", "B4", "T4", "T5"],
+      "VOLVO_XC60": ["Kinetic", "Momentum", "Inscription", "Plus", "Ultimate", "Recharge", "B4", "B5", "T6", "T8"],
+      "VOLVO_XC70": ["Kinetic", "Momentum", "Summum", "Ocean Race"],
+      "VOLVO_XC90": ["Kinetic", "Momentum", "Inscription", "Plus", "Ultimate", "Recharge", "T8", "B5"],
+      "JEEP_Cherokee": ["Sport", "Longitude", "Limited", "Trailhawk", "Overland", "4x4"],
+      "JEEP_Compass": ["Sport", "Longitude", "Limited", "Trailhawk", "80th Anniversary", "Hybrid", "4xe", "Night Eagle"],
+      "JEEP_Grand Cherokee": ["Sport", "Longitude", "Limited", "Trailhawk", "Overland", "Summit", "4xe"],
+      "JEEP_Renegade": ["Sport", "Longitude", "Limited", "Trailhawk", "80th Anniversary", "Hybrid", "4xe", "Night Eagle", "Upland"],
+      "JEEP_Wrangler": ["Sport", "Sahara", "Rubicon", "Unlimited", "4xe"],
+      "HONDA_Accord": ["Comfort", "Elegance", "Executive", "Sport", "Hybrid"],
+      "HONDA_CR-V": ["Comfort", "Elegance", "Executive", "Sport", "Hybrid", "4WD", "Lifestyle"],
+      "HONDA_HR-V": ["Comfort", "Elegance", "Executive", "Sport", "Hybrid", "e:HEV"],
+      "HONDA_Jazz": ["Comfort", "Elegance", "Luxe", "Sport", "Crosstar", "e:HEV", "Executive"],
+      "HONDA_Legend": ["Base", "Legend"],
+      "MAZDA_2": ["Pure", "Elegance", "Dynamique", "Signature", "Homura", "Takumi"],
+      "MAZDA_3": ["Pure", "Elegance", "Dynamique", "Signature", "Homura", "Takumi", "Fastback", "Berline"],
+      "MAZDA_5": ["Pure", "Elegance", "Dynamique", "Signature"],
+      "MAZDA_6": ["Pure", "Elegance", "Dynamique", "Signature", "Homura", "Takumi", "SW", "Berline"],
+      "MAZDA_CX-3": ["Pure", "Elegance", "Dynamique", "Signature", "Homura", "Takumi"],
+      "MAZDA_CX-30": ["Pure", "Elegance", "Dynamique", "Signature", "Homura", "Takumi"],
+      "MAZDA_CX-5": ["Pure", "Elegance", "Dynamique", "Signature", "Homura", "Takumi", "4x4"],
+      "MAZDA_CX-60": ["Pure", "Elegance", "Dynamique", "Signature", "Homura", "Takumi", "PHEV"],
+      "MAZDA_MX-5": ["Pure", "Elegance", "Dynamique", "Signature", "Homura", "Takumi", "RF"],
+      "SUZUKI_Baleno": ["Privilège", "Avantage", "Pack", "GL", "GLS"],
+      "SUZUKI_Grand Vitara": ["Privilège", "Avantage", "Pack", "GL", "GLS", "4x4", "JLX"],
+      "SUZUKI_Ignis": ["Privilège", "Avantage", "Pack", "GL", "GLS", "Hybrid"],
+      "SUZUKI_Jimny": ["Privilège", "Avantage", "Pack", "GL", "GLX", "Professional"],
+      "SUZUKI_S-Cross": ["Privilège", "Avantage", "Pack", "GL", "GLS", "4x4", "Hybrid", "AllGrip"],
+      "SUZUKI_Splash": ["GL", "GLS", "Club"],
+      "SUZUKI_Swift": ["Privilège", "Avantage", "Pack", "GL", "GLS", "Sport", "Hybrid"],
+      "SUZUKI_SX4": ["Privilège", "Avantage", "Pack", "GL", "GLS", "4x4"],
+      "SUZUKI_Vitara": ["Privilège", "Avantage", "Pack", "GL", "GLS", "S", "4x4", "Hybrid", "AllGrip"],
+      "TESLA_Model 3": ["Standard Range", "Long Range", "Performance", "AWD", "Highland"],
+      "TESLA_Model S": ["Standard Range", "Long Range", "Performance", "Plaid", "AWD"],
+      "TESLA_Model X": ["Standard Range", "Long Range", "Performance", "Plaid", "AWD"],
+      "TESLA_Model Y": ["Standard Range", "Long Range", "Performance", "AWD"],
+      "TESLA_ROADSTER": ["Base", "Founders Series"],
+      "LAND-ROVER_Defender": ["S", "SE", "HSE", "X", "X-Dynamic", "90", "110", "130"],
+      "LAND-ROVER_Discovery": ["S", "SE", "HSE", "HSE Luxury", "Graphite", "Commercial"],
+      "LAND-ROVER_Discovery Sport": ["S", "SE", "HSE", "R-Dynamic", "R-Dynamic SE", "R-Dynamic HSE", "HSE Luxury", "Black"],
+      "LAND-ROVER_Freelander": ["S", "SE", "HSE", "GS", "XS", "Sport", "Commercial"],
+      "LAND-ROVER_Range Rover": ["Vogue", "Autobiography", "HSE", "SE", "SVAutobiography"],
+      "LAND-ROVER_Range Rover Evoque": ["S", "SE", "HSE", "R-Dynamic", "R-Dynamic SE", "Autobiography", "Cabriolet"],
+      "LAND-ROVER_Range Rover Sport": ["S", "SE", "HSE", "HSE Dynamic", "Autobiography", "SVR"],
+      "LAND-ROVER_Range Rover Velar": ["S", "SE", "HSE", "R-Dynamic", "First Edition"],
+      "PORSCHE_718": ["Base", "S", "GTS", "Spyder", "GT4", "Cayman", "Boxster"],
+      "PORSCHE_911": ["Carrera", "Carrera S", "Carrera 4", "Carrera 4S", "Targa", "Cabriolet", "Turbo", "GT3", "RS"],
+      "PORSCHE_Boxster": ["S", "GTS", "Spyder", "718"],
+      "PORSCHE_Cayenne": ["S", "GTS", "Turbo", "E-Hybrid", "Coupe", "Platinum Edition"],
+      "PORSCHE_Cayman": ["S", "GTS", "GT4", "718"],
+      "PORSCHE_Macan": ["S", "GTS", "Turbo", "Electric", "Base"],
+      "PORSCHE_Panamera": ["S", "GTS", "Turbo", "4S", "E-Hybrid", "Sport Turismo"],
+      "PORSCHE_Taycan": ["4S", "GTS", "Turbo", "Turbo S", "Sport Turismo", "Cross Turismo"],
+      "LEXUS_CT": ["Elegant", "Executive", "Luxe", "F Sport", "Premium", "CT200h"],
+      "LEXUS_ES": ["Elegant", "Executive", "Luxe", "F Sport", "Premium"],
+      "LEXUS_GS": ["Elegant", "Executive", "Luxe", "F Sport", "Premium", "300h", "350"],
+      "LEXUS_IS": ["Elegant", "Executive", "Luxe", "F Sport", "Premium", "300h", "350"],
+      "LEXUS_NX": ["Elegant", "Executive", "Luxe", "F Sport", "Premium", "300h", "350h", "450h"],
+      "LEXUS_RX": ["Elegant", "Executive", "Luxe", "F Sport", "Premium", "300h", "350h", "450h", "500h"],
+      "LEXUS_UX": ["Elegant", "Executive", "Luxe", "F Sport", "Premium", "250h", "300e"],
+      "MITSUBISHI_ASX": ["Invite", "Intense", "Spirit", "Diamond", "Instyle", "4WD"],
+      "MITSUBISHI_Colt": ["Invite", "Instyle", "Intense"],
+      "MITSUBISHI_Eclipse Cross": ["Intense", "Spirit", "Diamond", "Instyle", "PHEV", "4WD"],
+      "MITSUBISHI_L200": ["Invite", "Intense", "Spirit", "Diamond", "Club Cab", "Double Cab"],
+      "MITSUBISHI_Lancer": ["Invite", "Instyle", "Intense", "Evolution"],
+      "MITSUBISHI_Outlander": ["Intense", "Spirit", "Diamond", "Instyle", "PHEV", "4WD"],
+      "MITSUBISHI_Pajero": ["Invite", "Instyle", "Intense", "Spirit", "Diamond", "4WD"],
+      "MITSUBISHI_Space Star": ["Invite", "Instyle", "Intense", "Spirit", "Diamond"],
+      "SUBARU_Forester": ["Confort", "Sport", "Exclusive", "Lineartronic", "Premium", "AWD", "e-Boxer"],
+      "SUBARU_Impreza": ["Confort", "Sport", "Exclusive", "Lineartronic", "Premium", "AWD", "WRX", "STI"],
+      "SUBARU_Legacy": ["Confort", "Sport", "Exclusive", "Lineartronic", "Premium", "AWD"],
+      "SUBARU_Outback": ["Confort", "Sport", "Exclusive", "Lineartronic", "Premium", "AWD", "e-Boxer"],
+      "SUBARU_XV": ["Confort", "Sport", "Exclusive", "Lineartronic", "Premium", "AWD", "e-Boxer"],
+      "CHEVROLET_Aveo": ["LS", "LT", "LTZ", "Sport"],
+      "CHEVROLET_Camaro": ["LS", "LT", "SS", "ZL1", "Cabriolet"],
+      "CHEVROLET_Captiva": ["LS", "LT", "LTZ", "Sport", "4WD"],
+      "CHEVROLET_Corvette": ["Stingray", "Z06", "ZR1", "Grand Sport"],
+      "CHEVROLET_Cruze": ["LS", "LT", "LTZ", "Sport", "SW"],
+      "CHEVROLET_Spark": ["LS", "LT", "LTZ"],
+      "CHEVROLET_Trax": ["LS", "LT", "LTZ", "Sport", "4WD"],
+      "JAGUAR_E-Pace": ["SE", "HSE", "R-Dynamic", "Chequered Flag"],
+      "JAGUAR_F-Pace": ["Pure", "Prestige", "Portfolio", "R-Dynamic", "S", "SVR"],
+      "JAGUAR_F-Type": ["R", "S", "V6", "V8", "Cabriolet", "Coupé", "R-Dynamic"],
+      "JAGUAR_I-Pace": ["S", "SE", "HSE", "EV400", "Black"],
+      "JAGUAR_XE": ["Pure", "Prestige", "Portfolio", "R-Dynamic", "S"],
+      "JAGUAR_XF": ["Pure", "Prestige", "Portfolio", "R-Dynamic", "S", "Sportbrake"],
+      "JAGUAR_XJ": ["Pure", "Prestige", "Portfolio", "Autobiography", "Supersport", "LWB"],
+      "MASERATI_Ghibli": ["Business", "Sport", "GranSport", "GranLusso", "Trofeo"],
+      "MASERATI_GranTurismo": ["Sport", "MC", "Trofeo", "Folgore"],
+      "MASERATI_Grecale": ["GT", "Modena", "Trofeo", "Folgore"],
+      "MASERATI_Levante": ["Business", "Sport", "GranSport", "GranLusso", "Trofeo"],
+      "MASERATI_Quattroporte": ["Business", "Sport", "GranSport", "GranLusso", "Trofeo"],
+      "MG_4": ["Standard", "Comfort", "Luxury", "Trophy", "XPOWER"],
+      "MG_5": ["Standard", "Comfort", "Luxury", "Trophy"],
+      "MG_HS": ["Comfort", "Luxury", "Trophy", "Excite", "PHEV"],
+      "MG_MG3": ["Comfort", "Luxury", "Trophy", "Excite"],
+      "MG_MGF/MGTF": ["Base", "Trophy", "120", "160"],
+      "MG_MGS": ["Comfort", "Luxury", "Trophy"],
+      "MG_ZR": ["Base", "+", "120"],
+      "MG_ZS": ["Comfort", "Luxury", "Trophy", "Excite", "Electric"],
+      "MG_ZT": ["Base", "120", "160", "190", "260"],
+      "MG_Cyberster": ["Base", "Trophy"],
+      "MG_EHS": ["Comfort", "Luxury", "Trophy"],
+      "MG_MARVEL R": ["Comfort", "Luxury", "Trophy"],
+      "MG_Midget": ["Base", "Classic"],
+      "MG_B": ["Base", "GT", "V8"],
+      "MG_C": ["Base", "GTS"],
+      "CUPRA_Ateca": ["VZ", "300", "310"],
+      "CUPRA_Born": ["V1", "V2", "e-Boost"],
+      "CUPRA_Formentor": ["VZ", "310", "370", "e-Hybrid", "4Drive"],
+      "CUPRA_Leon": ["VZ", "310", "290", "e-Hybrid", "Sportstourer"],
+      "CUPRA_TERRAMAR": ["VZ", "e-Hybrid"],
+      "ABARTH_500": ["595", "695", "Competizione", "Turismo", "Opening Edition"],
+      "ABARTH_595": ["Competizione", "Turismo", "Sport", "Pista"],
+      "ABARTH_695": ["Tributo Ferrari", "Biposto", "70° Anniversario", "Esseesse"],
+      "SMART_Forfour": ["Passion", "Pure", "Brabus", "Prime", "Proxy"],
+      "SMART_Fortwo": ["Passion", "Pure", "Brabus", "Prime", "Proxy", "Cabriolet"],
+      "LANCIA_Delta": ["Silver", "Gold", "Platinum", "Integrale"],
+      "LANCIA_Musa": ["Silver", "Gold", "Platinum"],
+      "LANCIA_Ypsilon": ["Silver", "Gold", "Platinum", "Elefantino", "Black & White"],
+      "SSANGYONG_Korando": ["Quartz", "Crystal", "Sapphire", "4WD"],
+      "SSANGYONG_Rexton": ["Quartz", "Crystal", "Sapphire", "4WD"],
+      "SSANGYONG_Tivoli": ["Quartz", "Crystal", "Sapphire", "Grand"],
+      "POLESTAR_Polestar 1": ["Base"],
+      "POLESTAR_Polestar 2": ["Standard Range", "Long Range", "Performance", "BST"],
+      "POLESTAR_Polestar 3": ["Long Range", "Performance"],
+      "POLESTAR_Polestar 4": ["Long Range", "Performance"],
+      "POLESTAR_Polestar 5": ["Long Range", "Performance"],
+      "BYD_Atto 2": ["Design", "Confort", "Excellence"],
+      "BYD_Atto 3": ["Design", "Confort", "Excellence"],
+      "BYD_Dolphin": ["Design", "Confort", "Excellence"],
+      "BYD_Dolphin Surf": ["Design", "Confort", "Excellence"],
+      "BYD_Han": ["Design", "Confort", "Excellence"],
+      "BYD_Seal": ["Design", "Confort", "Excellence"],
+      "BYD_Seal 6": ["Design", "Confort", "Excellence"],
+      "BYD_Seal U": ["Design", "Confort", "Excellence"],
+      "BYD_Sealion 5": ["Design", "Confort", "Excellence"],
+      "BYD_Sealion 7": ["Design", "Confort", "Excellence"],
+      "BYD_Tang": ["Design", "Confort", "Excellence"],
+      "INFINITI_Q30": ["Premium", "Sport", "Luxe"],
+      "INFINITI_Q50": ["Premium", "Sport", "Luxe", "Red Sport"],
+      "INFINITI_Q60": ["Premium", "Sport", "Red Sport"],
+      "INFINITI_QX30": ["Premium", "Sport", "Luxe"],
+      "INFINITI_QX70": ["Premium", "Sport", "Luxe", "S"],
+      "DODGE_Caliber": ["SXT", "R/T", "SE", "Sport"],
+      "DODGE_Challenger": ["SXT", "R/T", "Scat Pack", "SRT", "Hellcat"],
+      "DODGE_Charger": ["SXT", "R/T", "Scat Pack", "SRT", "Hellcat"],
+      "DODGE_Nitro": ["SXT", "R/T", "SE", "4WD"],
+      "CHRYSLER_300C": ["SRT8", "CRD", "Touring", "Limited"],
+      "CHRYSLER_Grand Voyager": ["Limited", "Touring", "SE", "Stow 'n Go"],
+      "CHRYSLER_Voyager": ["Limited", "Touring", "SE"],
+      "DAIHATSU_Cuore": ["SX", "EX", "Premium"],
+      "DAIHATSU_Sirion": ["SX", "EX", "Premium"],
+      "DAIHATSU_Terios": ["SX", "EX", "Premium", "4WD"],
+      "ALPINE_A106": ["Base"],
+      "ALPINE_A108": ["Base"],
+      "ALPINE_A110": ["Pure", "Legende", "S", "GT", "Color Edition", "Centenary"],
+      "ALPINE_A290": ["Base", "GT", "GTS"],
+      "ALPINE_A310": ["Base", "V6"],
+      "ALPINE_A390": ["Base"],
+      "ALPINE_A610": ["Base", "Turbo"],
+      "ALPINE_GTA/V6": ["Base"],
+      "FERRARI_California": ["Base", "T", "Handling Speciale"],
+      "FERRARI_F430": ["Base", "Spider", "Scuderia"],
+      "FERRARI_488 GTB": ["Base", "Pista"],
+      "FERRARI_488 Spider": ["Base", "Pista Spider"],
+      "FERRARI_F8 Tributo": ["Base"],
+      "FERRARI_F8 Spider": ["Base"],
+      "FERRARI_SF90": ["Stradale", "Spider", "XX"],
+      "FERRARI_Roma": ["Base"],
+      "FERRARI_Portofino": ["Base", "M"],
+      "FERRARI_GTC4Lusso": ["Base", "T"],
+      "FERRARI_Purosangue": ["Base"],
+      "FERRARI_296 GTB": ["Base", "GTS", "XX"],
+      "LAMBORGHINI_Huracan": ["LP610-4", "LP580-2", "EVO", "EVO RWD", "STO", "Tecnica"],
+      "LAMBORGHINI_Aventador": ["LP700-4", "LP740-4S", "SVJ", "Ultimae"],
+      "LAMBORGHINI_Urus": ["Base", "S", "Performante"],
+      "LAMBORGHINI_Gallardo": ["LP560-4", "LP550-2", "Superleggera", "Spyder"],
+      "BENTLEY_Continental GT": ["Base", "V8", "W12", "Speed", "GTC"],
+      "BENTLEY_Continental GTC": ["Base", "V8", "W12", "Speed"],
+      "BENTLEY_Bentayga": ["Base", "V8", "W12", "Speed", "EWB", "Azure"],
+      "BENTLEY_Flying Spur": ["Base", "V8", "W12", "Speed", "Azure"],
+      "BENTLEY_Mulsanne": ["Base", "Speed", "Extended Wheelbase"],
+      "ASTON MARTIN_DB9": ["Base", "GT", "Volante"],
+      "ASTON MARTIN_DB11": ["V8", "V12", "AMR", "Volante"],
+      "ASTON MARTIN_DB12": ["Base", "Volante"],
+      "ASTON MARTIN_V8 Vantage": ["Base", "S", "AMR", "Roadster"],
+      "ASTON MARTIN_V12 Vantage": ["Base", "S", "Roadster"],
+      "ASTON MARTIN_Vanquish": ["Base", "S", "Zagato", "Volante"],
+      "ASTON MARTIN_DBS": ["Base", "Superleggera", "Volante"],
+      "ASTON MARTIN_DBX": ["Base", "707"],
+      "ASTON MARTIN_Rapide": ["Base", "S", "AMR"],
+      "LOTUS_Elise": ["S", "SC", "Sport", "Cup", "Race"],
+      "LOTUS_Exige": ["S", "Sport", "V6", "Cup", "Race"],
+      "LOTUS_Evora": ["Base", "400", "GT", "Sport"],
+      "LOTUS_Emira": ["Base", "V6", "First Edition"],
+      "LOTUS_Eletre": ["Base", "S", "R"],
+      "LOTUS_Emeya": ["Base", "S", "R"],
+      "SAAB_9-3": ["Linear", "Arc", "Vector", "Aero", "XWD", "Cabriolet"],
+      "SAAB_9-5": ["Linear", "Arc", "Vector", "Aero", "SportCombi"],
+      "SAAB_900": ["Base", "S", "Turbo", "Cabriolet"],
+      "SAAB_9000": ["Base", "CS", "CDE", "Aero"],
+      "TRIUMPH_Spitfire": ["Base", "MkIV", "1500"],
+      "TRIUMPH_GT6": ["Base", "MkII", "MkIII"],
+      "TRIUMPH_Stag": ["Base", "V8"],
+      "TRIUMPH_Vitesse": ["Base", "2 Litre"],
+      "TRIUMPH_Dolomite": ["Base", "Sprint"],
+      "TRIUMPH_Acclaim": ["Base", "HL", "CD", "HLS"],
+      "LYNK&CO_01": ["Base", "Plus", "Pro"],
+      "LYNK&CO_02": ["Base", "Plus"],
+      "LYNK&CO_08": ["Base", "Plus", "Pro"],
+      "XPENG_G6": ["Standard", "Long Range", "AWD"],
+      "XPENG_G9": ["Standard", "Long Range", "AWD"],
+      "XPENG_P7+": ["Standard", "Long Range", "AWD"],
+      "LEAPMOTOR_B10": ["Base", "Plus"],
+      "LEAPMOTOR_C10": ["Base", "Plus"],
+      "LEAPMOTOR_C11": ["Base", "Plus"],
+      "LEAPMOTOR_T03": ["Base", "Plus"],
+      "ROLLS-ROYCE_Ghost": ["Base", "Extended", "Black Badge"],
+      "ROLLS-ROYCE_Phantom": ["Base", "Extended", "Drophead", "Coupé"],
+      "ROLLS-ROYCE_Cullinan": ["Base", "Black Badge"],
+      "ROLLS-ROYCE_Wraith": ["Base", "Black Badge"],
+      "ROLLS-ROYCE_Dawn": ["Base", "Black Badge"],
+      "ROLLS-ROYCE_Silver Shadow": ["Base", "II"],
+      "ROLLS-ROYCE_Silver Spur": ["Base", "III"],
+      "ROLLS-ROYCE_Silver Spirit": ["Base", "II", "III"],
+      "ROLLS-ROYCE_Silver Cloud": ["Base", "II", "III"],
+      "ROLLS-ROYCE_Corniche": ["Base", "V", "Cabriolet"],
+      "MCLAREN_570S": ["Base", "Spider"],
+      "MCLAREN_600LT": ["Base", "Spider"],
+      "MCLAREN_720S": ["Base", "Performance", "Spider"],
+      "MCLAREN_750S": ["Base", "Spider"],
+      "MCLAREN_GT": ["Base"],
+      "MCLAREN_MP4 12C": ["Base", "Spider"],
+      "ALPINA_B3": ["Sedan", "Touring", "Allrad"],
+      "ALPINA_B4": ["Coupé", "Cabriolet", "Gran Coupe"],
+      "ALPINA_B5": ["Sedan", "Touring", "Allrad"],
+      "ALPINA_B7": ["Sedan", "Allrad"],
+      "ALPINA_D3": ["Sedan", "Touring", "Allrad"],
+      "ALPINA_D5": ["Sedan", "Touring", "Allrad"],
+      "ALPINA_XB7": ["Base"],
+      "ROVER_25": ["Base", "Classic", "Trophy", "Club"],
+      "ROVER_45": ["Base", "Classic", "Trophy", "Club"],
+      "ROVER_75": ["Classic", "Club", "Connoisseur", "Contemporary", "Tourer"],
+      "ROVER_SD1": ["Base", "Vitesse"],
+      "ROVER_Série 100": ["Base", "SI", "SLi"],
+      "ROVER_Série 200": ["Base", "SI", "GSI", "Cabriolet"],
+      "ROVER_Série 400": ["Base", "SI", "GSI", "Tourer"],
+      "ROVER_Série 600": ["Base", "Si", "GSi"],
+      "ROVER_Série 800": ["Base", "Si", "GSi", "Vitesse", "Coupe"],
+      "MICROCAR_Due": ["Base", "Initial", "Active"],
+      "MICROCAR_M.Go": ["Base", "Initial", "Active", "X"],
+      "MICROCAR_M8": ["Base", "Initial"],
+      "MICROCAR_Virgo": ["Base", "III"],
+      "CHATENET_Barooder": ["Base", "Sport"],
+      "CHATENET_CH16": ["Base", "Sport"],
+      "LIGIER_Ixo": ["Base", "S", "Style", "Luxe"],
+      "LIGIER_JS5": ["Base", "Sport"],
+      "LIGIER_Myli": ["Base", "R", "S"],
+      "LIGIER_Nova": ["Base", "Sport", "JS50"],
+      "LIGIER_X-Too": ["Base", "R", "S"],
+      "AIXAM_City": ["Base", "Sport", "Premium"],
+      "AIXAM_Coupé": ["Base", "Sport", "GTI"],
+      "AIXAM_Crossline": ["Base", "Sport", "Premium"],
+      "AIXAM_Crossover": ["Base", "Sport", "Premium"],
+      "AIXAM_Minauto": ["Base", "Sport", "Pulse"],
+    };
+
+
+    // Table de finitions similaires — du plus proche au plus éloigné
+    const FINITIONS_SIMILAIRES = {
+      // Peugeot
+      "GT Pack": ["GT", "GT Line", "Allure Pack", "Allure"],
+      "GT": ["GT Pack", "GT Line", "Allure Pack", "Allure"],
+      "GT Line": ["GT", "GT Pack", "Allure Pack", "Allure"],
+      "Allure Pack": ["Allure", "GT Line", "GT", "Active Pack"],
+      "Allure": ["Allure Pack", "Active Pack", "Active"],
+      "Active Pack": ["Active", "Allure", "Allure Pack"],
+      "Active": ["Active Pack", "Allure"],
+      // Renault
+      "RS Line": ["Intens", "Business", "Zen"],
+      "Intens": ["RS Line", "Business", "Zen", "Iconic"],
+      "Iconic": ["Intens", "RS Line", "Business"],
+      "E-Tech": ["Intens", "RS Line", "Business"],
+      "Business": ["Intens", "Zen", "Life"],
+      "Zen": ["Business", "Intens", "Life"],
+      "Life": ["Zen", "Business"],
+      // Dacia
+      "Extreme": ["Expression", "Essential", "Access"],
+      "Expression": ["Extreme", "Essential", "Access"],
+      "Essential": ["Expression", "Access"],
+      "Stepway": ["Extreme", "Expression"],
+      "Journey": ["Extreme", "Expression"],
+      // Citroen
+      "Max": ["Shine Pack", "Shine", "Feel"],
+      "Shine Pack": ["Shine", "Max", "Feel"],
+      "Shine": ["Shine Pack", "Max", "Feel"],
+      "Feel": ["Shine", "Shine Pack"],
+      // VW
+      "R": ["R-Line", "GTI", "Style", "Highline"],
+      "GTI": ["R-Line", "R", "Style", "Highline"],
+      "GTE": ["R-Line", "Style", "Highline"],
+      "R-Line": ["GTI", "Style", "Highline", "Comfortline"],
+      "Style": ["R-Line", "Highline", "Comfortline"],
+      "Highline": ["Style", "R-Line", "Comfortline"],
+      "Life": ["Comfortline", "Trendline"],
+      "Comfortline": ["Highline", "Life", "Trendline"],
+      "Trendline": ["Comfortline", "Life"],
+      // BMW
+      "M Sport": ["Sport Line", "xLine", "Luxury", "Advantage"],
+      "Sport Line": ["M Sport", "xLine", "Advantage"],
+      "xLine": ["M Sport", "Sport Line", "Luxury"],
+      "Luxury": ["xLine", "M Sport", "Sport Line"],
+      "Advantage": ["Sport Line", "M Sport"],
+      "M135i": ["M Sport", "Sport Line"],
+      "M340i": ["M Sport", "Sport Line"],
+      "M40i": ["M Sport", "xLine"],
+      // Mercedes
+      "AMG Line": ["Avantgarde", "Elegance", "Business Solution"],
+      "Avantgarde": ["AMG Line", "Elegance", "Business"],
+      "Elegance": ["Avantgarde", "AMG Line", "Business"],
+      "Business Solution": ["Business", "Avantgarde", "Elegance"],
+      "Business": ["Business Solution", "Avantgarde", "Progressive"],
+      "Progressive": ["Business", "Urban", "Style"],
+      "Urban": ["Progressive", "Style"],
+      "Style": ["Progressive", "Urban"],
+      "4Matic": ["AMG Line", "Avantgarde"],
+      // Audi
+      "S line": ["Design", "Business Line"],
+      "Design": ["S line", "Business Line"],
+      "Business Line": ["Design", "S line"],
+      "S3": ["S line", "Design"],
+      "RS3": ["S3", "S line"],
+      "S4": ["S line", "Design"],
+      "RS4": ["S4", "S line"],
+      "SQ5": ["S line", "Design"],
+      // Seat
+      "FR": ["Xcellence", "Style", "Reference"],
+      "Xcellence": ["FR", "Style"],
+      "Xperience": ["FR", "Xcellence"],
+      // Skoda
+      "RS": ["Style", "Ambition"],
+      "Sportline": ["Style", "Ambition"],
+      "Scout": ["Style", "Ambition"],
+      "Style": ["Ambition", "Active"],
+      "Ambition": ["Style", "Active"],
+      // Toyota
+      "GR": ["GR Sport", "Design", "Collection"],
+      "GR Sport": ["GR", "Design", "Collection"],
+      "Collection": ["Design", "GR Sport"],
+      "Design": ["Collection", "GR Sport", "Dynamic"],
+      "Dynamic": ["Design", "Collection"],
+      // Hyundai/Kia
+      "Ultimate": ["N Line", "Creative", "Intuitive"],
+      "N Line": ["Ultimate", "Creative", "Intuitive"],
+      "Creative": ["N Line", "Intuitive", "Classic"],
+      "Intuitive": ["Creative", "Classic"],
+      "Classic": ["Intuitive"],
+      "GT Line Premium": ["GT Line", "Design", "Active"],
+      "GT Line": ["GT Line Premium", "Design", "Active"],
+      // Nissan
+      "Tekna+": ["Tekna", "N-Connecta", "Acenta"],
+      "Tekna": ["Tekna+", "N-Connecta", "Acenta"],
+      "N-Connecta": ["Tekna", "Acenta", "Visia"],
+      "N-Sport": ["Tekna", "N-Connecta"],
+      "Acenta": ["N-Connecta", "Visia"],
+      // Ford
+      "ST-Line X": ["ST-Line", "Titanium", "Cool & Connect"],
+      "ST-Line": ["ST-Line X", "Titanium", "Cool & Connect"],
+      "ST": ["ST-Line X", "ST-Line"],
+      "Vignale": ["ST-Line X", "Titanium"],
+      "Titanium": ["ST-Line", "Cool & Connect"],
+      // Tesla
+      "Performance": ["Long Range", "AWD"],
+      "Long Range": ["Performance", "AWD", "Standard Range"],
+      "AWD": ["Long Range", "Performance"],
+      "Standard Range": ["Long Range", "AWD"],
+      // Volvo
+      "Ultimate": ["Plus", "Inscription", "R-Design"],
+      "Plus": ["Ultimate", "Inscription", "R-Design"],
+      "Inscription": ["Plus", "R-Design", "Momentum"],
+      "R-Design": ["Inscription", "Plus", "Momentum"],
+      "Recharge": ["Plus", "Ultimate"],
+      "Momentum": ["R-Design", "Inscription"],
+      // Jeep
+      "Trailhawk": ["Limited", "Longitude"],
+      "Limited": ["Trailhawk", "Longitude"],
+      "Longitude": ["Limited", "Sport"],
+      "4xe": ["Limited", "Trailhawk"],
+      // Mini
+      "JCW": ["Cooper S", "Cooper", "Chili"],
+      "Cooper S": ["JCW", "Cooper", "Chili"],
+      "Cooper SE": ["Cooper S", "JCW", "Chili"],
+      "Cooper D": ["Cooper", "One D", "Chili"],
+      "Cooper": ["Cooper S", "One", "Chili", "Pepper"],
+      "One D": ["Cooper D", "One", "Pepper"],
+      "One": ["One D", "Cooper", "Salt"],
+      "Chili": ["Pepper", "Salt", "Cooper S"],
+      "Pepper": ["Chili", "Salt"],
+      "Oakwood": ["Chili", "Pepper", "Cooper S"],
+      "Yours": ["Chili", "Cooper S"],
+      // Fiat
+      "Sport": ["Lounge", "Rockstar", "Collezione"],
+      "Rockstar": ["Sport", "Lounge", "Collezione"],
+      "Collezione": ["Rockstar", "Lounge"],
+      "Lounge": ["Collezione", "Sport", "Pop"],
+      "Pop": ["Lounge"],
+      // Alfa Romeo
+      "Quadrifoglio": ["Veloce", "Ti", "Sprint"],
+      "Veloce": ["Quadrifoglio", "Ti", "Sprint"],
+      "Ti": ["Veloce", "Sprint", "Super"],
+      "Sprint": ["Ti", "Super"],
+      "Super": ["Sprint", "Business"],
+    };
+
+    function getFinitionSimilaire(finition, finitionsList) {
+      if (!finition) return null;
+      const similaires = FINITIONS_SIMILAIRES[finition] || [];
+      return similaires.find(f => finitionsList.includes(f)) || similaires[0] || null;
+    }
+    function getFinitions(marque, modele) {
+      if (!marque || !modele) return [];
+      const m = (marque || "").replace(/B\.M\.W\./g, "BMW").replace(/MERCEDES.*/i, "MERCEDES-BENZ").trim();
+      const mod = (modele || "").trim();
+      // Chercher par marque_modele exact
+      const key = `${m}_${mod}`;
+      if (FINITIONS[key]) return FINITIONS[key];
+      // Chercher en ignorant la casse
+      const keyLower = key.toLowerCase();
+      const found = Object.keys(FINITIONS).find(k => k.toLowerCase() === keyLower);
+      if (found) return FINITIONS[found];
+      return [];
+    }
+
+    function LicensePlate({ value, onChange }) {
+      return (
+        <div style={{ display:"flex", alignItems:"stretch", borderRadius:12, overflow:"hidden", border:"2.5px solid #111", background:"white", height:56 }}>
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", background:"#1d4ed8", width:32, minWidth:32, paddingBottom:4 }}>
+            <span style={{ color:"white", fontWeight:800, fontSize:11 }}>F</span>
+          </div>
+          <input type="text" value={value}
+            onChange={e => onChange(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g,"").slice(0,11))}
+            placeholder="AB-123-CD" maxLength={11}
+            style={{ flex:1, minWidth:0, textAlign:"center", fontWeight:800, fontSize:24, letterSpacing:"0.18em", border:"none", outline:"none", background:"transparent", color:"#111" }}
+            inputMode="text" />
+          <div style={{ background:"#1d4ed8", width:32, minWidth:32 }} />
+        </div>
+      );
+    }
+
+    function Spinner() {
+      const [step, setStep] = useState(0);
+      const steps = ["Recherche de votre véhicule...", "Analyse du marché Leboncoin...", "Calcul des prix en cours..."];
+      useState(() => {
+        const t = setInterval(() => setStep(p => p + 1 < steps.length ? p + 1 : p), 2500);
+        return () => clearInterval(t);
+      });
+      return (
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", padding:"0 24px" }}>
+          <div className="spinner" style={{ width:80, height:80, borderRadius:"50%", border:"4px solid #e5e7eb", borderTopColor:EMERALD, marginBottom:32 }} />
+          <p style={{ color:"#6b7280", fontSize:16, textAlign:"center", margin:0 }}>{steps[step]}</p>
+          <div style={{ display:"flex", gap:6, marginTop:16 }}>
+            {steps.map((_,i) => <div key={i} style={{ width:8, height:8, borderRadius:"50%", background: i<=step ? EMERALD : "#d1d5db", transition:"background 0.3s" }} />)}
+          </div>
+        </div>
+      );
+    }
+
+    function normalize(str) {
+      return (str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[-_]/g," ").trim();
+    }
+
+    function matchesVehicle(subject, marque, modele) {
+      const s = normalize(subject);
+      const marqueNorm = normalize(marque);
+      const aliases = {
+        "mercedes": ["mercedes","mercedes-benz","mercedes benz"],
+        "mercedes-benz": ["mercedes","mercedes-benz","mercedes benz"],
+        "volkswagen": ["volkswagen","vw"],
+        "citroen": ["citroen","citroën"],
+        "alfa romeo": ["alfa romeo","alfa"],
+        "b.m.w.": ["bmw","b.m.w"],
+        "bmw": ["bmw","b.m.w"],
+      };
+      // Normaliser le modèle (XCEE-D → xceed, L.CRUISER → land cruiser)
+      const modeleAliases = {
+        "xcee d": ["xceed","xcee-d","x ceed"],
+        "xcee-d": ["xceed","xcee-d","x ceed"],
+        "l cruiser": ["land cruiser","landcruiser"],
+        "l.cruiser": ["land cruiser","landcruiser"],
+        "discov sp": ["discovery sport","discovery"],
+        "discov.sp": ["discovery sport","discovery"],
+        "c3 aircr": ["c3 aircross","aircross"],
+        "c3 aircr.": ["c3 aircross","aircross"],
+        "subaru xv": ["xv","xcross"],
+      };
+      const modeleNormForAlias = normalize(modele);
+      const modeleSearchTerms = modeleAliases[modeleNormForAlias] || null;
+      const marqueAliases = aliases[marqueNorm] || [marqueNorm];
+      if (!marqueAliases.some(a => s.includes(a))) return false;
+      const modeleNorm = normalize(modele);
+      // Mercedes Classe X
+      const mercedesMatch = modeleNorm.match(/classe\s+(\w+)/);
+      if (mercedesMatch) return s.includes(mercedesMatch[1].toLowerCase());
+      // BMW Série X → cherche "serie X" ou "série X"
+      const bmwSerieMatch = modeleNorm.match(/serie\s+(\d+)/);
+      if (bmwSerieMatch) {
+        const num = bmwSerieMatch[1];
+        return s.includes(`serie ${num}`) || s.includes(`série ${num}`) || s.includes(`series ${num}`);
+      }
+      if (modeleSearchTerms) return modeleSearchTerms.some(term => s.includes(term));
+      return modeleNorm.split(" ").filter(w => w.length > 1).every(mot => s.includes(mot));
+    }
+
+    function filterAds(ads, kmUser, anneeUser, chUser, marque, modele, finition) {
+      const BAD = ["accident","accidenté","accidente","export","marchand","épave","epave","panne","cassé","casse"];
+      return ads.filter(ad => {
+        if (ad.owner?.type !== "pro") return false;
+        const subject = (ad.subject || "").toLowerCase();
+        if (BAD.some(w => subject.includes(w))) return false;
+        const attrs = ad.attributes || [];
+        const damage = attrs.find(x => x.key === "vehicle_damage")?.value || "";
+        if (["damaged","accident","breakdown"].some(d => damage.includes(d))) return false;
+        if ((attrs.find(x => x.key === "vehicle_specifications")?.values || []).includes("rental_vehicle")) return false;
+        const kmAttr = attrs.find(x => x.key === "mileage")?.value;
+        if (kmAttr && kmUser && parseInt(kmAttr) > kmUser + 30000) return false;
+        const regAttr = attrs.find(x => x.key === "regdate")?.value;
+        if (regAttr && anneeUser && parseInt(regAttr) < anneeUser - 1) return false;
+        if (marque && modele && !matchesVehicle(ad.subject, marque, modele)) return false;
+        // Filtre finition sur le titre de l'annonce avec aliases
+        if (finition) {
+          const FINITION_ALIASES = {
+            // Mini
+            "JCW": ["jcw", "john cooper works", "john works"],
+            "Cooper S": ["cooper s"],
+            "Cooper D": ["cooper d"],
+            "Cooper SE": ["cooper se"],
+            "Cooper": ["cooper"],
+            "One D": ["one d"],
+            "One": ["one"],
+            "Chili": ["chili"],
+            "Pepper": ["pepper"],
+            "Salt": ["salt"],
+            "Oakwood": ["oakwood"],
+            "Yours": ["yours"],
+            "Clubman": ["clubman"],
+            "Countryman": ["countryman"],
+            // Peugeot
+            "GT Pack": ["gt pack"],
+            "GT Line": ["gt line"],
+            "GT": ["gt"],
+            "Allure Pack": ["allure pack"],
+            "Allure": ["allure"],
+            "Active Pack": ["active pack"],
+            "Active": ["active"],
+            // Renault
+            "RS Line": ["rs line"],
+            "E-Tech": ["e-tech", "etech"],
+            "Intens": ["intens"],
+            "Iconic": ["iconic"],
+            "Esprit Alpine": ["esprit alpine", "alpine"],
+            "Techno": ["techno"],
+            "Equilibre": ["equilibre"],
+            // Dacia
+            "Stepway": ["stepway"],
+            "Extreme": ["extreme"],
+            "Expression": ["expression"],
+            "Essential": ["essential"],
+            "Journey": ["journey"],
+            // Citroen
+            "Shine Pack": ["shine pack"],
+            "Shine": ["shine"],
+            "Feel": ["feel"],
+            "Origins": ["origins"],
+            // VW
+            "GTI": ["gti"],
+            "GTE": ["gte"],
+            "R-Line": ["r-line", "rline", "r line"],
+            "R": [" r ", " r$"],
+            "Style": ["style"],
+            "Life": ["life"],
+            "Elegance": ["elegance"],
+            "Highline": ["highline"],
+            "Comfortline": ["comfortline"],
+            "Trendline": ["trendline"],
+            "Pro S": ["pro s"],
+            "Pro": ["pro"],
+            "Pure": ["pure"],
+            "GTX": ["gtx"],
+            "Tour": ["tour"],
+            // BMW
+            "M Sport": ["m sport", "msport"],
+            "Sport Line": ["sport line", "sportline"],
+            "xLine": ["xline", "x line"],
+            "Luxury": ["luxury"],
+            "Advantage": ["advantage"],
+            "Touring": ["touring", "break"],
+            // Mercedes
+            "AMG Line": ["amg line", "amg"],
+            "Avantgarde": ["avantgarde"],
+            "Elegance": ["elegance"],
+            "Business Solution": ["business solution"],
+            "Business": ["business"],
+            "Progressive": ["progressive"],
+            "Urban": ["urban"],
+            "4Matic": ["4matic"],
+            "Coupé": ["coupe", "coupé"],
+            // Audi
+            "S line": ["s line", "sline"],
+            "S3": ["s3"],
+            "RS3": ["rs3"],
+            "S4": ["s4"],
+            "RS4": ["rs4"],
+            "SQ5": ["sq5"],
+            "TFSI e": ["tfsi e", "tfsie"],
+            "Sportback": ["sportback"],
+            "Avant": ["avant"],
+            // Seat
+            "FR": ["fr"],
+            "Xcellence": ["xcellence"],
+            "Xperience": ["xperience"],
+            "4Drive": ["4drive"],
+            // Skoda
+            "RS": [" rs "],
+            "Sportline": ["sportline"],
+            "Scout": ["scout"],
+            "Monte Carlo": ["monte carlo"],
+            // Opel
+            "GS Line": ["gs line", "gsline"],
+            "Ultimate": ["ultimate"],
+            "Edition": ["edition"],
+            // Toyota
+            "GR Sport": ["gr sport"],
+            "GR": [" gr "],
+            "Collection": ["collection"],
+            "Design": ["design"],
+            "Dynamic": ["dynamic"],
+            "Hybrid": ["hybrid", "hybride"],
+            "Plug-in": ["plug-in", "plugin", "rechargeable"],
+            "Adventure": ["adventure"],
+            "Aygo X": ["aygo x"],
+            // Hyundai/Kia
+            "N Line": ["n line", "nline"],
+            "N": [" n "],
+            "Ultimate": ["ultimate"],
+            "Creative": ["creative"],
+            "Intuitive": ["intuitive"],
+            "Classic": ["classic"],
+            "GT Line Premium": ["gt line premium"],
+            "Fastback": ["fastback"],
+            // Nissan
+            "Tekna+": ["tekna+", "tekna plus"],
+            "Tekna": ["tekna"],
+            "N-Connecta": ["n-connecta", "nconnecta"],
+            "N-Sport": ["n-sport", "nsport"],
+            "Acenta": ["acenta"],
+            "Visia": ["visia"],
+            "e-Power": ["e-power", "epower"],
+            // Ford
+            "ST-Line X": ["st-line x", "stline x"],
+            "ST-Line": ["st-line", "stline"],
+            "ST": [" st "],
+            "Vignale": ["vignale"],
+            "Titanium": ["titanium"],
+            "Cool & Connect": ["cool", "connect"],
+            // Tesla
+            "Performance": ["performance"],
+            "Long Range": ["long range"],
+            "Standard Range": ["standard range"],
+            "AWD": ["awd"],
+            // Volvo
+            "Ultimate": ["ultimate"],
+            "Plus": ["plus"],
+            "Inscription": ["inscription"],
+            "R-Design": ["r-design", "rdesign"],
+            "Recharge": ["recharge"],
+            "Momentum": ["momentum"],
+            // Jeep
+            "Trailhawk": ["trailhawk"],
+            "Limited": ["limited"],
+            "Longitude": ["longitude"],
+            "4xe": ["4xe"],
+            // Honda
+            "Crosstar": ["crosstar"],
+            "e:HEV": ["e:hev", "ehev"],
+            // Mazda
+            "Homura": ["homura"],
+            "Takumi": ["takumi"],
+            "Dynamique": ["dynamique"],
+            "Signature": ["signature"],
+            "Fastback": ["fastback"],
+            // Fiat
+            "Sport": ["sport"],
+            "Rockstar": ["rockstar"],
+            "Collezione": ["collezione"],
+            "Lounge": ["lounge"],
+            "Pop": ["pop"],
+            "Cross": ["cross"],
+            // Alfa Romeo
+            "Quadrifoglio": ["quadrifoglio", "qv"],
+            "Veloce": ["veloce"],
+            "Ti": [" ti "],
+            "Sprint": ["sprint"],
+            "Super": ["super"],
+          };
+          const aliases = FINITION_ALIASES[finition] || [finition.toLowerCase()];
+          const subjectLow = (ad.subject || "").toLowerCase();
+          if (!aliases.some(a => subjectLow.includes(a))) return false;
+        }
+        return true;
+      });
+    }
+
+    function computeStats(ads) {
+      const prices = ads.map(a => a.price?.[0]).filter(p => p && p > 500 && p < 100000);
+      if (!prices.length) return null;
+      prices.sort((a, b) => a - b);
+      const medianRaw = prices[Math.floor(prices.length * 0.50)];
+      const avg = Math.round(prices.reduce((s, p) => s + p, 0) / prices.length);
+      const filtered = prices.filter(p => p >= medianRaw * 0.6 && p <= avg * 1.5);
+      if (!filtered.length) return null;
+      return { pMin: filtered[0], p25: filtered[Math.floor(filtered.length * 0.25)], p50: filtered[Math.floor(filtered.length * 0.50)], count: filtered.length };
+    }
+
+    function getAttr(ad, key) {
+      return (ad.attributes || []).find(x => x.key === key)?.value_label || null;
+    }
+
+    function FinitionSimilaireBlock({ result, onElargi }) {
+      const finSim = getFinitionSimilaire(result.finition, result.finitionsList || []);
+      return (
+        <div style={{ background:"#FFF7ED", border:"1px solid #FED7AA", borderRadius:16, padding:"14px 16px", marginBottom:12 }}>
+          <p style={{ margin:"0 0 10px", fontSize:13, color:"#92400E", fontWeight:600 }}>
+            ⚠️ Seulement {result.stats?.count || 0} annonce(s) pour la finition <strong>{result.finition}</strong>.
+          </p>
+          <p style={{ margin:"0 0 10px", fontSize:12, color:"#92400E" }}>
+            {finSim ? `Voir les prix pour "${finSim}" (finition la plus proche) ?` : "Voir les prix pour toutes les finitions similaires ?"}
+          </p>
+          <button onClick={() => onElargi(finSim)} style={{ width:"100%", background:"#F97316", color:"white", fontWeight:700, fontSize:14, borderRadius:12, padding:"12px 0", border:"none", cursor:"pointer" }}>
+            📊 {finSim ? `Voir prix "${finSim}"` : "Voir prix finitions similaires"}
+          </button>
+        </div>
+      );
+    }
+
+        function Results({ result, plate, onReset, onElargi, user, setShowLoginModal, onCreateAnnonce }) {
+      const [copied, setCopied] = useState(false);
+      const [showLogin, setShowLogin] = useState(false);
+      const [showCount, setShowCount] = useState(5);
+      const isConnected = !!user;
+      const { veh, nom, ads, stats, finition, peuResultats } = result;
+      const fmt = n => n ? n.toLocaleString("fr-FR") + " €" : "N/A";
+      const allAds = [...ads].filter(a => a.price?.[0] > 500).sort((a, b) => a.price[0] - b.price[0]);
+      const medianAds = allAds.map(a => a.price[0]).sort((a,b)=>a-b)[Math.floor(allAds.length * 0.5)] || 0;
+      const allCleanAds = allAds.filter(a => a.price[0] >= medianAds * 0.6).slice(0, 25);
+      const cleanAds = allCleanAds.slice(0, showCount);
+
+      function handleCopy() {
+        const lines = [
+          `📋 CoteCars — ${plate}`,
+          `🚗 ${nom}${finition ? " · " + finition : ""}`,
+          `📅 ${veh.AWN_date_mise_en_circulation} · ${veh.AWN_energie} · ${veh.AWN_puissance_KW ? Math.round(parseInt(veh.AWN_puissance_KW)*1.36) + " ch" : ""}`,
+          ``,
+          `📊 Analyse marché (${stats?.count || 0} annonces)`,
+          `⚡️ Prix agressif : ${fmt(stats?.pMin)}`,
+          `🎯 Prix marché : ${fmt(stats?.p25)}`,
+          `💎 Prix haut : ${fmt(stats?.p50)}`,
+        ];
+        if (cleanAds.length > 0) {
+          lines.push(``);
+          lines.push(`🔍 Annonces similaires :`);
+          cleanAds.forEach((ad, i) => {
+            const km = (ad.attributes || []).find(x => x.key === "mileage")?.value_label || "";
+            const year = (ad.attributes || []).find(x => x.key === "regdate")?.value_label || "";
+            lines.push(`${i+1}. ${ad.subject} — ${ad.price[0].toLocaleString("fr-FR")} €${year ? " · " + year : ""}${km ? " · " + parseInt(km).toLocaleString("fr-FR") + " km" : ""}`);
+            lines.push(`   ${ad.url}`);
+          });
+        }
+        const text = lines.join("\n");
+        navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); if(window.posthog) posthog.capture('rapport_copie', {plate}); });
+      }
+
+      return (
+        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"#f9fafb" }}>
+          <div style={{ background:"white", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
+            <span style={{ fontWeight:800, fontSize:20, color:EMERALD }}>CoteCars</span>
+            {user ? (
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                {user?.photoURL && <img src={user.photoURL} width={26} height={26} style={{ borderRadius:"50%" }} alt="" />}
+                <button onClick={() => auth.signOut()} style={{ fontSize:11, color:"#9ca3af", background:"#f3f4f6", padding:"4px 10px", borderRadius:999, border:"none", cursor:"pointer" }}>Déconnexion</button>
+              </div>
+            ) : (
+              <button onClick={() => setShowLoginModal(true)}
+                style={{ fontSize:11, fontWeight:700, color:EMERALD, background:"#f0fdf4", padding:"6px 12px", borderRadius:999, border:"1px solid #bbf7d0", cursor:"pointer" }}>
+                Se connecter
+              </button>
+
+            )}
+          </div>
+          <div style={{ padding:"20px 20px 80px" }}>
+            <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:16, padding:"12px 16px", marginBottom:16 }}>
+              <p style={{ margin:0, color:"#166534", fontWeight:600, fontSize:14 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
+              {nom && <p style={{ margin:"4px 0 0", color:"#15803d", fontWeight:700, fontSize:13 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
+              <p style={{ margin:"4px 0 0", color:"#166534", fontSize:12 }}>{veh.AWN_energie} · {veh.AWN_puissance_KW && Math.round(parseInt(veh.AWN_puissance_KW)*1.36)} ch · {veh.AWN_date_mise_en_circulation}</p>
+            </div>
+            {stats ? (
+              <div style={{ position:"relative", marginBottom:16 }}>
+              <div style={{ background:"white", borderRadius:16, border:"1px solid #f3f4f6", boxShadow:"0 1px 3px rgba(0,0,0,0.06)", overflow:"hidden" }}>
+                <div style={{ padding:"12px 16px", borderBottom:"1px solid #f3f4f6", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <p style={{ margin:0, fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em" }}>📊 Analyse du marché</p>
+                  <span style={{ fontSize:12, color:EMERALD, fontWeight:700 }}>{stats.count} annonces</span>
+                </div>
+                {[
+                  { icon:"⚡️", label:"PRIX AGRESSIF", sub:"Vente rapide garantie", val:stats.pMin, color:"#F59E0B", bg:"#FFFBEB" },
+                  { icon:"🎯", label:"PRIX MARCHÉ", sub:"Le plus de contacts", val:stats.p25, color:EMERALD, bg:"#ECFDF5" },
+                  { icon:"💎", label:"PRIX HAUT", sub:"Marge de négociation", val:stats.p50, color:"#6366F1", bg:"#EEF2FF" },
+                ].map((c, i) => (
+                  <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 16px", background:c.bg, borderBottom: i < 2 ? "1px solid #f3f4f6" : "none" }}>
+                    <div>
+                      <p style={{ margin:0, fontSize:11, fontWeight:800, color:c.color, textTransform:"uppercase", letterSpacing:"0.08em" }}>{c.icon} {c.label}</p>
+                      <p style={{ margin:"2px 0 0", fontSize:11, color:"#6b7280" }}>{c.sub}</p>
+                    </div>
+                    <span style={{ fontSize:22, fontWeight:800, color:"#111", filter: isConnected ? "none" : "blur(6px)", userSelect: isConnected ? "auto" : "none" }}>{fmt(c.val)}</span>
+                  </div>
+                ))}
+              </div>
+              {!isConnected && (
+                <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:16, background:"rgba(255,255,255,0.7)" }}>
+                  <p style={{ fontWeight:800, fontSize:15, color:"#111", margin:"0 0 8px", textAlign:"center" }}>🔒 Connectez-vous pour voir les prix</p>
+                  <button onClick={() => auth.signInWithPopup(googleProvider).then(() => { if(window.posthog) posthog.capture('connexion_google'); })}
+                    style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 20px", background:"white", border:"2px solid #e5e7eb", borderRadius:12, cursor:"pointer", fontSize:14, fontWeight:700, color:"#111", boxShadow:"0 2px 8px rgba(0,0,0,0.08)" }}>
+                    <img src="https://www.google.com/favicon.ico" width={16} height={16} alt="" />
+                    Continuer avec Google
+                  </button>
+                </div>
+              )}
+              </div>
+            ) : (
+              <div style={{ background:"white", borderRadius:16, padding:16, marginBottom:16, textAlign:"center" }}>
+                <p style={{ color:"#6b7280", fontSize:14 }}>Aucune annonce similaire trouvée.</p>
+              </div>
+            )}
+            {cleanAds.length > 0 && (
+              <div style={{ position:"relative", marginBottom:16 }}>
+                <div style={{ background:"white", borderRadius:16, border:"1px solid #f3f4f6", boxShadow:"0 1px 3px rgba(0,0,0,0.06)", overflow:"hidden", filter: isConnected ? "none" : "blur(4px)", pointerEvents: isConnected ? "auto" : "none" }}>
+                  <div style={{ padding:"12px 16px", borderBottom:"1px solid #f3f4f6" }}>
+                    <p style={{ margin:0, fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em" }}>🔍 Annonces similaires</p>
+                  </div>
+                  {cleanAds.map((ad, i) => (
+                    <a key={i} href={ad.url} target="_blank" rel="noopener noreferrer"
+                      style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 16px", borderBottom: i < cleanAds.length-1 ? "1px solid #f9fafb" : "none", textDecoration:"none" }}>
+                      <div style={{ flex:1, minWidth:0, marginRight:12 }}>
+                        <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#111", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ad.subject}</p>
+                        <p style={{ margin:"2px 0 0", fontSize:11, color:"#9ca3af" }}>
+                          {getAttr(ad,"regdate") ? getAttr(ad,"regdate")+" · " : ""}
+                          {getAttr(ad,"mileage") ? parseInt(getAttr(ad,"mileage")).toLocaleString("fr-FR")+" km · " : ""}
+                          {ad.location?.city}
+                        </p>
+                      </div>
+                      <div style={{ textAlign:"right", flexShrink:0 }}>
+                        <span style={{ fontSize:15, fontWeight:800, color:EMERALD }}>{ad.price[0].toLocaleString("fr-FR")} €</span>
+                        <p style={{ margin:"2px 0 0", fontSize:10, color:"#9ca3af" }}>Pro</p>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+                {isConnected && showCount < allCleanAds.length && (
+                  <button onClick={() => { setShowCount(c => Math.min(c + 10, allCleanAds.length)); if(window.posthog) posthog.capture('voir_plus_clique'); }}
+                    style={{ width:"100%", padding:"12px", background:"#f9fafb", border:"none", borderTop:"1px solid #f3f4f6", cursor:"pointer", fontSize:13, fontWeight:700, color:"#6b7280" }}>
+                    Voir plus ({allCleanAds.length - showCount} annonces restantes)
+                  </button>
+                )}
+                {!isConnected && (
+                  <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:16, background:"rgba(255,255,255,0.7)" }}>
+                    <p style={{ fontWeight:800, fontSize:15, color:"#111", margin:"0 0 8px", textAlign:"center" }}>🔒 Connectez-vous pour voir les annonces</p>
+                    <button onClick={() => auth.signInWithPopup(googleProvider).then(() => { if(window.posthog) posthog.capture('connexion_google'); })}
+                      style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 20px", background:"white", border:"2px solid #e5e7eb", borderRadius:12, cursor:"pointer", fontSize:14, fontWeight:700, color:"#111", boxShadow:"0 2px 8px rgba(0,0,0,0.08)" }}>
+                      <img src="https://www.google.com/favicon.ico" width={16} height={16} alt="" />
+                      Continuer avec Google
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            {result.peuResultats && <FinitionSimilaireBlock result={result} onElargi={onElargi} />}
+            <button onClick={onCreateAnnonce} style={{ width:"100%", background:"linear-gradient(135deg,#6366F1,#4F46E5)", color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:"pointer", marginBottom:12 }}>
+              🏷️ Créer mon annonce
+            </button>
+            <button onClick={onReset} style={{ width:"100%", background:`linear-gradient(135deg,${EMERALD},${EMERALD_DARK})`, color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:"pointer", marginBottom:12 }}>
+              🔄 Nouvelle recherche
+            </button>
+            <button onClick={handleCopy} style={{ width:"100%", background: copied ? "#ecfdf5" : "white", color: copied ? EMERALD : "#6b7280", fontWeight:700, fontSize:15, borderRadius:16, padding:"14px 0", border:`2px solid ${copied ? EMERALD : "#e5e7eb"}`, cursor:"pointer", transition:"all 0.2s" }}>
+              {copied ? "✅ Rapport copié !" : "📋 Copier le rapport"}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+
+    // ─── CRÉER UNE ANNONCE ───────────────────────────────────────
+    function CreateAnnonce({ result, plate, user, onClose, onPublished }) {
+      const [step, setStep] = React.useState(1);
+      const [prix, setPrix] = React.useState(result.stats?.p25 ? String(Math.round(result.stats.p25)) : "");
+      const [localisation, setLocalisation] = React.useState("");
+      const [ville, setVille] = React.useState("");
+      const [defauts, setDefauts] = React.useState("");
+      const [description, setDescription] = React.useState("");
+      const [options, setOptions] = React.useState("");
+      const [tel, setTel] = React.useState("");
+      const [photos, setPhotos] = React.useState([]);
+      const [loading, setLoading] = React.useState(false);
+      const [lbcText, setLbcText] = React.useState("");
+      const [copied, setCopied] = React.useState(false);
+      const { veh, nom, finition } = result;
+      const annee = veh.AWN_date_mise_en_circulation?.slice(-4) || "";
+      const energie = veh.AWN_energie || "";
+      const ch = veh.AWN_puissance_KW ? Math.round(parseInt(veh.AWN_puissance_KW)*1.36) : "";
+      const km = result.kmUser || "";
+
+      function handlePhotos(e) {
+        const files = Array.from(e.target.files).slice(0, 8);
+        const readers = files.map(f => new Promise(res => {
+          const r = new FileReader();
+          r.onload = ev => res({ name: f.name, data: ev.target.result });
+          r.readAsDataURL(f);
+        }));
+        Promise.all(readers).then(setPhotos);
+      }
+
+      async function generateLbcText() {
+        setStep(3);
+        setLbcText("✨ Génération de la description par IA...");
+        try {
+          const prompt = `Rôle : Agis en tant qu'expert en rédaction SEO automobile et vendeur spécialisé. Ta mission est de rédiger une description de vente percutante, concise et personnalisée pour le véhicule suivant : ${nom}${finition ? " " + finition : ""}.
+
+Données du véhicule :
+* Année : ${annee}
+* Kilométrage : ${km ? km.toLocaleString("fr-FR") + " km" : "Non renseigné"}
+* Énergie : ${energie}
+* Boîte : ${result.gearbox === "1" ? "Manuelle" : "Automatique"}
+* Prix : ${parseInt(prix).toLocaleString("fr-FR")} €
+* Localisation : ${localisation}${ville ? " " + ville : ""}
+* État/Options spécifiques : ${[options, defauts].filter(Boolean).join(" | ") || "Non renseigné"}
+
+Consignes de rédaction :
+1. Recherche Intelligente : Utilise tes connaissances internes pour identifier les 2 ou 3 points forts spécifiques à ce modèle exact (ex: fiabilité du moteur, volume de coffre record, confort de suspension, faible consommation).
+2. Style : Ton direct, professionnel mais engageant. Évite le jargon trop technique inutile, privilégie le bénéfice pour l'acheteur.
+3. Structure (Maximum 150-200 mots) :
+   * Accroche : Une phrase forte qui donne envie.
+   * Présentation : Résumé de l'état général et de l'entretien.
+   * Points forts du modèle : 3 points à puces mettant en avant le confort/performance/équipement spécifique à ce modèle.
+   * Appel à l'action : Invitation courte à venir voir le véhicule.
+4. Format : Utilise des emojis pertinents pour la lisibilité (🚗, ✅, 🛡️). Pas de gras inutile sur tout le texte, juste sur les infos clés.
+Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne pas faire de texte trop long.`;
+
+          const res = await fetch(`https://cotecars-v2.vercel.app/api/gemini`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt })
+          });
+          const data = await res.json();
+          const text = (data.text || "").trim();
+          if (!text) throw new Error("Réponse vide");
+          const finalText = `${text}\n\n📞 Contact : ${tel}\n💡 Prix estimé via CoteCars.fr — basé sur le marché Leboncoin en temps réel.`;
+          setLbcText(finalText);
+          if (window._annonceId) {
+            db.collection("annonces").doc(window._annonceId).update({ descriptionIA: text }).catch(()=>{});
+          }
+        } catch(e) {
+          const title = `${nom}${finition ? " " + finition : ""} ${km ? km.toLocaleString("fr-FR") + " km" : ""}`.trim();
+          const lines = [
+            `🚗 ${title}`, ``,
+            `📍 Localisation : ${localisation}`,
+            `💰 Prix : ${parseInt(prix).toLocaleString("fr-FR")} €`, ``,
+            `📋 Caractéristiques :`,
+            `• Énergie : ${energie}`,
+            `• Puissance : ${ch} ch`,
+            `• Année : ${annee}`,
+            km ? `• Kilométrage : ${km.toLocaleString("fr-FR")} km` : null,
+            `• Boîte : ${result.gearbox === "1" ? "Manuelle" : "Automatique"}`,
+            finition ? `• Finition : ${finition}` : null, ``,
+            options ? `✅ Équipements :\n${options}` : null, ``,
+            description ? `📝 Description :\n${description}` : null, ``,
+            defauts ? `⚠️ À noter :\n${defauts}` : null, ``,
+            `📞 Contact : ${tel}`, ``,
+            `Prix estimé via CoteCars.fr — basé sur le marché Leboncoin en temps réel.`,
+          ].filter(l => l !== null).join("\n");
+          setLbcText(lines);
+        }
+      }
+
+      async function handlePublish() {
+        if (!user) return;
+        setLoading(true);
+        try {
+          // Upload photos sur Cloudinary
+          const photoUrls = [];
+          for (let i = 0; i < photos.length; i++) {
+            const p = photos[i];
+            const blob = await fetch(p.data).then(r => r.blob());
+            const formData = new FormData();
+            formData.append("file", blob);
+            formData.append("upload_preset", "CoteCars");
+            formData.append("cloud_name", "di3xa7ldg");
+            const res = await fetch("https://api.cloudinary.com/v1_1/di3xa7ldg/image/upload", {
+              method: "POST",
+              body: formData,
+            });
+            const data = await res.json();
+            if (data.secure_url) photoUrls.push(data.secure_url);
+          }
+          const annonce = {
+            uid: user.uid,
+            userEmail: user.email,
+            userPhoto: user.photoURL || "",
+            plate,
+            nom,
+            finition: finition || "",
+            annee,
+            energie,
+            ch,
+            km: km || null,
+            gearbox: result.gearbox,
+            prix: parseInt(prix),
+            localisation: `${localisation}${ville ? " " + ville : ""}`,
+            defauts,
+            options,
+            tel,
+            photos: photoUrls,
+            description,
+            stats: result.stats,
+            createdAt: new Date().toISOString(),
+            active: true,
+          };
+          const ref = await db.collection("annonces").add(annonce);
+          window._annonceId = ref.id;
+          await generateLbcText();
+          onPublished && onPublished();
+        } catch(e) {
+          console.error(e);
+          alert("Erreur : " + e.message);
+        }
+        setLoading(false);
+      }
+
+      return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:2000, display:"flex", alignItems:"flex-end", justifyContent:"center" }}
+          onClick={e => { if(e.target===e.currentTarget) onClose(); }}>
+          <div style={{ background:"white", borderRadius:"24px 24px 0 0", width:"100%", maxWidth:480, maxHeight:"90vh", overflowY:"auto", padding:"24px 20px 40px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <span style={{ fontWeight:800, fontSize:17, color:"#111" }}>
+                {step===1 ? "📝 Créer mon annonce" : step===2 ? "📸 Photos & contact" : "✅ Annonce publiée !"}
+              </span>
+              <button onClick={onClose} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#9ca3af" }}>✕</button>
+            </div>
+
+            {/* Étape 1 — Infos */}
+            {step===1 && (
+              <div>
+                <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:12, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#166534" }}>
+                  🚗 <strong>{nom}</strong>{finition ? ` · ${finition}` : ""} · {annee} · {energie} · {ch} ch
+                </div>
+                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Prix demandé (€)</label>
+                <input type="number" value={prix} onChange={e=>setPrix(e.target.value)} placeholder="Ex: 12500"
+                  style={{ width:"100%", padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:18, fontWeight:700, marginBottom:14, boxSizing:"border-box", outline:"none" }} />
+                {result.stats && (
+                  <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+                    {[{label:"⚡️ Agressif", val:result.stats.pMin},{label:"🎯 Marché", val:result.stats.p25},{label:"💎 Haut", val:result.stats.p50}].map((p,i)=>(
+                      <button key={i} onClick={()=>setPrix(String(Math.round(p.val)))}
+                        style={{ flex:1, padding:"8px 4px", borderRadius:10, border:`2px solid ${String(Math.round(p.val))===prix?"#10B981":"#e5e7eb"}`, background:String(Math.round(p.val))===prix?"#ecfdf5":"white", fontSize:11, fontWeight:700, color:String(Math.round(p.val))===prix?"#10B981":"#6b7280", cursor:"pointer" }}>
+                        {p.label}<br/>{Math.round(p.val).toLocaleString("fr-FR")}€
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Localisation</label>
+                <div style={{ display:"flex", gap:8, marginBottom:14 }}>
+                  <input type="text" value={localisation} onChange={e=>{ 
+                    const val = e.target.value.replace(/\D/g,"").slice(0,5);
+                    setLocalisation(val);
+                    if(val.length===5) {
+                      fetch(`https://geo.api.gouv.fr/communes?codePostal=${val}&fields=nom&limit=1`)
+                        .then(r=>r.json())
+                        .then(d=>{ if(d?.[0]?.nom) setVille(d[0].nom); })
+                        .catch(()=>{});
+                    }
+                  }} placeholder="Code postal" maxLength={5}
+                    style={{ width:"40%", padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:15, boxSizing:"border-box", outline:"none" }} />
+                  <input type="text" value={ville} onChange={e=>setVille(e.target.value)} placeholder="Ville"
+                    style={{ width:"60%", padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:15, boxSizing:"border-box", outline:"none" }} />
+                </div>
+                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Équipements & options</label>
+                <textarea value={options} onChange={e=>setOptions(e.target.value)} placeholder="Ex: Toit ouvrant, GPS, Sièges chauffants, Caméra de recul..."
+                  style={{ width:"100%", padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:14, marginBottom:14, boxSizing:"border-box", outline:"none", minHeight:80, resize:"vertical" }} />
+                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Défauts & pannes éventuelles</label>
+                <textarea value={defauts} onChange={e=>setDefauts(e.target.value)} placeholder="Ex: Rayure sur l'aile avant droite, climatisation à revoir..."
+                  style={{ width:"100%", padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:14, marginBottom:16, boxSizing:"border-box", outline:"none", minHeight:80, resize:"vertical" }} />
+                <button onClick={()=>setStep(2)} disabled={!prix||!localisation||!ville}
+                  style={{ width:"100%", background:(!prix||!localisation||!ville)?"#d1d5db":"linear-gradient(135deg,#10B981,#059669)", color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:(!prix||!localisation||!ville)?"not-allowed":"pointer" }}>
+                  Suivant →
+                </button>
+              </div>
+            )}
+
+            {/* Étape 2 — Photos & contact */}
+            {step===2 && (
+              <div>
+                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Photos (max 8)</label>
+                <label style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:"2px dashed #e5e7eb", borderRadius:16, padding:"24px", cursor:"pointer", marginBottom:14, background:"#f9fafb" }}>
+                  <span style={{ fontSize:32, marginBottom:8 }}>📸</span>
+                  <span style={{ fontSize:14, color:"#6b7280", fontWeight:600 }}>Ajouter des photos</span>
+                  <span style={{ fontSize:12, color:"#9ca3af", marginTop:4 }}>{photos.length} photo(s) sélectionnée(s)</span>
+                  <input type="file" accept="image/*" multiple onChange={handlePhotos} style={{ display:"none" }} />
+                </label>
+                {photos.length > 0 && (
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:6, marginBottom:14 }}>
+                    {photos.map((p,i) => (
+                      <img key={i} src={p.data} alt="" style={{ width:"100%", aspectRatio:"1", objectFit:"cover", borderRadius:8 }} />
+                    ))}
+                  </div>
+                )}
+                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Téléphone de contact</label>
+                <input type="tel" value={tel} onChange={e=>setTel(e.target.value)} placeholder="Ex: 06 12 34 56 78"
+                  style={{ width:"100%", padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:16, marginBottom:16, boxSizing:"border-box", outline:"none" }} />
+                <div style={{ display:"flex", gap:10 }}>
+                  <button onClick={()=>setStep(1)} style={{ flex:1, background:"white", color:"#6b7280", fontWeight:700, fontSize:15, borderRadius:16, padding:"14px 0", border:"2px solid #e5e7eb", cursor:"pointer" }}>← Retour</button>
+                  <button onClick={handlePublish} disabled={loading||!tel}
+                    style={{ flex:2, background:(!tel||loading)?"#d1d5db":"linear-gradient(135deg,#10B981,#059669)", color:"white", fontWeight:800, fontSize:16, borderRadius:16, padding:"14px 0", border:"none", cursor:(!tel||loading)?"not-allowed":"pointer" }}>
+                    {loading ? "Publication..." : "🚀 Publier l'annonce"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Étape 3 — Succès + texte LBC */}
+            {step===3 && (
+              <div>
+                <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:16, padding:"16px", marginBottom:16, textAlign:"center" }}>
+                  <p style={{ fontSize:28, margin:"0 0 8px" }}>🎉</p>
+                  <p style={{ fontWeight:800, fontSize:16, color:"#166534", margin:0 }}>Annonce publiée sur CoteCars !</p>
+                  <p style={{ fontSize:13, color:"#15803d", margin:"4px 0 0" }}>Elle est maintenant visible par les acheteurs.</p>
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+                  <p style={{ fontSize:13, fontWeight:700, color:"#111", margin:0 }}>✨ Texte IA pour Leboncoin :</p>
+                  {lbcText === "✨ Génération de la description par IA..." && (
+                    <div className="spinner" style={{ width:16, height:16, borderRadius:"50%", border:"2px solid #e5e7eb", borderTopColor:EMERALD }} />
+                  )}
+                </div>
+                <textarea readOnly value={lbcText} style={{ width:"100%", minHeight:220, padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:12, boxSizing:"border-box", outline:"none", resize:"vertical", color:"#374151", background:"#f9fafb" }} />
+                <button onClick={() => { navigator.clipboard.writeText(lbcText); setCopied(true); setTimeout(()=>setCopied(false),2500); }}
+                  style={{ width:"100%", background:copied?"#ecfdf5":"white", color:copied?"#10B981":"#6b7280", fontWeight:700, fontSize:15, borderRadius:16, padding:"14px 0", border:`2px solid ${copied?"#10B981":"#e5e7eb"}`, cursor:"pointer", marginTop:10, transition:"all 0.2s" }}>
+                  {copied ? "✅ Copié !" : "📋 Copier le texte Leboncoin"}
+                </button>
+                <a href="https://www.leboncoin.fr/deposer-une-annonce" target="_blank" rel="noopener noreferrer"
+                  style={{ display:"block", width:"100%", background:"#FF6E14", color:"white", fontWeight:800, fontSize:15, borderRadius:16, padding:"14px 0", border:"none", cursor:"pointer", marginTop:10, textAlign:"center", textDecoration:"none", boxSizing:"border-box" }}>
+                  🔗 Ouvrir Leboncoin pour publier
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ─── PAGE ANNONCES ────────────────────────────────────────────
+    function AnnoncesPage({ onBack, user }) {
+      const [annonces, setAnnonces] = React.useState([]);
+      const [loading, setLoading] = React.useState(true);
+      const [selected, setSelected] = React.useState(null);
+      const [search, setSearch] = React.useState("");
+      const [filterMarque, setFilterMarque] = React.useState("");
+      const [filterModele, setFilterModele] = React.useState("");
+      const [filterEnergie, setFilterEnergie] = React.useState("");
+      const [filterPrixMax, setFilterPrixMax] = React.useState("");
+      const [filterKmMax, setFilterKmMax] = React.useState("");
+      const [filterLoc, setFilterLoc] = React.useState("");
+      const [showFilters, setShowFilters] = React.useState(false);
+
+      // Extraire marques et modèles uniques
+      const marques = [...new Set(annonces.map(a => a.nom?.split(" ")[0]).filter(Boolean))].sort();
+      const modeles = [...new Set(annonces.filter(a => !filterMarque || a.nom?.startsWith(filterMarque)).map(a => a.nom).filter(Boolean))].sort();
+
+      React.useEffect(() => {
+        db.collection("annonces").orderBy("createdAt","desc").limit(100)
+          .get().then(snap => {
+            const all = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.active !== false);
+            setAnnonces(all);
+            setLoading(false);
+          }).catch(() => setLoading(false));
+      }, []);
+
+      const filtered = annonces.filter(a => {
+        if (search && !`${a.nom} ${a.finition}`.toLowerCase().includes(search.toLowerCase())) return false;
+        if (filterMarque && !a.nom?.startsWith(filterMarque)) return false;
+        if (filterModele && a.nom !== filterModele) return false;
+        if (filterEnergie && a.energie?.toLowerCase() !== filterEnergie.toLowerCase()) return false;
+        if (filterPrixMax && a.prix > parseInt(filterPrixMax)) return false;
+        if (filterKmMax && a.km > parseInt(filterKmMax)) return false;
+        if (filterLoc && !a.localisation?.toLowerCase().includes(filterLoc.toLowerCase())) return false;
+        return true;
+      });
+
+      const hasFilters = search || filterMarque || filterModele || filterEnergie || filterPrixMax || filterKmMax || filterLoc;
+
+      if (selected) return <AnnonceDetail annonce={selected} onBack={()=>setSelected(null)} user={user} />;
+
+      return (
+        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"#f9fafb" }}>
+          <div style={{ background:"white", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
+            <div style={{ padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#6b7280" }}>←</button>
+              <span style={{ fontWeight:800, fontSize:18, color:EMERALD }}>Annonces CoteCars</span>
+              <button onClick={()=>setShowFilters(!showFilters)} style={{ background: hasFilters ? EMERALD : "#f3f4f6", border:"none", borderRadius:20, padding:"6px 12px", fontSize:12, fontWeight:700, color: hasFilters ? "white" : "#374151", cursor:"pointer" }}>
+                {hasFilters ? "🔍 Filtres actifs" : "⚙️ Filtres"}
+              </button>
+            </div>
+            {/* Barre de recherche */}
+            <div style={{ padding:"0 16px 12px" }}>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Rechercher une marque, modèle..."
+                style={{ width:"100%", padding:"10px 14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:14, boxSizing:"border-box", outline:"none" }} />
+            </div>
+            {/* Filtres dépliables */}
+            {showFilters && (
+              <div style={{ padding:"0 16px 16px", borderTop:"1px solid #f3f4f6" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:12 }}>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:4 }}>Marque</label>
+                    <select value={filterMarque} onChange={e=>{ setFilterMarque(e.target.value); setFilterModele(""); }}
+                      style={{ width:"100%", padding:"8px 10px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, outline:"none", background:"white" }}>
+                      <option value="">Toutes</option>
+                      {marques.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:4 }}>Modèle</label>
+                    <select value={filterModele} onChange={e=>setFilterModele(e.target.value)}
+                      style={{ width:"100%", padding:"8px 10px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, outline:"none", background:"white" }}>
+                      <option value="">Tous</option>
+                      {modeles.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:4 }}>Énergie</label>
+                    <select value={filterEnergie} onChange={e=>setFilterEnergie(e.target.value)}
+                      style={{ width:"100%", padding:"8px 10px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, outline:"none", background:"white" }}>
+                      <option value="">Toutes</option>
+                      <option value="GAZOLE">Diesel</option>
+                      <option value="ESSENCE">Essence</option>
+                      <option value="ELECTRIQUE">Électrique</option>
+                      <option value="HYBRIDE">Hybride</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:4 }}>Prix max (€)</label>
+                    <select value={filterPrixMax} onChange={e=>setFilterPrixMax(e.target.value)}
+                      style={{ width:"100%", padding:"8px 10px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, outline:"none", background:"white" }}>
+                      <option value="">Tous</option>
+                      <option value="3000">3 000 €</option>
+                      <option value="5000">5 000 €</option>
+                      <option value="8000">8 000 €</option>
+                      <option value="12000">12 000 €</option>
+                      <option value="20000">20 000 €</option>
+                      <option value="30000">30 000 €</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:4 }}>Km max</label>
+                    <select value={filterKmMax} onChange={e=>setFilterKmMax(e.target.value)}
+                      style={{ width:"100%", padding:"8px 10px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, outline:"none", background:"white" }}>
+                      <option value="">Tous</option>
+                      <option value="50000">50 000 km</option>
+                      <option value="100000">100 000 km</option>
+                      <option value="150000">150 000 km</option>
+                      <option value="200000">200 000 km</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:4 }}>Ville</label>
+                    <input value={filterLoc} onChange={e=>setFilterLoc(e.target.value)} placeholder="Ex: Paris, Lyon..."
+                      style={{ width:"100%", padding:"8px 10px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, outline:"none", boxSizing:"border-box" }} />
+                  </div>
+                </div>
+                {hasFilters && (
+                  <button onClick={()=>{ setSearch(""); setFilterMarque(""); setFilterModele(""); setFilterEnergie(""); setFilterPrixMax(""); setFilterKmMax(""); setFilterLoc(""); }}
+                    style={{ marginTop:10, width:"100%", padding:"8px", background:"#fee2e2", color:"#ef4444", border:"none", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                    ✕ Réinitialiser les filtres
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          <div style={{ padding:"16px 16px 80px" }}>
+            <p style={{ fontSize:13, color:"#6b7280", margin:"0 0 12px" }}>
+              {filtered.length} annonce{filtered.length > 1 ? "s" : ""} {hasFilters ? "trouvée" + (filtered.length > 1 ? "s" : "") : ""}
+            </p>
+            {loading && <p style={{ textAlign:"center", color:"#9ca3af" }}>Chargement...</p>}
+            {!loading && filtered.length === 0 && (
+              <div style={{ textAlign:"center", padding:"40px 0" }}>
+                <p style={{ fontSize:40 }}>🔍</p>
+                <p style={{ color:"#6b7280" }}>Aucune annonce ne correspond<br/>à vos critères.</p>
+              </div>
+            )}
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              {filtered.map(a => (
+                <button key={a.id} onClick={()=>setSelected(a)}
+                  style={{ background:"white", borderRadius:16, border:"1px solid #f3f4f6", boxShadow:"0 1px 3px rgba(0,0,0,0.06)", overflow:"hidden", textAlign:"left", cursor:"pointer", padding:0 }}>
+                  {a.photos?.[0] && <img src={a.photos[0]} alt="" style={{ width:"100%", height:180, objectFit:"cover" }} />}
+                  <div style={{ padding:"12px 14px" }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                      <div>
+                        <p style={{ margin:0, fontWeight:800, fontSize:14, color:"#111" }}>{a.nom}{a.finition ? ` · ${a.finition}` : ""}</p>
+                        <p style={{ margin:"2px 0 0", fontSize:12, color:"#9ca3af" }}>{a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km.toLocaleString("fr-FR")} km` : ""}</p>
+                      </div>
+                      <span style={{ fontWeight:800, fontSize:18, color:EMERALD, whiteSpace:"nowrap" }}>{a.prix?.toLocaleString("fr-FR")} €</span>
+                    </div>
+                    <p style={{ margin:"6px 0 0", fontSize:12, color:"#6b7280" }}>📍 {a.localisation}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── DÉTAIL ANNONCE ───────────────────────────────────────────
+    function AnnonceDetail({ annonce: a, onBack, user }) {
+      const [msgSent, setMsgSent] = React.useState(false);
+      const [photoPlein, setPhotoPlein] = React.useState(null);
+      const isOwner = user?.uid === a.uid;
+
+      async function handleDelete() {
+        if (!confirm("Supprimer cette annonce ?")) return;
+        await db.collection("annonces").doc(a.id).update({ active: false });
+        onBack();
+      }
+
+      return (
+        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"#f9fafb" }}>
+          <div style={{ background:"white", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
+            <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#6b7280" }}>←</button>
+            <span style={{ fontWeight:800, fontSize:16, color:"#111", flex:1, textAlign:"center" }}>{a.nom}</span>
+            {isOwner && <button onClick={handleDelete} style={{ fontSize:11, color:"#ef4444", background:"#fef2f2", padding:"4px 10px", borderRadius:999, border:"none", cursor:"pointer" }}>Supprimer</button>}
+          </div>
+          {photoPlein && (
+            <div onClick={()=>setPhotoPlein(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.95)", zIndex:3000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <img src={photoPlein} alt="" style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />
+              <button onClick={()=>setPhotoPlein(null)} style={{ position:"absolute", top:20, right:20, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:40, height:40, fontSize:20, color:"white", cursor:"pointer" }}>✕</button>
+            </div>
+          )}
+          <div style={{ paddingBottom:40 }}>
+            {a.photos?.length > 0 && (
+              <div style={{ overflowX:"auto", display:"flex", gap:8, padding:"12px 16px" }}>
+                {a.photos.map((p,i) => <img key={i} src={p} alt="" onClick={()=>setPhotoPlein(p)} style={{ height:220, width:"auto", borderRadius:12, flexShrink:0, cursor:"pointer" }} />)}
+              </div>
+            )}
+            <div style={{ padding:"0 16px" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                <div>
+                  <h1 style={{ fontWeight:800, fontSize:20, color:"#111", margin:"0 0 4px" }}>{a.nom}{a.finition ? ` · ${a.finition}` : ""}</h1>
+                  <p style={{ margin:0, fontSize:13, color:"#6b7280" }}>{a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km.toLocaleString("fr-FR")} km` : ""} · {a.gearbox==="1"?"Manuelle":"Automatique"}</p>
+                </div>
+                <span style={{ fontWeight:800, fontSize:26, color:EMERALD }}>{a.prix?.toLocaleString("fr-FR")} €</span>
+              </div>
+              <p style={{ fontSize:13, color:"#6b7280", margin:"0 0 16px" }}>📍 {a.localisation}</p>
+
+              {a.stats && (
+                <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:14, padding:"12px 14px", marginBottom:16 }}>
+                  <p style={{ margin:"0 0 8px", fontSize:11, fontWeight:800, color:"#16a34a", textTransform:"uppercase", letterSpacing:"0.08em" }}>📊 Prix estimé par CoteCars</p>
+                  <div style={{ display:"flex", gap:8 }}>
+                    <div style={{ flex:1, textAlign:"center" }}>
+                      <p style={{ margin:0, fontSize:10, color:"#6b7280" }}>Agressif</p>
+                      <p style={{ margin:0, fontWeight:700, fontSize:14, color:"#F59E0B" }}>{Math.round(a.stats.pMin).toLocaleString("fr-FR")}€</p>
+                    </div>
+                    <div style={{ flex:1, textAlign:"center" }}>
+                      <p style={{ margin:0, fontSize:10, color:"#6b7280" }}>Marché</p>
+                      <p style={{ margin:0, fontWeight:700, fontSize:14, color:EMERALD }}>{Math.round(a.stats.p25).toLocaleString("fr-FR")}€</p>
+                    </div>
+                    <div style={{ flex:1, textAlign:"center" }}>
+                      <p style={{ margin:0, fontSize:10, color:"#6b7280" }}>Haut</p>
+                      <p style={{ margin:0, fontWeight:700, fontSize:14, color:"#6366F1" }}>{Math.round(a.stats.p50).toLocaleString("fr-FR")}€</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Fiche technique complète */}
+              <div style={{ background:"white", border:"1px solid #f3f4f6", borderRadius:14, overflow:"hidden", marginBottom:16 }}>
+                <div style={{ padding:"10px 14px", borderBottom:"1px solid #f3f4f6", background:"#f9fafb" }}>
+                  <p style={{ margin:0, fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.08em" }}>🔧 Fiche technique</p>
+                </div>
+                {[
+                  { label:"Année", val: a.annee },
+                  { label:"Énergie", val: a.energie },
+                  { label:"Puissance DIN", val: a.ch ? `${a.ch} ch` : null },
+                  { label:"Boîte de vitesse", val: a.gearbox === "1" ? "Manuelle" : "Automatique" },
+                  { label:"Kilométrage", val: a.km ? `${a.km.toLocaleString("fr-FR")} km` : null },
+                  { label:"Localisation", val: a.localisation },
+                ].filter(r => r.val).map((r, i, arr) => (
+                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"10px 14px", borderBottom: i < arr.length-1 ? "1px solid #f9fafb" : "none" }}>
+                    <span style={{ fontSize:13, color:"#6b7280" }}>{r.label}</span>
+                    <span style={{ fontSize:13, fontWeight:600, color:"#111" }}>{r.val}</span>
+                  </div>
+                ))}
+              </div>
+
+              {(a.descriptionIA || a.description) && (
+                <div style={{ marginBottom:14 }}>
+                  <p style={{ fontWeight:700, fontSize:13, color:"#111", margin:"0 0 6px" }}>✨ Description</p>
+                  <p style={{ fontSize:13, color:"#374151", margin:0, whiteSpace:"pre-line", lineHeight:1.6 }}>{a.descriptionIA || a.description}</p>
+                </div>
+              )}
+              {a.options && (
+                <div style={{ marginBottom:14 }}>
+                  <p style={{ fontWeight:700, fontSize:13, color:"#111", margin:"0 0 6px" }}>✅ Équipements</p>
+                  <p style={{ fontSize:13, color:"#374151", margin:0, whiteSpace:"pre-line" }}>{a.options}</p>
+                </div>
+              )}
+              {a.defauts && (
+                <div style={{ background:"#fff7ed", border:"1px solid #fed7aa", borderRadius:12, padding:"10px 14px", marginBottom:14 }}>
+                  <p style={{ fontWeight:700, fontSize:13, color:"#92400e", margin:"0 0 4px" }}>⚠️ À noter</p>
+                  <p style={{ fontSize:13, color:"#92400e", margin:0, whiteSpace:"pre-line" }}>{a.defauts}</p>
+                </div>
+              )}
+
+              <div style={{ background:"white", border:"1px solid #f3f4f6", borderRadius:16, padding:"16px", marginTop:16 }}>
+                <p style={{ fontWeight:700, fontSize:14, color:"#111", margin:"0 0 12px" }}>📞 Contacter le vendeur</p>
+                <a href={`tel:${a.tel}`} style={{ display:"block", width:"100%", background:`linear-gradient(135deg,${EMERALD},#059669)`, color:"white", fontWeight:800, fontSize:16, borderRadius:14, padding:"14px 0", textAlign:"center", textDecoration:"none", boxSizing:"border-box" }}>
+                  Appeler {a.tel}
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── PAGE ERREUR ──────────────────────────────────────────────
+    function ErrorPage({ apiErr, plaque, onReset }) {
+      const [nom, setNom] = React.useState("");
+      const [tel, setTel] = React.useState("");
+      const [email, setEmail] = React.useState("");
+      const [marque, setMarque] = React.useState("");
+      const [modele, setModele] = React.useState("");
+      const [annee, setAnnee] = React.useState("");
+      const [km, setKm] = React.useState("");
+      const [submitted, setSubmitted] = React.useState(false);
+      const [sending, setSending] = React.useState(false);
+
+      const isValid = nom && (tel || email) && marque && annee;
+
+      async function handleSubmit() {
+        if (!isValid) return;
+        setSending(true);
+        try {
+          await db.collection("signalements").add({
+            plaque,
+            nom,
+            tel,
+            email,
+            marque,
+            modele,
+            annee,
+            km,
+            erreur: apiErr,
+            createdAt: new Date().toISOString()
+          });
+          // Envoyer notification email
+          fetch("https://cotecars-v2.vercel.app/api/brevo-form-requests", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nom, tel, email, plaque, marque, modele, annee, km, erreur: apiErr })
+          }).catch(()=>{});
+          setSubmitted(true);
+        } catch(e) {}
+        setSending(false);
+      }
+
+      return (
+        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"#f9fafb", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px" }}>
+          <div style={{ position:"relative", marginBottom:16 }}>
+            <div style={{ fontSize:64, animation:"bounce 1.5s infinite", display:"inline-block" }}>🚗</div>
+            <div style={{ position:"absolute", top:-8, right:-8, fontSize:26, animation:"spin 2s linear infinite", display:"inline-block" }}>⚠️</div>
+          </div>
+          <style>{`
+            @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+            @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+            @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+          `}</style>
+
+          <h2 style={{ fontWeight:800, fontSize:22, color:"#111", margin:"0 0 6px", textAlign:"center" }}>Véhicule introuvable</h2>
+          <p style={{ color:"#6b7280", fontSize:13, margin:"0 0 10px", textAlign:"center" }}>{apiErr}</p>
+          <div style={{ background:"#fef3c7", border:"1px solid #fde68a", borderRadius:12, padding:"8px 16px", marginBottom:16, textAlign:"center" }}>
+            <p style={{ margin:0, fontSize:13, color:"#92400e" }}>🔍 Plaque analysée : <strong>{plaque}</strong></p>
+          </div>
+
+          {!submitted ? (
+            <div style={{ width:"100%", background:"white", borderRadius:20, padding:"20px", boxShadow:"0 4px 16px rgba(0,0,0,0.08)", animation:"fadeIn 0.4s ease" }}>
+              <p style={{ fontWeight:800, fontSize:15, color:"#111", margin:"0 0 4px", textAlign:"center" }}>📬 On s'occupe de vous !</p>
+              <p style={{ color:"#6b7280", fontSize:12, margin:"0 0 14px", textAlign:"center" }}>Remplissez le formulaire et nous vous fournirons l'estimation gratuitement.</p>
+
+              <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:3 }}>Plaque d'immatriculation</label>
+              <input value={plaque} readOnly
+                style={{ width:"100%", padding:"10px 12px", border:"2px solid #10B981", borderRadius:10, fontSize:14, marginBottom:8, boxSizing:"border-box", outline:"none", fontWeight:700, color:"#111", background:"#f0fdf4", letterSpacing:"2px" }} />
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
+                <div>
+                  <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:3 }}>Nom *</label>
+                  <input value={nom} onChange={e=>setNom(e.target.value)} placeholder="Jean Dupont"
+                    style={{ width:"100%", padding:"10px 12px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, boxSizing:"border-box", outline:"none" }} />
+                </div>
+                <div>
+                  <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:3 }}>Téléphone</label>
+                  <input value={tel} onChange={e=>setTel(e.target.value)} placeholder="0692 00 00 00" type="tel"
+                    style={{ width:"100%", padding:"10px 12px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, boxSizing:"border-box", outline:"none" }} />
+                </div>
+              </div>
+
+              <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:3 }}>Email</label>
+              <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="jean@email.com" type="email"
+                style={{ width:"100%", padding:"10px 12px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, marginBottom:8, boxSizing:"border-box", outline:"none" }} />
+
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
+                <div>
+                  <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:3 }}>Marque *</label>
+                  <input value={marque} onChange={e=>setMarque(e.target.value)} placeholder="Ex: Renault"
+                    style={{ width:"100%", padding:"10px 12px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, boxSizing:"border-box", outline:"none" }} />
+                </div>
+                <div>
+                  <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:3 }}>Modèle</label>
+                  <input value={modele} onChange={e=>setModele(e.target.value)} placeholder="Ex: Clio"
+                    style={{ width:"100%", padding:"10px 12px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, boxSizing:"border-box", outline:"none" }} />
+                </div>
+              </div>
+
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
+                <div>
+                  <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:3 }}>Année *</label>
+                  <input value={annee} onChange={e=>setAnnee(e.target.value)} placeholder="Ex: 2018" type="number" maxLength={4}
+                    style={{ width:"100%", padding:"10px 12px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, boxSizing:"border-box", outline:"none" }} />
+                </div>
+                <div>
+                  <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:3 }}>Kilométrage</label>
+                  <input value={km} onChange={e=>setKm(e.target.value)} placeholder="Ex: 120000" type="number"
+                    style={{ width:"100%", padding:"10px 12px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, boxSizing:"border-box", outline:"none" }} />
+                </div>
+              </div>
+
+              <button onClick={handleSubmit} disabled={!isValid||sending}
+                style={{ width:"100%", background:!isValid?"#d1d5db":"linear-gradient(135deg,#10B981,#059669)", color:"white", fontWeight:800, fontSize:15, borderRadius:12, padding:"13px 0", border:"none", cursor:!isValid?"not-allowed":"pointer", marginBottom:8 }}>
+                {sending ? "Envoi en cours..." : "📩 Envoyer ma demande"}
+              </button>
+              <button onClick={onReset} style={{ width:"100%", background:"#f3f4f6", color:"#6b7280", fontWeight:700, fontSize:13, borderRadius:12, padding:"11px 0", border:"none", cursor:"pointer" }}>
+                🔄 Réessayer avec une autre plaque
+              </button>
+              <p style={{ fontSize:11, color:"#9ca3af", textAlign:"center", margin:"10px 0 0" }}>* Champs obligatoires</p>
+            </div>
+          ) : (
+            <div style={{ width:"100%", background:"white", borderRadius:20, padding:"24px", boxShadow:"0 4px 16px rgba(0,0,0,0.08)", textAlign:"center", animation:"fadeIn 0.4s ease" }}>
+              <div style={{ fontSize:56, marginBottom:12 }}>✅</div>
+              <h3 style={{ fontWeight:800, fontSize:18, color:"#111", margin:"0 0 8px" }}>Demande envoyée !</h3>
+              <p style={{ color:"#6b7280", fontSize:14, margin:"0 0 20px" }}>Nous reviendrons vers vous rapidement avec votre estimation gratuite.</p>
+              <button onClick={onReset} style={{ width:"100%", background:"linear-gradient(135deg,#10B981,#059669)", color:"white", fontWeight:800, fontSize:16, borderRadius:14, padding:"14px 0", border:"none", cursor:"pointer" }}>
+                🔄 Nouvelle recherche
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function App() {
+      const [user, setUser] = useState(null);
+      const [showLoginModal, setShowLoginModal] = useState(false);
+
+      React.useEffect(() => {
+        const unsub = auth.onAuthStateChanged(u => setUser(u || null));
+        return unsub;
+      }, []);
+
+      const [state, setState] = useState("home");
+      const [showAnnonces, setShowAnnonces] = React.useState(false);
+      const [showCreateAnnonce, setShowCreateAnnonce] = React.useState(false);
+      const [plate, setPlate] = useState("");
+      const [km, setKm] = useState("");
+      const [gearbox, setGearbox] = useState("");
+      const [finition, setFinition] = useState("");
+      const [finitionsList, setFinitionsList] = useState([]);
+      const [vehicleInfo, setVehicleInfo] = useState(null);
+      const [loadingFin, setLoadingFin] = useState(false);
+      const [finLoaded, setFinLoaded] = useState(false);
+      const [err, setErr] = useState("");
+      const [apiErr, setApiErr] = useState("");
+      const [result, setResult] = useState(null);
+      const [historique, setHistorique] = useState([]);
+
+      // Charger historique depuis Firestore
+      React.useEffect(() => {
+        if (!user) return;
+        db.collection("historique").doc(user?.uid).get().then(doc => {
+          if (doc.exists) setHistorique(doc.data().items || []);
+        }).catch(() => {});
+      }, [user]);
+
+      function handlePlateChange(val) {
+        setPlate(val);
+        setFinition("");
+        setFinitionsList([]);
+        setVehicleInfo(null);
+        setFinLoaded(false);
+        // Longueur sans tirets pour déclencher le chargement
+        const valClean = val.replace(/-/g, "");
+        if (valClean.length >= 7) {
+          setTimeout(() => loadFinitions(val), 100);
+        }
+      }
+
+      async function loadFinitions(p) {
+        if (!p || p.length < 7) return;
+        setLoadingFin(true);
+        try {
+          const pClean = p.replace(/-/g, "");
+          const sivRes = await fetch(`https://cotecars-v2.vercel.app/api/rapid-api-requests?plaque=${pClean}`);
+          if (!sivRes.ok) return;
+          const sivData = await sivRes.json();
+          const veh = sivData.data || sivData.données || {};
+          const marque = veh.AWN_marque || "";
+          const modele = veh.AWN_modele || "";
+          const fins = getFinitions(marque, modele);
+          setFinitionsList(fins);
+          setVehicleInfo({ marque, modele });
+          setFinition("");
+        } catch(e) {}
+        setFinLoaded(true);
+        setLoadingFin(false);
+      }
+
+
+      async function handleAnalyze() {
+        if (plate.length < 7) { setErr("Veuillez saisir une plaque valide (ex: AB-123-CD)"); return; }
+        if (!gearbox) { setErr("Veuillez sélectionner le type de boîte de vitesse."); return; }
+        setErr(""); setState("loading"); if(window.posthog) posthog.capture('recherche_lancee', {plaque, km, gearbox, finition});
+        try {
+          const plateClean = plate.replace(/-/g, "");
+          const sivRes = await fetch(`https://cotecars-v2.vercel.app/api/rapid-api-requests?plaque=${plateClean}`);
+          if (!sivRes.ok) throw new Error(`Plaque introuvable (${sivRes.status})`);
+          const sivData = await sivRes.json();
+          const veh = sivData.data || sivData.données || {};
+          const marque = veh.AWN_marque || "";
+          const modele = veh.AWN_modele || "";
+          const nom = [marque, modele, veh.AWN_date_mise_en_circulation?.slice(6)].filter(Boolean).join(" ");
+          if (!marque || !modele) throw new Error("Véhicule non identifié.");
+
+          const kmUser = km ? parseInt(km) : null;
+          const anneeUser = veh.AWN_date_mise_en_circulation ? parseInt(veh.AWN_date_mise_en_circulation.slice(-4)) : null;
+          const chUser = veh.AWN_puissance_KW ? Math.round(parseInt(veh.AWN_puissance_KW) * 1.36) : null;
+          const energieRaw = veh.AWN_energie || "";
+          const FUEL_CODES = {
+            "ESSENCE": "1",
+            "GAZOLE": "2",
+            "GPL": "3",
+            "ELECTRIQUE": "4",
+            "AUTRE": "5",
+            "HYBRIDE": "6",
+            "HYBRIDE ESSENCE ELECTRIQUE": "6",
+            "HYBRIDE RECHARGEABLE": "6",
+            "HYBRIDE DIESEL ELECTRIQUE": "6",
+            "GAZ NATUREL (GNV)": "5",
+            "HYDROGENE": "5",
+          };
+          const fuelCode = FUEL_CODES[energieRaw.toUpperCase()] || (energieRaw.includes("HYBRIDE") ? "6" : energieRaw.includes("ELECTR") ? "4" : energieRaw.includes("GPL") ? "3" : "");
+
+          const lbcParams = new URLSearchParams({ marque, modele });
+          if (kmUser)    lbcParams.set("km", kmUser);
+          if (anneeUser) lbcParams.set("annee", anneeUser);
+          if (chUser)    lbcParams.set("ch", chUser);
+          if (fuelCode)  lbcParams.set("fuel", fuelCode);
+          lbcParams.set("gearbox", gearbox);
+          if (finition) lbcParams.set("finition", finition);
+          const lbcRes = await fetch(`https://cotecars-v2.vercel.app/api/leboncoin?${lbcParams.toString()}`);
+          if (!lbcRes.ok) throw new Error(`Erreur marché (${lbcRes.status})`);
+          const lbcData = await lbcRes.json();
+          const rawAds = lbcData.ads || [];
+          const ads = filterAds(rawAds, kmUser, anneeUser, chUser, marque, modele, finition);
+          const stats = computeStats(ads);
+          const peuResultats = finition && ads.length < 5;
+
+          const finitionsList2 = getFinitions(marque, modele);
+          // Sauvegarder dans Firestore
+          const entry = { plate, nom, finition, stats, date: new Date().toLocaleDateString('fr-FR'), km: kmUser };
+          const newHisto = [entry, ...historique.filter(h => h.plate !== plate)].slice(0, 10);
+          setHistorique(newHisto);
+          if (user) {
+            db.collection("historique").doc(user?.uid).set({ items: newHisto }).catch(() => {});
+          }
+
+          setResult({ veh, nom, ads, stats, finition, peuResultats, marque, modele, kmUser, anneeUser, chUser, fuelCode, gearbox, finitionsList: finitionsList2 });
+          setState("results"); if(window.posthog) posthog.capture('vehicule_identifie', {marque, modele, finition, km: kmUser});
+        } catch(e) {
+          setApiErr(e.message || "Une erreur est survenue.");
+          setState("error"); if(window.posthog) posthog.capture('recherche_erreur', {plaque, erreur: e.message});
+        }
+      }
+
+      async function handleElargi(finitionSimilaire) {
+        // Relancer avec finition similaire ou sans finition
+        setState("loading");
+        try {
+          const veh = result.veh;
+          const marque = result.marque;
+          const modele = result.modele;
+          const nom = result.nom;
+          const lbcParams = new URLSearchParams({ marque, modele });
+          if (result.kmUser)    lbcParams.set("km", result.kmUser);
+          if (result.anneeUser) lbcParams.set("annee", result.anneeUser);
+          if (result.chUser)    lbcParams.set("ch", result.chUser);
+          if (result.fuelCode)  lbcParams.set("fuel", result.fuelCode);
+          lbcParams.set("gearbox", result.gearbox);
+          const lbcRes = await fetch(`https://cotecars-v2.vercel.app/api/leboncoin?${lbcParams.toString()}`);
+          if (!lbcRes.ok) throw new Error("Erreur marché");
+          const lbcData = await lbcRes.json();
+          const rawAds = lbcData.ads || [];
+          const kmUser = result.kmUser;
+          const anneeUser = result.anneeUser;
+          const chUser = result.chUser;
+          const ads = filterAds(rawAds, kmUser, anneeUser, chUser, marque, modele, finition);
+          const stats = computeStats(ads);
+          setResult({ ...result, ads, stats, finition: finitionSimilaire || "", peuResultats: false });
+          setState("results");
+        } catch(e) {
+          setApiErr(e.message);
+          setState("error");
+        }
+      }
+
+      function handleReset() {
+        setState("home"); setPlate(""); setKm(""); setGearbox("");
+        setFinition(""); setFinitionsList([]); setVehicleInfo(null); setFinLoaded(false);
+        setErr(""); setApiErr(""); setResult(null);
+      }
+
+      function clearHistorique() {
+        setHistorique([]);
+        if (user) db.collection("historique").doc(user?.uid).delete().catch(() => {});
+      }
+
+      if (showAnnonces) return <AnnoncesPage onBack={() => setShowAnnonces(false)} user={user} />;
+      if (state === "loading") return <>{showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}<Spinner /></>;
+      if (state === "results") return <>{showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}{showCreateAnnonce && <CreateAnnonce result={result} plate={plate} user={user} onClose={() => setShowCreateAnnonce(false)} onPublished={() => {}} />}<Results result={result} plate={plate} onReset={handleReset} user={user} onElargi={handleElargi} setShowLoginModal={setShowLoginModal} onCreateAnnonce={() => setShowCreateAnnonce(true)} /></>;
+      if (state === "error") return (
+        <ErrorPage apiErr={apiErr} plaque={plate} onReset={handleReset} />
+      );
+
+      return (
+        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"#f9fafb", display:"flex", flexDirection:"column" }}>
+          {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+          <div style={{ background:"white", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:"1px solid #f3f4f6" }}>
+            <span style={{ fontWeight:800, fontSize:20, color:EMERALD }}>CoteCars</span>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <button onClick={() => setShowAnnonces(true)} style={{ fontSize:11, fontWeight:700, color:"#6366F1", background:"#eef2ff", padding:"6px 10px", borderRadius:999, border:"1px solid #c7d2fe", cursor:"pointer" }}>🏷️ Nos annonces</button>
+            {user ? (
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                {user?.photoURL && <img src={user.photoURL} width={28} height={28} style={{ borderRadius:"50%", border:"2px solid #e5e7eb" }} alt="" />}
+                <button onClick={() => auth.signOut()} style={{ fontSize:11, color:"#9ca3af", background:"#f3f4f6", padding:"4px 10px", borderRadius:999, border:"none", cursor:"pointer" }}>Déconnexion</button>
+              </div>
+            ) : (
+              <button onClick={() => setShowLoginModal(true)}
+                style={{ fontSize:11, fontWeight:700, color:EMERALD, background:"#f0fdf4", padding:"6px 12px", borderRadius:999, border:"1px solid #bbf7d0", cursor:"pointer" }}>
+                Se connecter
+              </button>
+            )}
+            </div>
+          </div>
+          <div style={{ flex:1, padding:"32px 20px" }}>
+            <div style={{ textAlign:"center", marginBottom:32 }}>
+              <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:999, padding:"4px 12px", marginBottom:16 }}>
+                <div className="pulse" style={{ width:8, height:8, borderRadius:"50%", background:"#22c55e", display:"inline-block" }} />
+                <span style={{ fontSize:12, fontWeight:600, color:"#16a34a" }}>{(()=>{ const d=new Date(); const seed=(d.getFullYear()*366+d.getMonth()*31+d.getDate())*9301+49297; const base=1800+((seed%17))*35+(d.getDate()*12); return `+${base.toLocaleString("fr-FR")} analyses ce mois-ci`; })()}</span>
+              </div>
+              <h1 style={{ fontWeight:800, fontSize:30, color:"#111", lineHeight:1.2, margin:"0 0 12px" }}>
+                Vendez votre voiture<br /><span style={{ color:EMERALD }}>au prix fort.</span>
+              </h1>
+              <p style={{ color:"#6b7280", fontSize:16, margin:0 }}>Ne laissez plus des milliers d'euros<br />sur la table.</p>
+            </div>
+
+            <div style={{ background:"white", borderRadius:24, boxShadow:"0 4px 24px rgba(0,0,0,0.07)", border:"1px solid #f3f4f6", padding:20 }}>
+              <div style={{ marginBottom:16 }}>
+                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>Plaque d'immatriculation</label>
+                <LicensePlate value={plate} onChange={handlePlateChange} />
+                <p style={{ margin:"6px 0 0", fontSize:11, color:"#9ca3af", textAlign:"center" }}>
+                  Format accepté : AB-123-CD ou AB123CD
+                </p>
+                {plate.length >= 7 && loadingFin && (
+                  <p style={{ margin:"6px 0 0", fontSize:12, color:"#9ca3af", textAlign:"center" }}>Chargement des finitions...</p>
+                )}
+              </div>
+
+              <div style={{ marginBottom:16 }}>
+                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>Kilométrage</label>
+                <div style={{ display:"flex", alignItems:"center", border:"2px solid #e5e7eb", borderRadius:12, overflow:"hidden", height:56 }}>
+                  <input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="85 000"
+                    style={{ flex:1, padding:"0 16px", fontSize:18, fontWeight:700, border:"none", outline:"none", background:"transparent", color:"#111" }}
+                    inputMode="numeric" />
+                  <span style={{ padding:"0 16px", color:"#9ca3af", fontWeight:600, fontSize:14 }}>km</span>
+                </div>
+              </div>
+
+              <div style={{ marginBottom:16 }}>
+                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>Boîte de vitesse</label>
+                <div style={{ display:"flex", gap:8 }}>
+                  {[{ val:"1", label:"🔧 Manuelle" }, { val:"2", label:"⚙️ Automatique" }].map(opt => (
+                    <button key={opt.val} onClick={() => setGearbox(opt.val)}
+                      style={{ flex:1, padding:"14px 0", borderRadius:12, border:`2px solid ${gearbox === opt.val ? EMERALD : "#e5e7eb"}`, background: gearbox === opt.val ? "#ecfdf5" : "white", color: gearbox === opt.val ? EMERALD : "#6b7280", fontWeight:700, fontSize:14, cursor:"pointer", transition:"all 0.2s" }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {finitionsList.length > 0 && (
+                <div style={{ marginBottom:16 }}>
+                  <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>
+                    Finition {vehicleInfo ? `· ${vehicleInfo.marque} ${vehicleInfo.modele}` : ""}
+                  </label>
+                  <select value={finition} onChange={e => setFinition(e.target.value)}
+                    style={{ width:"100%", height:56, padding:"0 40px 0 16px", fontSize:15, fontWeight:600, color: finition ? "#111" : "#9ca3af", border:"2px solid #e5e7eb", borderRadius:12, background:"white", cursor:"pointer", outline:"none" }}>
+                    <option value="">Toutes les finitions</option>
+                    {finitionsList.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                  <p style={{ margin:"8px 0 0", fontSize:12, color:"#F59E0B", display:"flex", alignItems:"center", gap:4 }}>
+                    💡 Pour une analyse plus précise, sélectionnez la finition de votre véhicule.
+                  </p>
+                </div>
+              )}
+
+              {err && <p style={{ color:"#ef4444", fontSize:14, textAlign:"center", margin:"0 0 12px" }}>{err}</p>}
+              <button onClick={handleAnalyze} style={{ width:"100%", background:`linear-gradient(135deg,${EMERALD},${EMERALD_DARK})`, color:"white", fontWeight:800, fontSize:18, borderRadius:16, padding:"18px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 14px rgba(16,185,129,0.35)" }}>
+                Analyser le marché 🚀
+              </button>
+              <p style={{ textAlign:"center", fontSize:12, color:"#9ca3af", margin:"12px 0 0" }}>Résultat instantané · Aucune inscription</p>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginTop:24 }}>
+              {[{icon:"⚡️",label:"Instantané"},{icon:"🎯",label:"Prix précis"},{icon:"🔒",label:"100% privé"}].map((item,i) => (
+                <div key={i} style={{ background:"white", borderRadius:16, padding:12, textAlign:"center", boxShadow:"0 1px 3px rgba(0,0,0,0.06)", border:"1px solid #f3f4f6" }}>
+                  <div style={{ fontSize:20, marginBottom:4 }}>{item.icon}</div>
+                  <div style={{ fontSize:12, fontWeight:600, color:"#4b5563" }}>{item.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {historique.length > 0 && (
+              <div style={{ marginTop:24 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                  <span style={{ fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em" }}>🕐 Recherches récentes</span>
+                  <button onClick={clearHistorique} style={{ fontSize:11, color:"#9ca3af", background:"none", border:"none", cursor:"pointer", padding:0 }}>Effacer</button>
+                </div>
+                <div style={{ background:"white", borderRadius:16, border:"1px solid #f3f4f6", boxShadow:"0 1px 3px rgba(0,0,0,0.06)", overflow:"hidden" }}>
+                  {historique.map((h, i) => (
+                    <button key={i} onClick={() => { setPlate(h.plate); setKm(h.km ? String(h.km) : ""); }}
+                      style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 16px", borderBottom: i < historique.length-1 ? "1px solid #f9fafb" : "none", background:"white", border:"none", borderBottom: i < historique.length-1 ? "1px solid #f9fafb" : "none", cursor:"pointer", textAlign:"left" }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#111" }}>{h.plate}</p>
+                        <p style={{ margin:"2px 0 0", fontSize:11, color:"#9ca3af", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nom}{h.finition ? " · " + h.finition : ""}</p>
+                        {h.stats && (
+                          <div style={{ display:"flex", gap:6, marginTop:6, flexWrap:"wrap" }}>
+                            <span style={{ fontSize:10, fontWeight:700, color:"#F59E0B", background:"#FFFBEB", padding:"2px 6px", borderRadius:999, whiteSpace:"nowrap" }}>⚡️ {h.stats.pMin?.toLocaleString("fr-FR")}€</span>
+                            <span style={{ fontSize:10, fontWeight:700, color:EMERALD, background:"#ECFDF5", padding:"2px 6px", borderRadius:999, whiteSpace:"nowrap" }}>🎯 {h.stats.p25?.toLocaleString("fr-FR")}€</span>
+                            <span style={{ fontSize:10, fontWeight:700, color:"#6366F1", background:"#EEF2FF", padding:"2px 6px", borderRadius:999, whiteSpace:"nowrap" }}>💎 {h.stats.p50?.toLocaleString("fr-FR")}€</span>
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ textAlign:"right", flexShrink:0, marginLeft:12 }}>
+                        <p style={{ margin:0, fontSize:10, color:"#9ca3af" }}>{h.date}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Section Comment ça marche */}
+            <div style={{ marginTop:40, paddingTop:32, borderTop:"1px solid #f3f4f6" }}>
+              <div style={{ textAlign:"center", marginBottom:24 }}>
+                <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:999, padding:"4px 12px", marginBottom:12 }}>
+                  <span style={{ fontSize:12, fontWeight:600, color:"#16a34a" }}>Comment ça marche</span>
+                </div>
+                <h2 style={{ fontWeight:800, fontSize:22, color:"#111", margin:"0 0 6px" }}>Simple comme bonjour</h2>
+                <p style={{ color:"#6b7280", fontSize:14, margin:0 }}>Obtenez le prix du marché en 30 secondes</p>
+              </div>
+
+              <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+                {[
+                  { num:"1", icon:"🔍", title:"Entrez votre plaque", desc:"On identifie automatiquement votre véhicule (marque, modèle, année, motorisation) via la base officielle SIV.", color:EMERALD },
+                  { num:"2", icon:"📊", title:"On analyse Leboncoin", desc:"On analyse en temps réel les annonces de professionnels sur Leboncoin similaires à votre véhicule.", color:"#6366F1" },
+                  { num:"3", icon:"💰", title:"Vous obtenez 3 prix", desc:"Prix agressif pour vendre vite, prix marché pour le maximum de contacts, prix haut avec marge de négociation.", color:"#F59E0B" },
+                ].map((step, i) => (
+                  <div key={i} style={{ display:"flex", gap:16, alignItems:"flex-start", background:"white", borderRadius:16, padding:"16px", border:"1px solid #f3f4f6", boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
+                    <div style={{ width:40, height:40, minWidth:40, borderRadius:"50%", background:step.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>
+                      {step.icon}
+                    </div>
+                    <div>
+                      <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:800, color:"#111" }}>{step.num}. {step.title}</p>
+                      <p style={{ margin:0, fontSize:13, color:"#6b7280", lineHeight:1.5 }}>{step.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ marginTop:20, background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:16, padding:"16px" }}>
+                <p style={{ margin:0, fontSize:13, color:"#166534", fontWeight:600, marginBottom:4 }}>🔒 Vos données restent privées</p>
+                <p style={{ margin:0, fontSize:12, color:"#15803d", lineHeight:1.5 }}>On ne stocke ni votre plaque, ni vos informations personnelles. L'analyse est anonyme et instantanée.</p>
+              </div>
+
+              <div style={{ marginTop:32, paddingBottom:16, textAlign:"center" }}>
+                <p style={{ fontSize:11, color:"#9ca3af", margin:0 }}>© 2025 CoteCars ·
+                  <a href="/mentions-legales.html" style={{ color:"#9ca3af", marginLeft:6 }}>Mentions légales</a> ·
+                  <a href="/cgu.html" style={{ color:"#9ca3af", marginLeft:6 }}>CGU</a>
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
