@@ -1847,13 +1847,17 @@ Réponds UNIQUEMENT en JSON sans markdown : {"titre":"...","description":"..."}
 Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points forts, appel à l'action.`;
           const res = await fetch("https://cotecars-v2.vercel.app/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
           const data = await res.json();
-          const parsed = JSON.parse((data.text||"").trim().replace(/```json|```/g,""));
+          let raw = (data.text||"").trim();
+          // Extraire le JSON même s'il y a du texte autour
+          const match = raw.match(/\{[\s\S]*\}/);
+          if (!match) throw new Error("JSON invalide");
+          const parsed = JSON.parse(match[0]);
           setLbcDescription(parsed);
-          setTitreAnnonce(parsed.titre);
+          setTitreAnnonce(parsed.titre||"");
           setLbcGenerated(true);
         } catch(e) {
-          const fallback = `${marqueInit} ${modeleInit} · ${anneeInit} · ${kmProp?Number(kmProp).toLocaleString("fr-FR")+" km":""}`.trim();
-          setLbcDescription({titre:fallback, description:"Erreur de génération. Modifiez ce texte."});
+          const fallback = `${marqueInit} ${modeleInit} · ${anneeInit}${kmProp?" · "+Number(kmProp).toLocaleString("fr-FR")+" km":""}`.trim();
+          setLbcDescription({titre:fallback, description:"Décrivez votre véhicule ici."});
           setTitreAnnonce(fallback);
           setLbcGenerated(true);
         }
