@@ -1831,6 +1831,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
             createdAt:new Date().toISOString(), active:true, source:"leboncoin_flow",
           });
           setPublished(true);
+          generateDescription();
         } catch(e) { alert("Erreur : "+e.message); }
         setPublishing(false);
       }
@@ -1848,8 +1849,9 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
           const res = await fetch("https://cotecars-v2.vercel.app/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
           const data = await res.json();
           let raw = (data.text||"").trim();
+          console.log("Gemini raw response:", raw);
           // Extraire le JSON même s'il y a du texte autour
-          const match = raw.match(/\{[\s\S]*\}/);
+          const match = raw.match(/[{][\s\S]*[}]/);
           if (!match) throw new Error("JSON invalide");
           const parsed = JSON.parse(match[0]);
           setLbcDescription(parsed);
