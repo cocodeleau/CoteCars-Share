@@ -1849,6 +1849,8 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
             nbPlaces, nbPortes, critair, vin3, typeVehicule,
             stats:result.stats, createdAt:new Date().toISOString(), active:true, source:"lbc_flow",
           });
+          const t = [marque, modele, puissance?puissance+" ch":"", finition].filter(Boolean).join(" ").trim();
+          setTitreIA(t);
           setStep(3);
           genererIA();
         } catch(e) { alert("Erreur : "+e.message); }
@@ -1866,10 +1868,8 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
           const end = raw.lastIndexOf("}");
           if (start===-1||end===-1) throw new Error("no json");
           const parsed = JSON.parse(raw.slice(start,end+1));
-          setTitreIA(parsed.titre||"");
           setDescriptionIA(parsed.description||"");
         } catch(e) {
-          setTitreIA(marque+" "+modele+(annee?" · "+annee:"")+(km?" · "+Number(km).toLocaleString("fr-FR")+" km":""));
           setDescriptionIA("Erreur de génération IA. Cliquez 🔄 pour réessayer.");
         }
         setIaLoading(false);
