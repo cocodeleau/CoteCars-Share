@@ -1975,8 +1975,10 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
 
                   {/* 1. Titre */}
                   <label style={labelStyle}>📌 Titre de l'annonce</label>
-                  <input value={titreAnnonce} onChange={e=>setTitreAnnonce(e.target.value)} placeholder="Ex: Mercedes Classe A 200d — Très bon état"
-                    style={{...inputStyle,marginBottom:16}}/>
+                  <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center"}}>
+                    <input value={titreAnnonce} onChange={e=>setTitreAnnonce(e.target.value)} placeholder="Ex: Mercedes Classe A 200d — Très bon état" style={{...inputStyle,flex:1,marginBottom:0}}/>
+                    {titreAnnonce&&<button onClick={()=>copyField("titre",titreAnnonce)} style={{padding:"13px 12px",borderRadius:12,border:"none",background:copiedKey==="titre"?"#ecfdf5":"#f3f4f6",color:copiedKey==="titre"?EMERALD:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{copiedKey==="titre"?"✅":"📋"}</button>}
+                  </div>
 
                   {/* 2. Type de véhicule */}
                   <label style={labelStyle}>🚘 Type de véhicule</label>
@@ -2019,14 +2021,17 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
                   </div>
                   <p style={{fontSize:11,color:"#9ca3af",margin:"0 0 12px"}}>Marque, modèle, année et énergie remplis automatiquement.</p>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-                    {[{l:"Marque",v:marque,s:setMarque},{l:"Modèle",v:modele,s:setModele},{l:"Année",v:annee,s:setAnnee}].map(f=>(
+                    {[{l:"Marque",v:marque,s:setMarque,k:"marque",lbc:true},{l:"Modèle",v:modele,s:setModele,k:"modele",lbc:true},{l:"Année",v:annee,s:setAnnee,k:"annee",lbc:false}].map(f=>(
                       <div key={f.l}>
-                        <label style={labelStyle}>{f.l}</label>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                          <label style={{...labelStyle,marginBottom:0}}>{f.l} {f.lbc&&<span style={{fontSize:9,color:"#9ca3af"}}>(liste LBC)</span>}</label>
+                          {!f.lbc&&f.v&&<button onClick={()=>copyField(f.k,f.v)} style={{padding:"2px 8px",borderRadius:6,border:"none",background:copiedKey===f.k?"#ecfdf5":"#f3f4f6",color:copiedKey===f.k?EMERALD:"#6b7280",fontWeight:700,fontSize:10,cursor:"pointer"}}>{copiedKey===f.k?"✅":"📋"}</button>}
+                        </div>
                         <input value={f.v} onChange={e=>f.s(e.target.value)} style={inputStyle}/>
                       </div>
                     ))}
                     <div>
-                      <label style={labelStyle}>Énergie</label>
+                      <label style={labelStyle}>Énergie <span style={{fontSize:9,color:"#9ca3af"}}>(liste LBC)</span></label>
                       <input value={energieLabel} readOnly style={{...inputStyle,background:"#f9fafb",color:"#6b7280"}}/>
                     </div>
                   </div>
@@ -2058,14 +2063,19 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
                     </div>
                     <div>
                       <label style={labelStyle}>⚡️ Ch</label>
-                      <input type="number" value={puissance} onChange={e=>setPuissance(e.target.value)} style={inputStyle}/>
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <input type="number" value={puissance} onChange={e=>setPuissance(e.target.value)} style={{...inputStyle,flex:1,marginBottom:0}}/>
+                        {puissance&&<button onClick={()=>copyField("puissance",puissance)} style={{padding:"13px 10px",borderRadius:12,border:"none",background:copiedKey==="puissance"?"#ecfdf5":"#f3f4f6",color:copiedKey==="puissance"?EMERALD:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer"}}>{copiedKey==="puissance"?"✅":"📋"}</button>}
+                      </div>
                     </div>
                   </div>
 
                   {/* 7. Finition */}
                   <label style={labelStyle}>✨ Finition (facultatif)</label>
-                  <input value={finition} onChange={e=>setFinition(e.target.value)} placeholder="Ex: AMG Line, GT, Allure..."
-                    style={{...inputStyle,marginBottom:20}}/>
+                  <div style={{display:"flex",gap:8,marginBottom:20,alignItems:"center"}}>
+                    <input value={finition} onChange={e=>setFinition(e.target.value)} placeholder="Ex: AMG Line, GT, Allure..." style={{...inputStyle,flex:1,marginBottom:0}}/>
+                    {finition&&<button onClick={()=>copyField("finition",finition)} style={{padding:"13px 12px",borderRadius:12,border:"none",background:copiedKey==="finition"?"#ecfdf5":"#f3f4f6",color:copiedKey==="finition"?EMERALD:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{copiedKey==="finition"?"✅":"📋"}</button>}
+                  </div>
 
                   <button onClick={()=>setStep(2)} disabled={!titreAnnonce||!marque}
                     style={{width:"100%",background:(!titreAnnonce||!marque)?"#d1d5db":"linear-gradient(135deg,#F97316,#EA580C)",color:"white",fontWeight:800,fontSize:17,borderRadius:16,padding:"16px 0",border:"none",cursor:(!titreAnnonce||!marque)?"not-allowed":"pointer"}}>
@@ -2080,8 +2090,10 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
 
                   {/* 8. Kilométrage */}
                   <label style={labelStyle}>🛣️ Kilométrage</label>
-                  <input type="number" value={km} onChange={e=>setKm(e.target.value)} placeholder="Ex: 95000"
-                    style={{...inputStyle,marginBottom:16}}/>
+                  <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center"}}>
+                    <input type="number" value={km} onChange={e=>setKm(e.target.value)} placeholder="Ex: 95000" style={{...inputStyle,flex:1,marginBottom:0}}/>
+                    {km&&<button onClick={()=>copyField("km",String(Number(km)))} style={{padding:"13px 12px",borderRadius:12,border:"none",background:copiedKey==="km"?"#ecfdf5":"#f3f4f6",color:copiedKey==="km"?EMERALD:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{copiedKey==="km"?"✅":"📋"}</button>}
+                  </div>
 
                   {/* 9. Équipements */}
                   <label style={labelStyle}>🔧 Équipements & options</label>
@@ -2107,18 +2119,25 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
 
                   {/* 11. Code VIN */}
                   <label style={labelStyle}>🔢 Code VIN — 3 derniers chiffres (facultatif)</label>
-                  <input value={vin3} onChange={e=>setVin3(e.target.value.slice(0,3).toUpperCase())} placeholder="Ex: 4A2" maxLength={3}
-                    style={{...inputStyle,marginBottom:16,letterSpacing:"0.2em",fontWeight:700}}/>
+                  <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center"}}>
+                    <input value={vin3} onChange={e=>setVin3(e.target.value.slice(0,3).toUpperCase())} placeholder="Ex: 4A2" maxLength={3} style={{...inputStyle,flex:1,marginBottom:0,letterSpacing:"0.2em",fontWeight:700}}/>
+                    {vin3&&<button onClick={()=>copyField("vin3",vin3)} style={{padding:"13px 12px",borderRadius:12,border:"none",background:copiedKey==="vin3"?"#ecfdf5":"#f3f4f6",color:copiedKey==="vin3"?EMERALD:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{copiedKey==="vin3"?"✅":"📋"}</button>}
+                  </div>
 
                   {/* 12. Description */}
-                  <label style={labelStyle}>📝 Description de l'annonce</label>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <label style={{...labelStyle,marginBottom:0}}>📝 Description de l'annonce</label>
+                    {description&&<button onClick={()=>copyField("description",description)} style={{padding:"4px 10px",borderRadius:8,border:"none",background:copiedKey==="description"?"#ecfdf5":"#f3f4f6",color:copiedKey==="description"?EMERALD:"#6b7280",fontWeight:700,fontSize:11,cursor:"pointer"}}>{copiedKey==="description"?"✅ Copié !":"📋 Copier"}</button>}
+                  </div>
                   <textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Décrivez l'état général, l'historique, les défauts éventuels..."
                     style={{...inputStyle,minHeight:90,resize:"vertical",marginBottom:16}}/>
 
                   {/* 13. Prix */}
                   <label style={labelStyle}>💰 Prix de vente (€)</label>
-                  <input type="number" value={prix} onChange={e=>setPrix(e.target.value)} placeholder="Ex: 12500"
-                    style={{...inputStyle,fontSize:18,fontWeight:700,marginBottom:10}}/>
+                  <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center"}}>
+                    <input type="number" value={prix} onChange={e=>setPrix(e.target.value)} placeholder="Ex: 12500" style={{...inputStyle,flex:1,marginBottom:0,fontSize:18,fontWeight:700}}/>
+                    {prix&&<button onClick={()=>copyField("prix",prix)} style={{padding:"13px 12px",borderRadius:12,border:"none",background:copiedKey==="prix"?"#ecfdf5":"#f3f4f6",color:copiedKey==="prix"?EMERALD:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{copiedKey==="prix"?"✅":"📋"}</button>}
+                  </div>
                   {stats && (
                     <div style={{display:"flex",gap:8,marginBottom:16}}>
                       {[{label:"⚡️ Agressif",val:stats.pMin},{label:"🎯 Marché",val:stats.p25},{label:"💎 Haut",val:stats.p50}].map((p,i)=>(
@@ -2131,7 +2150,10 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
                   )}
 
                   {/* 14. Localisation */}
-                  <label style={labelStyle}>📍 Localisation</label>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                    <label style={{...labelStyle,marginBottom:0}}>📍 Localisation</label>
+                    {(localisation&&ville)&&<button onClick={()=>copyField("loc",`${localisation} ${ville}`)} style={{padding:"4px 10px",borderRadius:8,border:"none",background:copiedKey==="loc"?"#ecfdf5":"#f3f4f6",color:copiedKey==="loc"?EMERALD:"#6b7280",fontWeight:700,fontSize:11,cursor:"pointer"}}>{copiedKey==="loc"?"✅ Copié !":"📋 Copier"}</button>}
+                  </div>
                   <div style={{display:"flex",gap:8,marginBottom:16}}>
                     <input type="text" value={localisation} onChange={e=>{ const val=e.target.value.replace(/\D/g,"").slice(0,5); setLocalisation(val); if(val.length===5){fetch(`https://geo.api.gouv.fr/communes?codePostal=${val}&fields=nom&limit=1`).then(r=>r.json()).then(d=>{if(d?.[0]?.nom)setVille(d[0].nom);}).catch(()=>{});} }} placeholder="Code postal" maxLength={5}
                       style={{...inputStyle,width:"40%"}}/>
@@ -2141,8 +2163,10 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
 
                   {/* 15. Téléphone */}
                   <label style={labelStyle}>📞 Numéro de téléphone</label>
-                  <input type="tel" value={tel} onChange={e=>setTel(e.target.value)} placeholder="Ex: 06 12 34 56 78"
-                    style={{...inputStyle,marginBottom:20}}/>
+                  <div style={{display:"flex",gap:8,marginBottom:20,alignItems:"center"}}>
+                    <input type="tel" value={tel} onChange={e=>setTel(e.target.value)} placeholder="Ex: 06 12 34 56 78" style={{...inputStyle,flex:1,marginBottom:0}}/>
+                    {tel&&<button onClick={()=>copyField("tel",tel)} style={{padding:"13px 12px",borderRadius:12,border:"none",background:copiedKey==="tel"?"#ecfdf5":"#f3f4f6",color:copiedKey==="tel"?EMERALD:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{copiedKey==="tel"?"✅":"📋"}</button>}
+                  </div>
 
                   <div style={{display:"flex",gap:10}}>
                     <button onClick={()=>setStep(1)} style={{flex:1,background:"white",color:"#6b7280",fontWeight:700,fontSize:15,borderRadius:16,padding:"14px 0",border:"2px solid #e5e7eb",cursor:"pointer"}}>← Retour</button>
