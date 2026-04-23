@@ -2115,20 +2115,13 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
                     <p style={{fontSize:12,color:"#15803d",margin:"4px 0 0"}}>Copiez chaque champ ci-dessous dans Leboncoin.</p>
                   </div>
 
-                  {/* Titre IA — en premier */}
+                  {/* Titre calculé — toujours affiché immédiatement */}
                   <div style={{background:"white",borderRadius:14,border:"2px solid #F97316",boxShadow:"0 1px 3px rgba(0,0,0,0.05)",overflow:"hidden",marginBottom:10}}>
                     <div style={{padding:"10px 14px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>📌 Titre de l'annonce</span>
-                      {titreIA&&!iaLoading&&<button onClick={()=>copy("titre",titreIA)} style={{fontSize:11,fontWeight:700,color:copiedKey==="titre"?EMERALD:"#6b7280",background:copiedKey==="titre"?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer"}}>{copiedKey==="titre"?"✅ Copié":"📋 Copier"}</button>}
+                      {titreIA&&<button onClick={()=>copy("titre",titreIA)} style={{fontSize:11,fontWeight:700,color:copiedKey==="titre"?EMERALD:"#6b7280",background:copiedKey==="titre"?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer"}}>{copiedKey==="titre"?"✅ Copié":"📋 Copier"}</button>}
                     </div>
-                    {iaLoading?(
-                      <div style={{padding:"10px 14px 14px",display:"flex",alignItems:"center",gap:8}}>
-                        <div className="spinner" style={{width:16,height:16,borderRadius:"50%",border:"2px solid #e5e7eb",borderTopColor:"#8B5CF6",flexShrink:0}}/>
-                        <p style={{margin:0,fontSize:13,color:"#9ca3af"}}>Génération IA en cours...</p>
-                      </div>
-                    ):(
-                      <p style={{margin:0,padding:"0 14px 12px",fontSize:16,fontWeight:700,color:"#111"}}>{titreIA}</p>
-                    )}
+                    <p style={{margin:0,padding:"0 14px 12px",fontSize:16,fontWeight:700,color:"#111"}}>{titreIA}</p>
                   </div>
 
                   <Card k="type"      emoji="🚘" label="Type de véhicule"       val={typeVehicule}                          lbc={true}/>
