@@ -1849,9 +1849,12 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
           const data = await res.json();
           const parsed = JSON.parse((data.text||"").trim().replace(/```json|```/g,""));
           setLbcDescription(parsed);
+          setTitreAnnonce(parsed.titre);
           setLbcGenerated(true);
         } catch(e) {
-          setLbcDescription({titre:titreAnnonce||`${marqueInit} ${modeleInit} ${anneeInit}`.trim(), description:"Erreur de génération. Modifiez ce texte."});
+          const fallback = `${marqueInit} ${modeleInit} · ${anneeInit} · ${kmProp?Number(kmProp).toLocaleString("fr-FR")+" km":""}`.trim();
+          setLbcDescription({titre:fallback, description:"Erreur de génération. Modifiez ce texte."});
+          setTitreAnnonce(fallback);
           setLbcGenerated(true);
         }
         setLbcLoading(false);
@@ -1936,9 +1939,25 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
               {/* ── SECTION SAISIE ── */}
               <div style={{filter:isPremium?"none":"blur(3px)",pointerEvents:isPremium?"auto":"none"}}>
 
-                {/* 1. Titre */}
-                <label style={labelStyle}>📌 Titre de l'annonce</label>
-                <input value={titreAnnonce} onChange={e=>setTitreAnnonce(e.target.value)} placeholder="Ex: Mercedes Classe A 200d — Très bon état" style={{...inputStyle,marginBottom:16}}/>
+
+
+                {/* 0. Titre auto généré par IA */}
+                <div style={{background:"white",borderRadius:14,border:"2px solid #F97316",boxShadow:"0 1px 3px rgba(0,0,0,0.05)",overflow:"hidden",marginBottom:16}}>
+                  <div style={{padding:"10px 14px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>📌 Titre de l'annonce</span>
+                    {titreAnnonce&&(
+                      <button onClick={()=>copyField("titre_top",titreAnnonce)}
+                        style={{fontSize:11,fontWeight:700,color:copiedKey==="titre_top"?"#10B981":"#6b7280",background:copiedKey==="titre_top"?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"4px 10px",cursor:"pointer"}}>
+                        {copiedKey==="titre_top"?"✅ Copié !":"📋 Copier"}
+                      </button>
+                    )}
+                  </div>
+                  {titreAnnonce?(
+                    <p style={{margin:0,padding:"0 14px 12px",fontSize:16,fontWeight:700,color:"#111"}}>{titreAnnonce}</p>
+                  ):(
+                    <p style={{margin:0,padding:"0 14px 12px",fontSize:13,color:"#9ca3af",fontStyle:"italic"}}>⏳ Généré automatiquement par l'IA après avoir cliqué "Publier & préparer"</p>
+                  )}
+                </div>
 
                 {/* 2. Type véhicule */}
                 <label style={labelStyle}>🚘 Type de véhicule <span style={{fontSize:9,color:"#F97316",fontWeight:700}}>LISTE LBC</span></label>
@@ -1995,9 +2014,10 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
                 <input value={vin3} onChange={e=>setVin3(e.target.value.slice(0,3).toUpperCase())} placeholder="Ex: 4A2" maxLength={3}
                   style={{...inputStyle,marginBottom:16,letterSpacing:"0.2em",fontWeight:700}}/>
 
-                {/* 12. Description */}
-                <label style={labelStyle}>📝 Description de l'annonce</label>
-                <textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Décrivez l'état général, l'historique, les défauts éventuels..."
+                {/* 12. Défauts & qualités */}
+                <label style={labelStyle}>📝 Défauts & qualités du véhicule</label>
+                <p style={{fontSize:12,color:"#6b7280",margin:"-4px 0 8px",lineHeight:1.5}}>Indiquez uniquement les défauts (rayures, pannes...) et les points forts (entretien suivi, faible conso...). L'IA rédigera la description complète.</p>
+                <textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Ex: Légère rayure aile avant droite. Climatisation révisée. Entretien régulier chez concessionnaire. Première main."
                   style={{...inputStyle,minHeight:90,resize:"vertical",marginBottom:16}}/>
 
                 {/* 13. Prix */}
