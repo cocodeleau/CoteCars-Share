@@ -1339,16 +1339,36 @@
       const annee = veh.AWN_date_mise_en_circulation?.slice(-4) || "";
       const energie = veh.AWN_energie || "";
       const ch = veh.AWN_puissance_KW ? Math.round(parseInt(veh.AWN_puissance_KW)*1.36) : "";
+      // Modèle sans l'année
       const marque = nom?.split(" ")[0] || "";
-      const modele = nom?.split(" ").slice(1).join(" ") || "";
-      const prixRecommande = stats?.p25 ? Math.round(stats.p25) : "";
-      const isPremium = !!user; // Pour l'instant = connecté ; plus tard = abonné payant
+      const modeleRaw = nom?.split(" ").slice(1).join(" ") || "";
+      const modele = modeleRaw.replace(/\b(19|20)\d{2}\b/g, "").trim();
+      const energieLabel = energie === "GAZOLE" ? "Diesel" : energie === "ESSENCE" ? "Essence" : energie === "ELECTRIQUE" ? "Électrique" : energie || "";
+      const isPremium = !!user;
 
+      // Steps: 1=formulaire infos, 2=photos+contact, 3=champs LBC copiables
+      const [step, setStep] = React.useState(1);
+      const [prix, setPrix] = React.useState(stats?.p25 ? String(Math.round(stats.p25)) : "");
+      const [localisation, setLocalisation] = React.useState("");
+      const [ville, setVille] = React.useState("");
+      const [defauts, setDefauts] = React.useState("");
+      const [options, setOptions] = React.useState("");
+      const [tel, setTel] = React.useState("");
+      const [photos, setPhotos] = React.useState([]);
+      const [publishing, setPublishing] = React.useState(false);
       const [copiedKey, setCopiedKey] = React.useState(null);
-      const [lbcDescription, setLbcDescription] = React.useState("");
+      const [lbcDescription, setLbcDescription] = React.useState(null);
       const [lbcLoading, setLbcLoading] = React.useState(false);
-      const [lbcGenerated, setLbcGenerated] = React.useState(false);
-      const [prixPersonnalise, setPrixPersonnalise] = React.useState(prixRecommande ? String(prixRecommande) : "");
+
+      function handlePhotos(e) {
+        const files = Array.from(e.target.files).slice(0, 8);
+        const readers = files.map(f => new Promise(res => {
+          const r = new FileReader();
+          r.onload = ev => res({ name: f.name, data: ev.target.result });
+          r.readAsDataURL(f);
+        }));
+        Promise.all(readers).then(setPhotos);
+      }
 
       function copyField(key, value) {
         navigator.clipboard.writeText(value).then(() => {
@@ -1357,23 +1377,76 @@
         });
       }
 
+      async function handlePublishAndContinue() {
+        if (!user) return;
+        setPublishing(true);
+        try {
+          const photoUrls = [];
+          for (let i = 0; i < photos.length; i++) {
+            const p = photos[i];
+            const blob = await fetch(p.data).then(r => r.blob());
+            const formData = new FormData();
+            formData.append("file", blob);
+            formData.append("upload_preset", "CoteCars");
+            formData.append("cloud_name", "di3xa7ldg");
+            const res = await fetch("https://api.cloudinary.com/v1_1/di3xa7ldg/image/upload", { method:"POST", body:formData });
+            const data = await res.json();
+            if (data.secure_url) photoUrls.push(data.secure_url);
+          }
+          const annonce = {
+            uid: user.uid,
+            userEmail: user.email,
+            userPhoto: user.photoURL || "",
+            plate,
+            nom,
+            finition: finition || "",
+            annee,
+            energie,
+            ch,
+            km: km || null,
+            gearbox: result.gearbox,
+            prix: parseInt(prix),
+            localisation: `${localisation}${ville ? " " + ville : ""}`,
+            defauts,
+            options,
+            tel,
+            photos: photoUrls,
+            stats: result.stats,
+            createdAt: new Date().toISOString(),
+            active: true,
+            source: "leboncoin_flow",
+          };
+          await db.collection("annonces").add(annonce);
+          // Générer la description IA en parallèle
+          generateDescription();
+          setStep(3);
+        } catch(e) {
+          alert("Erreur : " + e.message);
+        }
+        setPublishing(false);
+      }
+
       async function generateDescription() {
         setLbcLoading(true);
         try {
-          const prompt = `Tu es expert en rédaction d'annonces auto sur Leboncoin. Rédige un titre court (max 70 caractères) et une description de vente percutante pour ce véhicule.
+          const prompt = `Tu es expert en rédaction d'annonces auto sur Leboncoin. Rédige un titre court (max 70 caractères) et une description de vente percutante.
 
 Véhicule : ${nom}${finition ? " " + finition : ""}
 Année : ${annee}
 Kilométrage : ${km ? Number(km).toLocaleString("fr-FR") + " km" : "Non renseigné"}
-Énergie : ${energie}
+Énergie : ${energieLabel}
+Boîte : ${result.gearbox === "1" ? "Manuelle" : "Automatique"}
 Puissance : ${ch} ch
-Prix : ${prixPersonnalise ? Number(prixPersonnalise).toLocaleString("fr-FR") + " €" : "Non renseigné"}
+Prix : ${prix ? Number(prix).toLocaleString("fr-FR") + " €" : "Non renseigné"}
+Options : ${options || "Non renseigné"}
+Défauts : ${defauts || "Aucun"}
+Localisation : ${localisation} ${ville}
 
-Réponds UNIQUEMENT en JSON sans markdown, format exact :
+Réponds UNIQUEMENT en JSON sans markdown :
 {"titre":"...","description":"..."}
 
-Le titre doit être accrocheur et informatif (marque modèle année kilométrage).
-La description : 100-150 mots, emojis pertinents, points forts du modèle, état général, appel à l'action.`;
+Titre : accrocheur, max 70 caractères, sans l'année dans le modèle.
+Description : 120-150 mots, emojis pertinents, points forts du modèle, état, appel à l'action.`;
 
           const res = await fetch("https://cotecars-v2.vercel.app/api/gemini", {
             method: "POST",
@@ -1384,64 +1457,66 @@ La description : 100-150 mots, emojis pertinents, points forts du modèle, état
           const text = (data.text || "").trim().replace(/```json|```/g, "");
           const parsed = JSON.parse(text);
           setLbcDescription(parsed);
-          setLbcGenerated(true);
         } catch(e) {
-          setLbcDescription({ titre: `${nom} ${annee} ${km ? Number(km).toLocaleString("fr-FR") + " km" : ""}`.trim(), description: "Erreur lors de la génération. Réessayez." });
-          setLbcGenerated(true);
+          setLbcDescription({ titre: `${marque} ${modele} · ${annee} · ${km ? Number(km).toLocaleString("fr-FR") + " km" : ""}`.trim(), description: "Erreur de génération. Modifiez ce texte manuellement." });
         }
         setLbcLoading(false);
       }
 
       const champs = [
-        { key:"marque", label:"Marque", emoji:"🏷️", value: marque },
-        { key:"modele", label:"Modèle", emoji:"🚗", value: modele },
-        { key:"annee", label:"Année", emoji:"📅", value: annee },
-        { key:"energie", label:"Carburant", emoji:"⛽", value: energie === "GAZOLE" ? "Diesel" : energie === "ESSENCE" ? "Essence" : energie === "ELECTRIQUE" ? "Électrique" : energie || "" },
-        { key:"km", label:"Kilométrage (km)", emoji:"🛣️", value: km ? String(Number(km)) : "" },
-        { key:"boite", label:"Boîte de vitesse", emoji:"⚙️", value: result.gearbox === "1" ? "Manuelle" : result.gearbox === "2" ? "Automatique" : "" },
-        { key:"prix", label:"Prix (€)", emoji:"💰", value: prixPersonnalise, editable: true, setValue: setPrixPersonnalise },
-        { key:"finition", label:"Finition / Version", emoji:"✨", value: finition || "" },
-        { key:"puissance", label:"Puissance (ch)", emoji:"⚡️", value: String(ch) },
-        { key:"couleur", label:"Couleur", emoji:"🎨", value: veh.AWN_couleur || "" },
-      ];
+        { key:"marque",  label:"Marque",           emoji:"🏷️", value: marque },
+        { key:"modele",  label:"Modèle",            emoji:"🚗", value: modele },
+        { key:"annee",   label:"Année",             emoji:"📅", value: annee },
+        { key:"energie", label:"Carburant",         emoji:"⛽", value: energieLabel },
+        { key:"km",      label:"Kilométrage (km)",  emoji:"🛣️", value: km ? String(Number(km)) : "" },
+        { key:"boite",   label:"Boîte de vitesse",  emoji:"⚙️", value: result.gearbox === "1" ? "Manuelle" : result.gearbox === "2" ? "Automatique" : "" },
+        { key:"prix",    label:"Prix (€)",          emoji:"💰", value: prix },
+        { key:"finition",label:"Finition / Version",emoji:"✨", value: finition || "" },
+        { key:"puissance",label:"Puissance (ch)",   emoji:"⚡️", value: String(ch) },
+        { key:"couleur", label:"Couleur",           emoji:"🎨", value: veh.AWN_couleur || "" },
+        { key:"options", label:"Équipements",       emoji:"🔧", value: options },
+        { key:"defauts", label:"Défauts",           emoji:"⚠️", value: defauts },
+        { key:"tel",     label:"Téléphone",         emoji:"📞", value: tel },
+        { key:"loc",     label:"Localisation",      emoji:"📍", value: `${localisation}${ville ? " " + ville : ""}` },
+      ].filter(c => c.value && c.value.trim() !== "");
+
+      const stepTitle = step===1 ? "📝 Informations du véhicule" : step===2 ? "📸 Photos & contact" : "🔗 Champs Leboncoin prêts !";
 
       return (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:3000, display:"flex", alignItems:"flex-end", justifyContent:"center" }}
           onClick={e => { if(e.target===e.currentTarget) onClose(); }}>
-          <div style={{ background:"#f9fafb", borderRadius:"24px 24px 0 0", width:"100%", maxWidth:480, maxHeight:"92vh", overflowY:"auto", paddingBottom:40 }}>
+          <div style={{ background:"#f9fafb", borderRadius:"24px 24px 0 0", width:"100%", maxWidth:480, maxHeight:"93vh", overflowY:"auto", paddingBottom:40 }}>
 
-            {/* Header */}
-            <div style={{ background:"white", borderRadius:"24px 24px 0 0", padding:"20px 20px 16px", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div>
-                  <span style={{ fontWeight:800, fontSize:17, color:"#111" }}>🔗 Annonce Leboncoin</span>
-                  <p style={{ margin:"2px 0 0", fontSize:12, color:"#6b7280" }}>Copiez chaque champ directement dans Leboncoin</p>
-                </div>
+            {/* Header sticky */}
+            <div style={{ background:"white", borderRadius:"24px 24px 0 0", padding:"18px 20px 14px", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                <span style={{ fontWeight:800, fontSize:16, color:"#111" }}>{stepTitle}</span>
                 <button onClick={onClose} style={{ background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#9ca3af" }}>✕</button>
+              </div>
+              {/* Progress bar */}
+              <div style={{ display:"flex", gap:4 }}>
+                {[1,2,3].map(s => (
+                  <div key={s} style={{ flex:1, height:4, borderRadius:999, background: step>=s ? "#F97316" : "#e5e7eb", transition:"background 0.3s" }} />
+                ))}
               </div>
             </div>
 
-            <div style={{ padding:"16px 16px 0" }}>
-
-              {/* Info véhicule */}
-              <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:14, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#166534", fontWeight:600 }}>
-                🚗 {nom}{finition ? ` · ${finition}` : ""} · {annee} · {energie} · {ch} ch
-              </div>
+            <div style={{ padding:"16px" }}>
 
               {/* Paywall si non connecté */}
               {!isPremium && (
                 <div style={{ background:"linear-gradient(135deg,#FFF7ED,#FEF3C7)", border:"2px solid #F97316", borderRadius:16, padding:"20px", marginBottom:16, textAlign:"center" }}>
                   <div style={{ fontSize:32, marginBottom:8 }}>🔒</div>
                   <p style={{ fontWeight:800, fontSize:16, color:"#111", margin:"0 0 6px" }}>Fonctionnalité Premium</p>
-                  <p style={{ fontSize:13, color:"#6b7280", margin:"0 0 16px", lineHeight:1.5 }}>Accédez à tous les champs pré-remplis pour publier votre annonce Leboncoin en 2 minutes.</p>
-                  <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-                    <div style={{ flex:1, background:"white", borderRadius:12, padding:"12px 8px", border:"2px solid #F97316" }}>
-                      <p style={{ margin:0, fontWeight:800, fontSize:15, color:"#F97316" }}>2,99 €</p>
+                  <p style={{ fontSize:13, color:"#6b7280", margin:"0 0 16px", lineHeight:1.5 }}>Obtenez tous les champs pré-remplis et publiez votre annonce sur Leboncoin en 2 minutes chrono.</p>
+                  <div style={{ display:"flex", gap:8, marginBottom:14 }}>
+                    <div style={{ flex:1, background:"white", borderRadius:12, padding:"14px 8px", border:"2px solid #F97316" }}>
+                      <p style={{ margin:0, fontWeight:800, fontSize:16, color:"#F97316" }}>2,99 €</p>
                       <p style={{ margin:"2px 0 0", fontSize:11, color:"#6b7280" }}>À l'unité</p>
                     </div>
-                    <div style={{ flex:1, background:"#F97316", borderRadius:12, padding:"12px 8px", border:"2px solid #F97316", position:"relative" }}>
-                      <div style={{ position:"absolute", top:-8, left:"50%", transform:"translateX(-50%)", background:"#111", color:"white", fontSize:9, fontWeight:800, padding:"2px 8px", borderRadius:999 }}>POPULAIRE</div>
-                      <p style={{ margin:0, fontWeight:800, fontSize:15, color:"white" }}>9,99 €/mois</p>
+                    <div style={{ flex:1, background:"#F97316", borderRadius:12, padding:"14px 8px", border:"2px solid #F97316", position:"relative" }}>
+                      <div style={{ position:"absolute", top:-8, left:"50%", transform:"translateX(-50%)", background:"#111", color:"white", fontSize:9, fontWeight:800, padding:"2px 8px", borderRadius:999, whiteSpace:"nowrap" }}>POPULAIRE</div>
+                      <p style={{ margin:0, fontWeight:800, fontSize:16, color:"white" }}>9,99 €/mois</p>
                       <p style={{ margin:"2px 0 0", fontSize:11, color:"rgba(255,255,255,0.8)" }}>Illimité</p>
                     </div>
                   </div>
@@ -1449,88 +1524,149 @@ La description : 100-150 mots, emojis pertinents, points forts du modèle, état
                     style={{ width:"100%", background:"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:800, fontSize:15, borderRadius:14, padding:"14px 0", border:"none", cursor:"pointer" }}>
                     🚀 Débloquer maintenant
                   </button>
-                  <p style={{ fontSize:11, color:"#9ca3af", marginTop:10 }}>✅ Connectez-vous d'abord pour accéder à l'offre</p>
+                  <p style={{ fontSize:11, color:"#9ca3af", marginTop:10 }}>Connectez-vous d'abord pour accéder à l'offre</p>
                 </div>
               )}
 
-              {/* Champs copiables */}
-              <div style={{ display:"flex", flexDirection:"column", gap:10, filter: isPremium ? "none" : "blur(3px)", pointerEvents: isPremium ? "auto" : "none" }}>
-                {champs.map(c => (
-                  c.value !== "" && (
-                    <div key={c.key} style={{ background:"white", borderRadius:14, border:"1px solid #f3f4f6", boxShadow:"0 1px 3px rgba(0,0,0,0.05)", overflow:"hidden" }}>
-                      <div style={{ padding:"10px 14px 6px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                        <span style={{ fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.08em" }}>{c.emoji} {c.label}</span>
-                        <button onClick={() => copyField(c.key, c.value)}
-                          style={{ fontSize:11, fontWeight:700, color: copiedKey===c.key ? EMERALD : "#6b7280", background: copiedKey===c.key ? "#ecfdf5" : "#f3f4f6", border:"none", borderRadius:8, padding:"4px 10px", cursor:"pointer", transition:"all 0.2s" }}>
-                          {copiedKey===c.key ? "✅ Copié !" : "📋 Copier"}
-                        </button>
-                      </div>
-                      {c.editable ? (
-                        <div style={{ display:"flex", alignItems:"center", padding:"0 14px 12px", gap:8 }}>
-                          <input type="number" value={c.value} onChange={e => c.setValue(e.target.value)}
-                            style={{ flex:1, fontSize:17, fontWeight:700, color:"#111", border:"none", outline:"none", background:"transparent", padding:0 }} />
-                          <span style={{ fontSize:13, color:"#9ca3af" }}>€</span>
-                        </div>
-                      ) : (
-                        <p style={{ margin:0, padding:"0 14px 12px", fontSize:17, fontWeight:700, color:"#111" }}>{c.value}</p>
-                      )}
-                    </div>
-                  )
-                ))}
-
-                {/* Bloc description IA */}
-                <div style={{ background:"white", borderRadius:14, border:"1px solid #f3f4f6", boxShadow:"0 1px 3px rgba(0,0,0,0.05)", overflow:"hidden" }}>
-                  <div style={{ padding:"10px 14px 6px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                    <span style={{ fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.08em" }}>✨ Titre & Description IA</span>
-                    {lbcGenerated && (
-                      <button onClick={() => copyField("desc", `${lbcDescription.titre}\n\n${lbcDescription.description}`)}
-                        style={{ fontSize:11, fontWeight:700, color: copiedKey==="desc" ? EMERALD : "#6b7280", background: copiedKey==="desc" ? "#ecfdf5" : "#f3f4f6", border:"none", borderRadius:8, padding:"4px 10px", cursor:"pointer" }}>
-                        {copiedKey==="desc" ? "✅ Copié !" : "📋 Copier tout"}
-                      </button>
-                    )}
+              {/* STEP 1 — Informations */}
+              {step===1 && (
+                <div style={{ filter: isPremium ? "none" : "blur(3px)", pointerEvents: isPremium ? "auto" : "none" }}>
+                  <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:12, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#166534", fontWeight:600 }}>
+                    🚗 <strong>{nom}</strong>{finition ? ` · ${finition}` : ""} · {annee} · {energieLabel} · {ch} ch
                   </div>
-                  {!lbcGenerated ? (
-                    <div style={{ padding:"0 14px 16px" }}>
-                      <p style={{ fontSize:13, color:"#6b7280", margin:"0 0 12px", lineHeight:1.5 }}>Notre IA rédige un titre accrocheur et une description optimisée pour maximiser vos contacts sur Leboncoin.</p>
-                      <button onClick={generateDescription} disabled={lbcLoading}
-                        style={{ width:"100%", background:"linear-gradient(135deg,#8B5CF6,#7C3AED)", color:"white", fontWeight:800, fontSize:14, borderRadius:12, padding:"12px 0", border:"none", cursor:"pointer" }}>
-                        {lbcLoading ? "✨ Génération en cours..." : "✨ Générer avec l'IA"}
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ padding:"0 14px 16px" }}>
-                      <p style={{ margin:"0 0 4px", fontSize:11, fontWeight:700, color:"#9ca3af", textTransform:"uppercase" }}>Titre</p>
-                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
-                        <p style={{ flex:1, margin:0, fontSize:14, fontWeight:700, color:"#111" }}>{lbcDescription.titre}</p>
-                        <button onClick={() => copyField("titre", lbcDescription.titre)}
-                          style={{ fontSize:11, fontWeight:700, color: copiedKey==="titre" ? EMERALD : "#6b7280", background: copiedKey==="titre" ? "#ecfdf5" : "#f3f4f6", border:"none", borderRadius:8, padding:"4px 10px", cursor:"pointer", whiteSpace:"nowrap" }}>
-                          {copiedKey==="titre" ? "✅" : "📋"}
+                  <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Prix demandé (€)</label>
+                  <input type="number" value={prix} onChange={e=>setPrix(e.target.value)} placeholder="Ex: 12500"
+                    style={{ width:"100%", padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:18, fontWeight:700, marginBottom:10, boxSizing:"border-box", outline:"none" }} />
+                  {stats && (
+                    <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+                      {[{label:"⚡️ Agressif", val:stats.pMin},{label:"🎯 Marché", val:stats.p25},{label:"💎 Haut", val:stats.p50}].map((p,i)=>(
+                        <button key={i} onClick={()=>setPrix(String(Math.round(p.val)))}
+                          style={{ flex:1, padding:"8px 4px", borderRadius:10, border:`2px solid ${String(Math.round(p.val))===prix?"#F97316":"#e5e7eb"}`, background:String(Math.round(p.val))===prix?"#FFF7ED":"white", fontSize:11, fontWeight:700, color:String(Math.round(p.val))===prix?"#F97316":"#6b7280", cursor:"pointer" }}>
+                          {p.label}<br/>{Math.round(p.val).toLocaleString("fr-FR")}€
                         </button>
-                      </div>
-                      <p style={{ margin:"0 0 4px", fontSize:11, fontWeight:700, color:"#9ca3af", textTransform:"uppercase" }}>Description</p>
-                      <textarea value={lbcDescription.description} onChange={e => setLbcDescription(d => ({...d, description: e.target.value}))}
-                        style={{ width:"100%", fontSize:13, color:"#111", border:"1px solid #e5e7eb", borderRadius:10, padding:"10px", boxSizing:"border-box", lineHeight:1.6, minHeight:140, resize:"vertical", outline:"none", fontFamily:"inherit" }} />
-                      <div style={{ display:"flex", gap:8, marginTop:8 }}>
-                        <button onClick={() => copyField("description_seule", lbcDescription.description)}
-                          style={{ flex:1, fontSize:12, fontWeight:700, color: copiedKey==="description_seule" ? EMERALD : "#6b7280", background: copiedKey==="description_seule" ? "#ecfdf5" : "#f3f4f6", border:"none", borderRadius:10, padding:"10px 0", cursor:"pointer" }}>
-                          {copiedKey==="description_seule" ? "✅ Copié !" : "📋 Copier description"}
-                        </button>
-                        <button onClick={() => { setLbcGenerated(false); setLbcDescription(""); }}
-                          style={{ fontSize:12, fontWeight:700, color:"#9ca3af", background:"#f9fafb", border:"1px solid #e5e7eb", borderRadius:10, padding:"10px 14px", cursor:"pointer" }}>
-                          🔄
-                        </button>
-                      </div>
+                      ))}
                     </div>
                   )}
+                  <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Localisation</label>
+                  <div style={{ display:"flex", gap:8, marginBottom:14 }}>
+                    <input type="text" value={localisation} onChange={e=>{ const val=e.target.value.replace(/\D/g,"").slice(0,5); setLocalisation(val); if(val.length===5){fetch(`https://geo.api.gouv.fr/communes?codePostal=${val}&fields=nom&limit=1`).then(r=>r.json()).then(d=>{ if(d?.[0]?.nom) setVille(d[0].nom); }).catch(()=>{});} }} placeholder="Code postal" maxLength={5}
+                      style={{ width:"40%", padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:15, boxSizing:"border-box", outline:"none" }} />
+                    <input type="text" value={ville} onChange={e=>setVille(e.target.value)} placeholder="Ville"
+                      style={{ width:"60%", padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:15, boxSizing:"border-box", outline:"none" }} />
+                  </div>
+                  <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Équipements & options</label>
+                  <textarea value={options} onChange={e=>setOptions(e.target.value)} placeholder="Ex: Toit ouvrant, GPS, Sièges chauffants..."
+                    style={{ width:"100%", padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:14, marginBottom:14, boxSizing:"border-box", outline:"none", minHeight:70, resize:"vertical" }} />
+                  <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Défauts éventuels</label>
+                  <textarea value={defauts} onChange={e=>setDefauts(e.target.value)} placeholder="Ex: Rayure aile avant, clim à revoir..."
+                    style={{ width:"100%", padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:14, marginBottom:16, boxSizing:"border-box", outline:"none", minHeight:70, resize:"vertical" }} />
+                  <button onClick={()=>setStep(2)} disabled={!prix||!localisation||!ville}
+                    style={{ width:"100%", background:(!prix||!localisation||!ville)?"#d1d5db":"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:(!prix||!localisation||!ville)?"not-allowed":"pointer" }}>
+                    Suivant →
+                  </button>
                 </div>
-              </div>
+              )}
 
-              {/* Bouton ouvrir Leboncoin */}
-              {isPremium && (
-                <a href="https://www.leboncoin.fr/deposer-une-annonce" target="_blank" rel="noopener noreferrer"
-                  style={{ display:"block", width:"100%", background:"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:800, fontSize:16, borderRadius:16, padding:"16px 0", border:"none", cursor:"pointer", textAlign:"center", textDecoration:"none", marginTop:16, boxSizing:"border-box" }}>
-                  🔗 Ouvrir Leboncoin pour publier →
-                </a>
+              {/* STEP 2 — Photos & contact */}
+              {step===2 && (
+                <div style={{ filter: isPremium ? "none" : "blur(3px)", pointerEvents: isPremium ? "auto" : "none" }}>
+                  <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Photos (max 8)</label>
+                  <label style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:"2px dashed #e5e7eb", borderRadius:16, padding:"24px", cursor:"pointer", marginBottom:14, background:"#f9fafb" }}>
+                    <span style={{ fontSize:32, marginBottom:8 }}>📸</span>
+                    <span style={{ fontSize:14, color:"#6b7280", fontWeight:600 }}>Ajouter des photos</span>
+                    <span style={{ fontSize:12, color:"#9ca3af", marginTop:4 }}>{photos.length} photo(s) sélectionnée(s)</span>
+                    <input type="file" accept="image/*" multiple onChange={handlePhotos} style={{ display:"none" }} />
+                  </label>
+                  {photos.length > 0 && (
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:6, marginBottom:14 }}>
+                      {photos.map((p,i) => <img key={i} src={p.data} alt="" style={{ width:"100%", aspectRatio:"1", objectFit:"cover", borderRadius:8 }} />)}
+                    </div>
+                  )}
+                  <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Téléphone de contact</label>
+                  <input type="tel" value={tel} onChange={e=>setTel(e.target.value)} placeholder="Ex: 06 12 34 56 78"
+                    style={{ width:"100%", padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:16, marginBottom:16, boxSizing:"border-box", outline:"none" }} />
+                  <div style={{ display:"flex", gap:10 }}>
+                    <button onClick={()=>setStep(1)} style={{ flex:1, background:"white", color:"#6b7280", fontWeight:700, fontSize:15, borderRadius:16, padding:"14px 0", border:"2px solid #e5e7eb", cursor:"pointer" }}>← Retour</button>
+                    <button onClick={handlePublishAndContinue} disabled={publishing||!tel}
+                      style={{ flex:2, background:(!tel||publishing)?"#d1d5db":"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:800, fontSize:15, borderRadius:16, padding:"14px 0", border:"none", cursor:(!tel||publishing)?"not-allowed":"pointer" }}>
+                      {publishing ? "Publication..." : "🚀 Publier & voir les champs"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3 — Champs copiables */}
+              {step===3 && (
+                <div>
+                  <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:14, padding:"12px 16px", marginBottom:16, textAlign:"center" }}>
+                    <p style={{ fontSize:22, margin:"0 0 4px" }}>🎉</p>
+                    <p style={{ fontWeight:800, fontSize:14, color:"#166534", margin:0 }}>Annonce publiée sur CoteCars !</p>
+                    <p style={{ fontSize:12, color:"#15803d", margin:"2px 0 0" }}>Copiez chaque champ dans Leboncoin ci-dessous.</p>
+                  </div>
+
+                  <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                    {champs.map(c => (
+                      <div key={c.key} style={{ background:"white", borderRadius:14, border:"1px solid #f3f4f6", boxShadow:"0 1px 3px rgba(0,0,0,0.05)", overflow:"hidden" }}>
+                        <div style={{ padding:"10px 14px 6px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                          <span style={{ fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.08em" }}>{c.emoji} {c.label}</span>
+                          <button onClick={() => copyField(c.key, c.value)}
+                            style={{ fontSize:11, fontWeight:700, color: copiedKey===c.key ? EMERALD : "#6b7280", background: copiedKey===c.key ? "#ecfdf5" : "#f3f4f6", border:"none", borderRadius:8, padding:"4px 10px", cursor:"pointer", transition:"all 0.2s" }}>
+                            {copiedKey===c.key ? "✅ Copié !" : "📋 Copier"}
+                          </button>
+                        </div>
+                        <p style={{ margin:0, padding:"0 14px 12px", fontSize:15, fontWeight:700, color:"#111", wordBreak:"break-word" }}>{c.value}</p>
+                      </div>
+                    ))}
+
+                    {/* Bloc description IA */}
+                    <div style={{ background:"white", borderRadius:14, border:"1px solid #f3f4f6", boxShadow:"0 1px 3px rgba(0,0,0,0.05)", overflow:"hidden" }}>
+                      <div style={{ padding:"10px 14px 6px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                        <span style={{ fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.08em" }}>✨ Titre & Description IA</span>
+                        {lbcDescription && !lbcLoading && (
+                          <button onClick={() => copyField("tout", `${lbcDescription.titre}\n\n${lbcDescription.description}`)}
+                            style={{ fontSize:11, fontWeight:700, color: copiedKey==="tout" ? EMERALD : "#6b7280", background: copiedKey==="tout" ? "#ecfdf5" : "#f3f4f6", border:"none", borderRadius:8, padding:"4px 10px", cursor:"pointer" }}>
+                            {copiedKey==="tout" ? "✅ Copié !" : "📋 Tout copier"}
+                          </button>
+                        )}
+                      </div>
+                      {lbcLoading ? (
+                        <div style={{ padding:"14px 14px 16px", display:"flex", alignItems:"center", gap:10 }}>
+                          <div className="spinner" style={{ width:18, height:18, borderRadius:"50%", border:"2px solid #e5e7eb", borderTopColor:"#8B5CF6", flexShrink:0 }} />
+                          <p style={{ margin:0, fontSize:13, color:"#6b7280" }}>Génération de la description IA...</p>
+                        </div>
+                      ) : lbcDescription ? (
+                        <div style={{ padding:"0 14px 16px" }}>
+                          <p style={{ margin:"0 0 4px", fontSize:11, fontWeight:700, color:"#9ca3af", textTransform:"uppercase" }}>Titre</p>
+                          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                            <p style={{ flex:1, margin:0, fontSize:14, fontWeight:700, color:"#111" }}>{lbcDescription.titre}</p>
+                            <button onClick={() => copyField("titre", lbcDescription.titre)}
+                              style={{ fontSize:11, fontWeight:700, color: copiedKey==="titre" ? EMERALD : "#6b7280", background: copiedKey==="titre" ? "#ecfdf5" : "#f3f4f6", border:"none", borderRadius:8, padding:"4px 10px", cursor:"pointer", whiteSpace:"nowrap" }}>
+                              {copiedKey==="titre" ? "✅" : "📋"}
+                            </button>
+                          </div>
+                          <p style={{ margin:"0 0 4px", fontSize:11, fontWeight:700, color:"#9ca3af", textTransform:"uppercase" }}>Description</p>
+                          <textarea value={lbcDescription.description} onChange={e => setLbcDescription(d => ({...d, description: e.target.value}))}
+                            style={{ width:"100%", fontSize:13, color:"#111", border:"1px solid #e5e7eb", borderRadius:10, padding:"10px", boxSizing:"border-box", lineHeight:1.6, minHeight:140, resize:"vertical", outline:"none", fontFamily:"inherit" }} />
+                          <div style={{ display:"flex", gap:8, marginTop:8 }}>
+                            <button onClick={() => copyField("desc", lbcDescription.description)}
+                              style={{ flex:1, fontSize:12, fontWeight:700, color: copiedKey==="desc" ? EMERALD : "#6b7280", background: copiedKey==="desc" ? "#ecfdf5" : "#f3f4f6", border:"none", borderRadius:10, padding:"10px 0", cursor:"pointer" }}>
+                              {copiedKey==="desc" ? "✅ Copié !" : "📋 Copier description"}
+                            </button>
+                            <button onClick={() => { setLbcDescription(null); generateDescription(); }}
+                              style={{ fontSize:12, fontWeight:700, color:"#9ca3af", background:"#f9fafb", border:"1px solid #e5e7eb", borderRadius:10, padding:"10px 14px", cursor:"pointer" }}>
+                              🔄
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <a href="https://www.leboncoin.fr/deposer-une-annonce" target="_blank" rel="noopener noreferrer"
+                    style={{ display:"block", width:"100%", background:"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:800, fontSize:16, borderRadius:16, padding:"16px 0", border:"none", cursor:"pointer", textAlign:"center", textDecoration:"none", marginTop:16, boxSizing:"border-box" }}>
+                    🔗 Ouvrir Leboncoin pour publier →
+                  </a>
+                </div>
               )}
             </div>
           </div>
