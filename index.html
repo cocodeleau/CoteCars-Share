@@ -1860,7 +1860,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
       async function genererIA() {
         setIaLoading(true);
         try {
-          const prompt = "Tu es expert en rédaction d'annonces auto Leboncoin. Génère un titre accrocheur (max 70 caractères) et une description de vente percutante.\n\nVéhicule : "+marque+" "+modele+(finition?" "+finition:"")+"\nAnnée : "+annee+" | Kilométrage : "+(km?Number(km).toLocaleString("fr-FR")+" km":"non renseigné")+" | Carburant : "+toEL(energie)+" | Boîte : "+boite+" | Puissance : "+puissance+" ch\nPrix : "+(prix?Number(prix).toLocaleString("fr-FR")+" €":"non renseigné")+" | Localisation : "+localisation+" "+ville+"\nÉquipements : "+(equipements.length>0?equipements.join(", "):"non renseignés")+"\nDéfauts et qualités : "+(defauts||"non renseignés")+"\n\nRéponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après :\n{\"titre\":\"...\",\"description\":\"...\"}\n\nLe titre : accrocheur, sans répéter l'année dans le modèle, max 70 caractères.\nLa description : 120-150 mots, emojis pertinents, points forts du modèle, état, appel à l'action.";
+          const prompt = "Tu es expert en rédaction d'annonces auto Leboncoin. Rédige une description de vente percutante pour ce véhicule.\n\nVéhicule : "+marque+" "+modele+(finition?" "+finition:"")+"\nAnnée : "+annee+" | Kilométrage : "+(km?Number(km).toLocaleString("fr-FR")+" km":"non renseigné")+" | Carburant : "+toEL(energie)+" | Boîte : "+boite+" | Puissance : "+puissance+" ch\nPrix : "+(prix?Number(prix).toLocaleString("fr-FR")+" €":"non renseigné")+" | Localisation : "+localisation+" "+ville+"\nÉquipements : "+(equipements.length>0?equipements.join(", "):"non renseignés")+"\nDéfauts et qualités : "+(defauts||"non renseignés")+"\n\nRéponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après :\n{\"description\":\"...\"}\n\nDescription : 120-150 mots, emojis pertinents, points forts du modèle, état du véhicule, appel à l'action.";
           const res = await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
           const data = await res.json();
           const raw = (data.text||"").trim();
@@ -2057,7 +2057,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
                     ))}
                   </div>
 
-                  <label style={L}>🌿 Crit'Air — Certificat qualité de l'air</label>
+                  <label style={L}>🌿 Crit'Air <span style={{fontSize:10,color:"#9ca3af",fontWeight:400,textTransform:"none",letterSpacing:0}}>(facultatif)</span></label>
                   <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
                     {CRITAIRS.map(c=>(
                       <button key={c} onClick={()=>setCritair(critair===c?"":c)}
