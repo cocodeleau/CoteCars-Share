@@ -1762,15 +1762,13 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
       const { veh, nom, stats, finition: finitionInit } = result;
       const EMERALD = "#10B981";
       const isPremium = !!user;
-
-      // Infos véhicule depuis la recherche
       const anneeInit = veh.AWN_date_mise_en_circulation?.slice(-4) || "";
       const energieInit = veh.AWN_energie || "";
       const chInit = veh.AWN_puissance_KW ? Math.round(parseInt(veh.AWN_puissance_KW)*1.36) : "";
       const marqueInit = nom?.split(" ")[0] || "";
       const modeleInit = nom?.split(" ").slice(1).join(" ").replace(/\b(19|20)\d{2}\b/g,"").trim() || "";
       const boiteInit = result.gearbox === "1" ? "Manuelle" : result.gearbox === "2" ? "Automatique" : "";
-      const toEnergyLabel = e => ({ "GAZOLE":"Diesel","ESSENCE":"Essence","ELECTRIQUE":"Électrique","HYBRIDE":"Hybride" }[e] || e || "");
+      const toEL = e => ({"GAZOLE":"Diesel","ESSENCE":"Essence","ELECTRIQUE":"Électrique","HYBRIDE":"Hybride"})[e] || e || "";
 
       const [step, setStep] = React.useState(1);
 
@@ -1806,10 +1804,11 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
       const [titreIA, setTitreIA] = React.useState("");
       const [descriptionIA, setDescriptionIA] = React.useState("");
       const [iaLoading, setIaLoading] = React.useState(false);
+      const [published, setPublished] = React.useState(false);
 
       const TYPES = ["Voiture","Utilitaire","Moto","Scooter","Caravane / Camping-car","Bateau","Quad / SSV","Autre"];
-      const EQUIPEMENTS = ["Climatisation","Climatisation automatique","GPS / Navigation","Toit ouvrant","Toit panoramique","Sièges chauffants","Sièges en cuir","Caméra de recul","Aide au stationnement","Régulateur de vitesse","Limiteur de vitesse","Bluetooth","Apple CarPlay / Android Auto","Jantes alliage","Vitres électriques","Rétroviseurs électriques","Volant multifonction","Démarrage sans clé","Chargeur sans fil","Phares LED / Xénon","Attelage","Pack sport","Hayon électrique"];
-      const CRITAIR = ["0 — Électrique / Hydrogène","1 — Essence récent (Euro 5/6)","2 — Essence Euro 4 / Diesel Euro 6","3 — Diesel Euro 5","4 — Diesel Euro 4","5 — Diesel Euro 3"];
+      const EQUIPS = ["Climatisation","Climatisation automatique","GPS / Navigation","Toit ouvrant","Toit panoramique","Sièges chauffants","Sièges en cuir","Caméra de recul","Aide au stationnement","Régulateur de vitesse","Limiteur de vitesse","Bluetooth","Apple CarPlay / Android Auto","Jantes alliage","Vitres électriques","Rétroviseurs électriques","Volant multifonction","Démarrage sans clé","Chargeur sans fil","Phares LED / Xénon","Attelage","Pack sport","Hayon électrique"];
+      const CRITAIRS = ["0 — Électrique / Hydrogène","1 — Essence récent (Euro 5/6)","2 — Essence Euro 4 / Diesel Euro 6","3 — Diesel Euro 5","4 — Diesel Euro 4","5 — Diesel Euro 3"];
 
       const L = {display:"block",fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6};
       const I = {width:"100%",padding:"13px 14px",border:"2px solid #e5e7eb",borderRadius:12,fontSize:15,boxSizing:"border-box",outline:"none",fontFamily:"inherit"};
@@ -1858,6 +1857,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
             nbPlaces, nbPortes, critair, vin3, typeVehicule,
             stats:result.stats, createdAt:new Date().toISOString(), active:true, source:"lbc_flow",
           });
+          setPublished(true);
           setStep(3);
           genererIA();
         } catch(e) { alert("Erreur : "+e.message); }
@@ -1870,33 +1870,31 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
           const prompt = `Tu es expert en rédaction d'annonces auto Leboncoin. Génère un titre accrocheur (max 70 caractères) et une description de vente percutante.
 
 Véhicule : ${marque} ${modele}${finition?" "+finition:""}
-Année : ${annee} | Kilométrage : ${km?Number(km).toLocaleString("fr-FR")+" km":"non renseigné"} | Carburant : ${toEnergyLabel(energie)} | Boîte : ${boite} | Puissance : ${puissance} ch
+Année : ${annee} | Kilométrage : ${km?Number(km).toLocaleString("fr-FR")+" km":"non renseigné"} | Carburant : ${toEL(energie)} | Boîte : ${boite} | Puissance : ${puissance} ch
 Prix : ${prix?Number(prix).toLocaleString("fr-FR")+" €":"non renseigné"} | Localisation : ${localisation} ${ville}
 Équipements : ${equipements.length>0?equipements.join(", "):"non renseignés"}
 Défauts et qualités : ${defauts||"non renseignés"}
 
-Instructions :
-- Titre : accrocheur, sans répéter l'année dans le modèle, max 70 caractères
-- Description : 120-150 mots, emojis pertinents, points forts du modèle, état du véhicule, appel à l'action
-- Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après :
-{"titre":"...","description":"..."}`;
+Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après :
+{"titre":"...","description":"..."}
+
+Le titre : accrocheur, sans répéter l'année dans le modèle, max 70 caractères.
+La description : 120-150 mots, emojis pertinents, points forts du modèle, état, appel à l'action.`;
 
           const res = await fetch("https://cotecars-v2.vercel.app/api/gemini",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({prompt})
+            method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({prompt})
           });
           const data = await res.json();
           const raw = (data.text||"").trim();
           const start = raw.indexOf("{");
           const end = raw.lastIndexOf("}");
-          if (start === -1 || end === -1) throw new Error("Pas de JSON");
-          const parsed = JSON.parse(raw.slice(start, end+1));
-          setTitreIA(parsed.titre || "");
-          setDescriptionIA(parsed.description || "");
+          if (start===-1||end===-1) throw new Error("no json");
+          const parsed = JSON.parse(raw.slice(start,end+1));
+          setTitreIA(parsed.titre||"");
+          setDescriptionIA(parsed.description||"");
         } catch(e) {
-          setTitreIA(`${marque} ${modele} · ${annee}${km?" · "+Number(km).toLocaleString("fr-FR")+" km":""}`);
-          setDescriptionIA("La génération IA a échoué. Réessayez avec le bouton 🔄");
+          setTitreIA(`${marque} ${modele}${annee?" · "+annee:""}${km?" · "+Number(km).toLocaleString("fr-FR")+" km":""}`);
+          setDescriptionIA("La génération IA a rencontré une erreur. Vous pouvez réessayer avec le bouton 🔄");
         }
         setIaLoading(false);
       }
@@ -1906,24 +1904,25 @@ Instructions :
       }
 
       function CopyBtn({ k, val }) {
+        if (!val||!String(val).trim()) return null;
         return (
           <button onClick={()=>copy(k,val)}
-            style={{fontSize:11,fontWeight:700,color:copiedKey===k?EMERALD:"#6b7280",background:copiedKey===k?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer",transition:"all 0.2s",whiteSpace:"nowrap"}}>
+            style={{fontSize:11,fontWeight:700,color:copiedKey===k?EMERALD:"#6b7280",background:copiedKey===k?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer",whiteSpace:"nowrap"}}>
             {copiedKey===k?"✅ Copié":"📋 Copier"}
           </button>
         );
       }
 
-      function Card({ emoji, label, val, copiable=true, badge=null }) {
-        if (!val || !String(val).trim()) return null;
+      function Card({ k, emoji, label, val, lbc=false }) {
+        if (!val||!String(val).trim()) return null;
         return (
           <div style={{background:"white",borderRadius:14,border:"1px solid #f3f4f6",boxShadow:"0 1px 3px rgba(0,0,0,0.05)",overflow:"hidden",marginBottom:10}}>
             <div style={{padding:"10px 14px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>
                 {emoji} {label}
-                {badge && <span style={{marginLeft:6,fontSize:9,fontWeight:800,color:"#F97316",background:"#FFF7ED",padding:"1px 5px",borderRadius:4}}>{badge}</span>}
+                {lbc&&<span style={{marginLeft:6,fontSize:9,fontWeight:800,color:"#F97316",background:"#FFF7ED",padding:"1px 5px",borderRadius:4}}>LISTE LBC</span>}
               </span>
-              {copiable && <CopyBtn k={label} val={String(val)} />}
+              {!lbc && <CopyBtn k={k} val={String(val)} />}
             </div>
             <p style={{margin:0,padding:"0 14px 12px",fontSize:16,fontWeight:700,color:"#111",wordBreak:"break-word"}}>{val}</p>
           </div>
@@ -1931,7 +1930,7 @@ Instructions :
       }
 
       const photosLbc = photos.slice(0,3);
-      const stepTitle = step===1?"📝 Infos du véhicule":step===2?"📋 Détails & contact":"🔗 Champs Leboncoin prêts !";
+      const stepTitle = ["","📝 Infos du véhicule","📋 Détails & contact","🔗 Champs Leboncoin prêts !"][step];
 
       return (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:3000,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
@@ -1978,14 +1977,15 @@ Instructions :
               {/* ══ ÉTAPE 1 ══ */}
               {step===1 && (
                 <div style={{filter:isPremium?"none":"blur(3px)",pointerEvents:isPremium?"auto":"none"}}>
+                  <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:12,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#166534",fontWeight:600}}>
+                    🚗 {nom}{finitionInit?` · ${finitionInit}`:""} · {anneeInit} · {toEL(energieInit)} · {chInit} ch
+                  </div>
 
-                  {/* Type véhicule */}
                   <label style={L}>🚘 Type de véhicule <span style={{fontSize:9,color:"#F97316",fontWeight:700}}>LISTE LBC</span></label>
                   <select value={typeVehicule} onChange={e=>setTypeVehicule(e.target.value)} style={{...I,marginBottom:16,background:"white",cursor:"pointer"}}>
                     {TYPES.map(t=><option key={t}>{t}</option>)}
                   </select>
 
-                  {/* Photos */}
                   <label style={L}>📸 Photos</label>
                   <div style={{background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:10,padding:"8px 12px",fontSize:12,color:"#92400E",marginBottom:10}}>
                     ℹ️ Les 3 premières photos iront sur Leboncoin. Vous pouvez en ajouter plus pour CoteCars.
@@ -2007,7 +2007,6 @@ Instructions :
                     </div>
                   )}
 
-                  {/* Plaque */}
                   <label style={L}>🔍 Plaque d'immatriculation</label>
                   <div style={{display:"flex",gap:8,marginBottom:4}}>
                     <input value={plaqueInput} onChange={e=>setPlaqueInput(e.target.value.toUpperCase())} placeholder="AB-123-CD" style={{...I,flex:1,marginBottom:0}}/>
@@ -2026,11 +2025,10 @@ Instructions :
                     ))}
                     <div>
                       <label style={L}>Énergie <span style={{fontSize:9,color:"#F97316",fontWeight:700}}>LISTE LBC</span></label>
-                      <input value={toEnergyLabel(energie)} readOnly style={{...I,background:"#f9fafb",color:"#6b7280"}}/>
+                      <input value={toEL(energie)} readOnly style={{...I,background:"#f9fafb",color:"#6b7280"}}/>
                     </div>
                   </div>
 
-                  {/* Boîte */}
                   <label style={L}>⚙️ Boîte de vitesse <span style={{fontSize:9,color:"#F97316",fontWeight:700}}>LISTE LBC</span></label>
                   <div style={{display:"flex",gap:8,marginBottom:16}}>
                     {["Manuelle","Automatique"].map(b=>(
@@ -2041,7 +2039,6 @@ Instructions :
                     ))}
                   </div>
 
-                  {/* Places / Portes / Puissance */}
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
                     <div>
                       <label style={L}>🪑 Places <span style={{fontSize:8,color:"#F97316",fontWeight:700}}>LBC</span></label>
@@ -2061,7 +2058,6 @@ Instructions :
                     </div>
                   </div>
 
-                  {/* Finition */}
                   <label style={L}>✨ Finition (facultatif)</label>
                   <input value={finition} onChange={e=>setFinition(e.target.value)} placeholder="Ex: AMG Line, GT, Allure..." style={{...I,marginBottom:20}}/>
 
@@ -2076,14 +2072,12 @@ Instructions :
               {step===2 && (
                 <div style={{filter:isPremium?"none":"blur(3px)",pointerEvents:isPremium?"auto":"none"}}>
 
-                  {/* Kilométrage */}
                   <label style={L}>🛣️ Kilométrage</label>
                   <input type="number" value={km} onChange={e=>setKm(e.target.value)} placeholder="Ex: 95000" style={{...I,marginBottom:16}}/>
 
-                  {/* Équipements */}
                   <label style={L}>🔧 Équipements & options</label>
                   <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
-                    {EQUIPEMENTS.map(eq=>(
+                    {EQUIPS.map(eq=>(
                       <button key={eq} onClick={()=>setEquipements(prev=>prev.includes(eq)?prev.filter(e=>e!==eq):[...prev,eq])}
                         style={{padding:"7px 12px",borderRadius:999,border:`2px solid ${equipements.includes(eq)?"#F97316":"#e5e7eb"}`,background:equipements.includes(eq)?"#FFF7ED":"white",color:equipements.includes(eq)?"#F97316":"#6b7280",fontSize:12,fontWeight:600,cursor:"pointer"}}>
                         {eq}
@@ -2091,10 +2085,9 @@ Instructions :
                     ))}
                   </div>
 
-                  {/* Crit'Air */}
                   <label style={L}>🌿 Crit'Air — Certificat qualité de l'air</label>
                   <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
-                    {CRITAIR.map(c=>(
+                    {CRITAIRS.map(c=>(
                       <button key={c} onClick={()=>setCritair(critair===c?"":c)}
                         style={{padding:"10px 14px",borderRadius:12,border:`2px solid ${critair===c?"#10B981":"#e5e7eb"}`,background:critair===c?"#ecfdf5":"white",color:critair===c?"#10B981":"#6b7280",fontSize:13,fontWeight:600,cursor:"pointer",textAlign:"left"}}>
                         {critair===c?"✅ ":"◯ "}{c}
@@ -2102,17 +2095,14 @@ Instructions :
                     ))}
                   </div>
 
-                  {/* Code VIN */}
                   <label style={L}>🔢 Code VIN — 3 derniers chiffres (facultatif)</label>
                   <input value={vin3} onChange={e=>setVin3(e.target.value.slice(0,3).toUpperCase())} placeholder="Ex: 4A2" maxLength={3} style={{...I,marginBottom:16,letterSpacing:"0.2em",fontWeight:700}}/>
 
-                  {/* Défauts & qualités */}
                   <label style={L}>📝 Défauts & qualités du véhicule</label>
-                  <p style={{fontSize:12,color:"#6b7280",margin:"-4px 0 8px",lineHeight:1.5}}>Notez les défauts (rayures, pannes...) et les points forts (entretien suivi, première main...). L'IA rédigera la description complète.</p>
-                  <textarea value={defauts} onChange={e=>setDefauts(e.target.value)} placeholder="Ex: Légère rayure aile avant. Entretien suivi chez concessionnaire. Première main. Climatisation révisée."
+                  <p style={{fontSize:12,color:"#6b7280",margin:"-4px 0 8px",lineHeight:1.5}}>Indiquez les défauts (rayures, pannes...) et les points forts (entretien suivi, première main...). L'IA rédigera la description complète.</p>
+                  <textarea value={defauts} onChange={e=>setDefauts(e.target.value)} placeholder="Ex: Légère rayure aile avant. Entretien suivi concessionnaire. Première main. Clim révisée."
                     style={{...I,minHeight:90,resize:"vertical",marginBottom:16}}/>
 
-                  {/* Prix */}
                   <label style={L}>💰 Prix de vente (€)</label>
                   <input type="number" value={prix} onChange={e=>setPrix(e.target.value)} placeholder="Ex: 12500" style={{...I,fontSize:18,fontWeight:700,marginBottom:10}}/>
                   {stats&&(
@@ -2126,14 +2116,12 @@ Instructions :
                     </div>
                   )}
 
-                  {/* Localisation */}
                   <label style={L}>📍 Localisation</label>
                   <div style={{display:"flex",gap:8,marginBottom:16}}>
                     <input type="text" value={localisation} onChange={e=>{ const val=e.target.value.replace(/\D/g,"").slice(0,5); setLocalisation(val); if(val.length===5){fetch(`https://geo.api.gouv.fr/communes?codePostal=${val}&fields=nom&limit=1`).then(r=>r.json()).then(d=>{if(d?.[0]?.nom)setVille(d[0].nom);}).catch(()=>{});} }} placeholder="Code postal" maxLength={5} style={{...I,width:"40%"}}/>
                     <input type="text" value={ville} onChange={e=>setVille(e.target.value)} placeholder="Ville" style={{...I,width:"60%"}}/>
                   </div>
 
-                  {/* Téléphone */}
                   <label style={L}>📞 Numéro de téléphone</label>
                   <input type="tel" value={tel} onChange={e=>setTel(e.target.value)} placeholder="Ex: 06 12 34 56 78" style={{...I,marginBottom:20}}/>
 
@@ -2147,57 +2135,55 @@ Instructions :
                 </div>
               )}
 
-              {/* ══ ÉTAPE 3 — Champs copiables ══ */}
+              {/* ══ ÉTAPE 3 ══ */}
               {step===3 && (
                 <div>
-                  {/* Succès */}
                   <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:14,padding:"12px 16px",marginBottom:16,textAlign:"center"}}>
                     <p style={{fontSize:22,margin:"0 0 4px"}}>🎉</p>
                     <p style={{fontWeight:800,fontSize:14,color:"#166534",margin:0}}>Annonce publiée sur CoteCars !</p>
                     <p style={{fontSize:12,color:"#15803d",margin:"4px 0 0"}}>Copiez chaque champ ci-dessous dans Leboncoin.</p>
                   </div>
 
-                  {/* Titre IA — en premier */}
+                  {/* Titre IA en premier */}
                   <div style={{background:"white",borderRadius:14,border:"2px solid #F97316",boxShadow:"0 1px 3px rgba(0,0,0,0.05)",overflow:"hidden",marginBottom:10}}>
                     <div style={{padding:"10px 14px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>📌 Titre de l'annonce</span>
-                      {titreIA && <CopyBtn k="titre_ia" val={titreIA} />}
+                      {titreIA&&!iaLoading&&<button onClick={()=>copy("titre",titreIA)} style={{fontSize:11,fontWeight:700,color:copiedKey==="titre"?EMERALD:"#6b7280",background:copiedKey==="titre"?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer"}}>{copiedKey==="titre"?"✅ Copié":"📋 Copier"}</button>}
                     </div>
-                    {iaLoading ? (
+                    {iaLoading?(
                       <div style={{padding:"10px 14px 14px",display:"flex",alignItems:"center",gap:8}}>
                         <div className="spinner" style={{width:16,height:16,borderRadius:"50%",border:"2px solid #e5e7eb",borderTopColor:"#8B5CF6",flexShrink:0}}/>
                         <p style={{margin:0,fontSize:13,color:"#9ca3af"}}>Génération IA en cours...</p>
                       </div>
-                    ) : (
+                    ):(
                       <p style={{margin:0,padding:"0 14px 12px",fontSize:16,fontWeight:700,color:"#111"}}>{titreIA}</p>
                     )}
                   </div>
 
-                  {/* Champs copiables dans l'ordre */}
-                  <Card emoji="🚘" label="Type de véhicule" val={typeVehicule} copiable={false} badge="LISTE LBC"/>
-                  <Card emoji="🏷️" label="Marque" val={marque} copiable={false} badge="LISTE LBC"/>
-                  <Card emoji="🚗" label="Modèle" val={modele} copiable={false} badge="LISTE LBC"/>
-                  <Card emoji="📅" label="Année" val={annee}/>
-                  <Card emoji="⛽" label="Carburant" val={toEnergyLabel(energie)} copiable={false} badge="LISTE LBC"/>
-                  <Card emoji="⚙️" label="Boîte de vitesse" val={boite} copiable={false} badge="LISTE LBC"/>
-                  <Card emoji="🪑" label="Nombre de places" val={nbPlaces} copiable={false} badge="LISTE LBC"/>
-                  <Card emoji="🚪" label="Nombre de portes" val={nbPortes} copiable={false} badge="LISTE LBC"/>
-                  <Card emoji="⚡️" label="Puissance (ch)" val={puissance}/>
-                  <Card emoji="✨" label="Finition / Version" val={finition}/>
-                  <Card emoji="🛣️" label="Kilométrage (km)" val={km?String(Number(km)):""}/>
-                  <Card emoji="🔧" label="Équipements" val={equipements.join(", ")}/>
-                  <Card emoji="🌿" label="Crit'Air" val={critair}/>
-                  <Card emoji="🔢" label="Code VIN (3 derniers)" val={vin3}/>
-                  <Card emoji="💰" label="Prix (€)" val={prix}/>
-                  <Card emoji="📍" label="Localisation" val={`${localisation}${ville?" "+ville:""}`}/>
-                  <Card emoji="📞" label="Téléphone" val={tel}/>
+                  <Card k="type"      emoji="🚘" label="Type de véhicule"      val={typeVehicule}        lbc={true}/>
+                  <Card k="marque"    emoji="🏷️" label="Marque"                val={marque}              lbc={true}/>
+                  <Card k="modele"    emoji="🚗" label="Modèle"                val={modele}              lbc={true}/>
+                  <Card k="annee"     emoji="📅" label="Année"                 val={annee}/>
+                  <Card k="energie"   emoji="⛽" label="Carburant"             val={toEL(energie)}       lbc={true}/>
+                  <Card k="boite"     emoji="⚙️" label="Boîte de vitesse"      val={boite}               lbc={true}/>
+                  <Card k="places"    emoji="🪑" label="Nombre de places"      val={nbPlaces}            lbc={true}/>
+                  <Card k="portes"    emoji="🚪" label="Nombre de portes"      val={nbPortes}            lbc={true}/>
+                  <Card k="puissance" emoji="⚡️" label="Puissance (ch)"        val={puissance}/>
+                  <Card k="finition"  emoji="✨" label="Finition / Version"    val={finition}/>
+                  <Card k="km"        emoji="🛣️" label="Kilométrage (km)"      val={km?String(Number(km)):""}/>
+                  <Card k="equips"    emoji="🔧" label="Équipements"           val={equipements.join(", ")}/>
+                  <Card k="critair"   emoji="🌿" label="Crit'Air"              val={critair}/>
+                  <Card k="vin3"      emoji="🔢" label="Code VIN (3 derniers)" val={vin3}/>
+                  <Card k="prix"      emoji="💰" label="Prix (€)"              val={prix}/>
+                  <Card k="loc"       emoji="📍" label="Localisation"          val={`${localisation}${ville?" "+ville:""}`}/>
+                  <Card k="tel"       emoji="📞" label="Téléphone"             val={tel}/>
 
                   {/* Description IA */}
                   <div style={{background:"white",borderRadius:14,border:"1px solid #f3f4f6",boxShadow:"0 1px 3px rgba(0,0,0,0.05)",overflow:"hidden",marginBottom:10}}>
                     <div style={{padding:"10px 14px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>✨ Description IA</span>
                       <div style={{display:"flex",gap:6}}>
-                        {descriptionIA&&!iaLoading&&<CopyBtn k="desc_ia" val={descriptionIA}/>}
+                        {descriptionIA&&!iaLoading&&<button onClick={()=>copy("desc",descriptionIA)} style={{fontSize:11,fontWeight:700,color:copiedKey==="desc"?EMERALD:"#6b7280",background:copiedKey==="desc"?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 10px",cursor:"pointer"}}>{copiedKey==="desc"?"✅ Copié":"📋 Copier"}</button>}
                         {!iaLoading&&<button onClick={genererIA} style={{fontSize:11,fontWeight:700,color:"#9ca3af",background:"#f3f4f6",border:"none",borderRadius:8,padding:"5px 10px",cursor:"pointer"}}>🔄</button>}
                       </div>
                     </div>
