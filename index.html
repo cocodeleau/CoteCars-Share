@@ -1763,8 +1763,9 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
       const isPremium = !!user;
 
       const [step, setStep] = React.useState(1);
+      const [copiedKey, setCopiedKey] = React.useState(null);
 
-      // ── Étape 1 ──
+      // Étape 1
       const [titreAnnonce, setTitreAnnonce] = React.useState("");
       const [typeVehicule, setTypeVehicule] = React.useState("Voiture");
       const [photos, setPhotos] = React.useState([]);
@@ -1780,7 +1781,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
       const [puissance, setPuissance] = React.useState(veh?.AWN_puissance_KW ? String(Math.round(parseInt(veh.AWN_puissance_KW)*1.36)) : "");
       const [finition, setFinition] = React.useState(finitionInit || "");
 
-      // ── Étape 2 ──
+      // Étape 2
       const [km, setKm] = React.useState(kmProp ? String(kmProp) : "");
       const [equipements, setEquipements] = React.useState([]);
       const [critair, setCritair] = React.useState("");
@@ -1791,9 +1792,8 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
       const [ville, setVille] = React.useState("");
       const [tel, setTel] = React.useState("");
 
-      // ── Étape 3 ──
+      // Étape 3
       const [publishing, setPublishing] = React.useState(false);
-      const [copiedKey, setCopiedKey] = React.useState(null);
       const [lbcDescription, setLbcDescription] = React.useState(null);
       const [lbcLoading, setLbcLoading] = React.useState(false);
 
@@ -1808,13 +1808,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
       }, []);
 
       const TYPES_VEHICULE = ["Voiture","Utilitaire","Moto","Scooter","Caravane / Camping-car","Bateau","Quad / SSV","Autre"];
-      const EQUIPEMENTS_LIST = [
-        "Climatisation","Climatisation automatique","GPS / Navigation","Toit ouvrant","Toit panoramique",
-        "Sièges chauffants","Sièges en cuir","Caméra de recul","Aide au stationnement","Régulateur de vitesse",
-        "Limiteur de vitesse","Bluetooth","Apple CarPlay / Android Auto","Jantes alliage","Vitres électriques",
-        "Rétroviseurs électriques","Volant multifonction","Démarrage sans clé","Chargeur sans fil",
-        "Phares LED / Xénon","Attelage","Pack sport","Hayon électrique"
-      ];
+      const EQUIPEMENTS_LIST = ["Climatisation","Climatisation automatique","GPS / Navigation","Toit ouvrant","Toit panoramique","Sièges chauffants","Sièges en cuir","Caméra de recul","Aide au stationnement","Régulateur de vitesse","Limiteur de vitesse","Bluetooth","Apple CarPlay / Android Auto","Jantes alliage","Vitres électriques","Rétroviseurs électriques","Volant multifonction","Démarrage sans clé","Chargeur sans fil","Phares LED / Xénon","Attelage","Pack sport","Hayon électrique"];
       const CRITAIR_LIST = ["0 — Électrique / Hydrogène","1 — Essence récent (Euro 5/6)","2 — Essence Euro 4 / Diesel Euro 6","3 — Diesel Euro 5","4 — Diesel Euro 4","5 — Diesel Euro 3"];
 
       async function handleAutoFill() {
@@ -1887,7 +1881,7 @@ Année : ${annee} | Km : ${km?Number(km).toLocaleString("fr-FR")+" km":"N/R"} | 
 Prix : ${prix?Number(prix).toLocaleString("fr-FR")+" €":"N/R"} | Localisation : ${localisation} ${ville}
 Équipements : ${equipements.join(", ")||"N/R"} | Description vendeur : ${description||"Aucune"}
 Réponds UNIQUEMENT en JSON sans markdown : {"titre":"...","description":"..."}
-Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points forts du modèle, appel à l'action.`;
+Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points forts, appel à l'action.`;
           const res = await fetch("https://cotecars-v2.vercel.app/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
           const data = await res.json();
           const parsed = JSON.parse((data.text||"").trim().replace(/```json|```/g,""));
@@ -1899,39 +1893,42 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
       }
 
       const photosLbc = photos.slice(0,3);
+      const stepTitle = step===1?"📝 Infos du véhicule":step===2?"📋 Détails & contact":"🔗 Champs Leboncoin prêts !";
 
+      // Champs copiables — uniquement ceux qui ont une valeur
+      // Liste LBC = pas de bouton copier, juste info
+      const lbcLists = ["marque","modele","energie","boite","places","portes","type"];
       const champsCopiables = [
-        {key:"titre",   label:"Titre de l'annonce",  emoji:"📌", value:titreAnnonce},
-        {key:"marque",  label:"Marque",               emoji:"🏷️", value:marque},
-        {key:"modele",  label:"Modèle",               emoji:"🚗", value:modele},
-        {key:"annee",   label:"Année",                emoji:"📅", value:annee},
-        {key:"energie", label:"Carburant",            emoji:"⛽", value:energieLabel},
-        {key:"boite",   label:"Boîte de vitesse",     emoji:"⚙️", value:boite},
-        {key:"places",  label:"Nombre de places",     emoji:"🪑", value:nbPlaces},
-        {key:"portes",  label:"Nombre de portes",     emoji:"🚪", value:nbPortes},
-        {key:"puissance",label:"Puissance (ch)",      emoji:"⚡️", value:puissance},
-        {key:"finition",label:"Finition / Version",   emoji:"✨", value:finition},
-        {key:"km",      label:"Kilométrage (km)",      emoji:"🛣️", value:km?String(Number(km)):""},
-        {key:"equipements",label:"Équipements",       emoji:"🔧", value:equipements.join(", ")},
-        {key:"critair", label:"Crit'Air",             emoji:"🌿", value:critair},
-        {key:"vin3",    label:"Code VIN (3 derniers)",emoji:"🔢", value:vin3},
-        {key:"description",label:"Description",       emoji:"📝", value:description},
-        {key:"prix",    label:"Prix (€)",             emoji:"💰", value:prix},
-        {key:"loc",     label:"Localisation",         emoji:"📍", value:`${localisation}${ville?" "+ville:""}`},
-        {key:"tel",     label:"Téléphone",            emoji:"📞", value:tel},
+        {key:"titre",     label:"Titre de l'annonce",   emoji:"📌", value:titreAnnonce},
+        {key:"type",      label:"Type de véhicule",      emoji:"🚘", value:typeVehicule,      listeLBC:true},
+        {key:"marque",    label:"Marque",                emoji:"🏷️", value:marque,            listeLBC:true},
+        {key:"modele",    label:"Modèle",                emoji:"🚗", value:modele,            listeLBC:true},
+        {key:"annee",     label:"Année",                 emoji:"📅", value:annee},
+        {key:"energie",   label:"Carburant",             emoji:"⛽", value:energieLabel,      listeLBC:true},
+        {key:"boite",     label:"Boîte de vitesse",      emoji:"⚙️", value:boite,             listeLBC:true},
+        {key:"places",    label:"Nombre de places",      emoji:"🪑", value:nbPlaces,          listeLBC:true},
+        {key:"portes",    label:"Nombre de portes",      emoji:"🚪", value:nbPortes,          listeLBC:true},
+        {key:"puissance", label:"Puissance (ch)",        emoji:"⚡️", value:puissance},
+        {key:"finition",  label:"Finition / Version",    emoji:"✨", value:finition},
+        {key:"km",        label:"Kilométrage (km)",       emoji:"🛣️", value:km?String(Number(km)):""},
+        {key:"equipements",label:"Équipements",          emoji:"🔧", value:equipements.join(", ")},
+        {key:"critair",   label:"Crit'Air",              emoji:"🌿", value:critair},
+        {key:"vin3",      label:"Code VIN (3 derniers)", emoji:"🔢", value:vin3},
+        {key:"description",label:"Description",          emoji:"📝", value:description},
+        {key:"prix",      label:"Prix (€)",              emoji:"💰", value:prix},
+        {key:"loc",       label:"Localisation",          emoji:"📍", value:`${localisation}${ville?" "+ville:""}`},
+        {key:"tel",       label:"Téléphone",             emoji:"📞", value:tel},
       ].filter(c=>c.value&&c.value.trim()!=="");
 
       const labelStyle = {display:"block",fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6};
       const inputStyle = {width:"100%",padding:"13px 14px",border:"2px solid #e5e7eb",borderRadius:12,fontSize:15,boxSizing:"border-box",outline:"none",fontFamily:"inherit"};
-
-      const stepTitle = step===1?"📝 Infos du véhicule":step===2?"📋 Détails & contact":"🔗 Champs Leboncoin prêts !";
 
       return (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:3000,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
           onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
           <div style={{background:"#f9fafb",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:480,maxHeight:"93vh",overflowY:"auto",paddingBottom:48}}>
 
-            {/* Header sticky */}
+            {/* Header */}
             <div style={{background:"white",borderRadius:"24px 24px 0 0",padding:"18px 20px 14px",position:"sticky",top:0,zIndex:10,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                 <span style={{fontWeight:800,fontSize:16,color:"#111"}}>{stepTitle}</span>
@@ -1973,21 +1970,14 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
               {step===1 && (
                 <div style={{filter:isPremium?"none":"blur(3px)",pointerEvents:isPremium?"auto":"none"}}>
 
-                  {/* 1. Titre */}
                   <label style={labelStyle}>📌 Titre de l'annonce</label>
-                  <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center"}}>
-                    <input value={titreAnnonce} onChange={e=>setTitreAnnonce(e.target.value)} placeholder="Ex: Mercedes Classe A 200d — Très bon état" style={{...inputStyle,flex:1,marginBottom:0}}/>
-                    {titreAnnonce&&<button onClick={()=>copyField("titre",titreAnnonce)} style={{padding:"13px 12px",borderRadius:12,border:"none",background:copiedKey==="titre"?"#ecfdf5":"#f3f4f6",color:copiedKey==="titre"?EMERALD:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{copiedKey==="titre"?"✅":"📋"}</button>}
-                  </div>
+                  <input value={titreAnnonce} onChange={e=>setTitreAnnonce(e.target.value)} placeholder="Ex: Mercedes Classe A 200d — Très bon état" style={{...inputStyle,marginBottom:16}}/>
 
-                  {/* 2. Type de véhicule */}
-                  <label style={labelStyle}>🚘 Type de véhicule</label>
-                  <select value={typeVehicule} onChange={e=>setTypeVehicule(e.target.value)}
-                    style={{...inputStyle,marginBottom:16,background:"white",cursor:"pointer"}}>
+                  <label style={labelStyle}>🚘 Type de véhicule <span style={{fontSize:9,color:"#F97316",fontWeight:600}}>LISTE LEBONCOIN</span></label>
+                  <select value={typeVehicule} onChange={e=>setTypeVehicule(e.target.value)} style={{...inputStyle,marginBottom:16,background:"white",cursor:"pointer"}}>
                     {TYPES_VEHICULE.map(t=><option key={t}>{t}</option>)}
                   </select>
 
-                  {/* 3. Photos */}
                   <label style={labelStyle}>📸 Photos</label>
                   <div style={{background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:10,padding:"8px 12px",fontSize:12,color:"#92400E",marginBottom:10}}>
                     ℹ️ Les 3 premières photos iront sur Leboncoin. Vous pouvez en ajouter plus pour CoteCars.
@@ -2009,35 +1999,36 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
                     </div>
                   )}
 
-                  {/* 4. Plaque */}
                   <label style={labelStyle}>🔍 Plaque d'immatriculation</label>
                   <div style={{display:"flex",gap:8,marginBottom:4}}>
-                    <input value={plaqueInput} onChange={e=>setPlaqueInput(e.target.value.toUpperCase())} placeholder="AB-123-CD"
-                      style={{...inputStyle,flex:1,marginBottom:0}}/>
+                    <input value={plaqueInput} onChange={e=>setPlaqueInput(e.target.value.toUpperCase())} placeholder="AB-123-CD" style={{...inputStyle,flex:1,marginBottom:0}}/>
                     <button onClick={handleAutoFill} disabled={plaqueLoading}
                       style={{padding:"0 16px",background:"#111",color:"white",fontWeight:700,fontSize:13,borderRadius:12,border:"none",cursor:"pointer",whiteSpace:"nowrap"}}>
                       {plaqueLoading?"...":"Valider"}
                     </button>
                   </div>
                   <p style={{fontSize:11,color:"#9ca3af",margin:"0 0 12px"}}>Marque, modèle, année et énergie remplis automatiquement.</p>
+
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-                    {[{l:"Marque",v:marque,s:setMarque,k:"marque",lbc:true},{l:"Modèle",v:modele,s:setModele,k:"modele",lbc:true},{l:"Année",v:annee,s:setAnnee,k:"annee",lbc:false}].map(f=>(
-                      <div key={f.l}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                          <label style={{...labelStyle,marginBottom:0}}>{f.l} {f.lbc&&<span style={{fontSize:9,color:"#9ca3af"}}>(liste LBC)</span>}</label>
-                          {!f.lbc&&f.v&&<button onClick={()=>copyField(f.k,f.v)} style={{padding:"2px 8px",borderRadius:6,border:"none",background:copiedKey===f.k?"#ecfdf5":"#f3f4f6",color:copiedKey===f.k?EMERALD:"#6b7280",fontWeight:700,fontSize:10,cursor:"pointer"}}>{copiedKey===f.k?"✅":"📋"}</button>}
-                        </div>
-                        <input value={f.v} onChange={e=>f.s(e.target.value)} style={inputStyle}/>
-                      </div>
-                    ))}
                     <div>
-                      <label style={labelStyle}>Énergie <span style={{fontSize:9,color:"#9ca3af"}}>(liste LBC)</span></label>
+                      <label style={labelStyle}>Marque <span style={{fontSize:9,color:"#F97316",fontWeight:600}}>LISTE LBC</span></label>
+                      <input value={marque} onChange={e=>setMarque(e.target.value)} style={inputStyle}/>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Modèle <span style={{fontSize:9,color:"#F97316",fontWeight:600}}>LISTE LBC</span></label>
+                      <input value={modele} onChange={e=>setModele(e.target.value)} style={inputStyle}/>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Année</label>
+                      <input value={annee} onChange={e=>setAnnee(e.target.value)} style={inputStyle}/>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Énergie <span style={{fontSize:9,color:"#F97316",fontWeight:600}}>LISTE LBC</span></label>
                       <input value={energieLabel} readOnly style={{...inputStyle,background:"#f9fafb",color:"#6b7280"}}/>
                     </div>
                   </div>
 
-                  {/* 5. Boîte */}
-                  <label style={labelStyle}>⚙️ Boîte de vitesse</label>
+                  <label style={labelStyle}>⚙️ Boîte de vitesse <span style={{fontSize:9,color:"#F97316",fontWeight:600}}>LISTE LBC</span></label>
                   <div style={{display:"flex",gap:8,marginBottom:16}}>
                     {["Manuelle","Automatique"].map(b=>(
                       <button key={b} onClick={()=>setBoite(b)}
@@ -2047,35 +2038,27 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
                     ))}
                   </div>
 
-                  {/* 6. Places / Portes / Puissance */}
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
                     <div>
-                      <label style={labelStyle}>🪑 Places</label>
+                      <label style={labelStyle}>🪑 Places <span style={{fontSize:8,color:"#F97316",fontWeight:600}}>LBC</span></label>
                       <select value={nbPlaces} onChange={e=>setNbPlaces(e.target.value)} style={{...inputStyle,padding:"13px 10px",background:"white"}}>
                         {["2","3","4","5","6","7","8","9"].map(n=><option key={n}>{n}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label style={labelStyle}>🚪 Portes</label>
+                      <label style={labelStyle}>🚪 Portes <span style={{fontSize:8,color:"#F97316",fontWeight:600}}>LBC</span></label>
                       <select value={nbPortes} onChange={e=>setNbPortes(e.target.value)} style={{...inputStyle,padding:"13px 10px",background:"white"}}>
                         {["2","3","4","5"].map(n=><option key={n}>{n}</option>)}
                       </select>
                     </div>
                     <div>
                       <label style={labelStyle}>⚡️ Ch</label>
-                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                        <input type="number" value={puissance} onChange={e=>setPuissance(e.target.value)} style={{...inputStyle,flex:1,marginBottom:0}}/>
-                        {puissance&&<button onClick={()=>copyField("puissance",puissance)} style={{padding:"13px 10px",borderRadius:12,border:"none",background:copiedKey==="puissance"?"#ecfdf5":"#f3f4f6",color:copiedKey==="puissance"?EMERALD:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer"}}>{copiedKey==="puissance"?"✅":"📋"}</button>}
-                      </div>
+                      <input type="number" value={puissance} onChange={e=>setPuissance(e.target.value)} style={inputStyle}/>
                     </div>
                   </div>
 
-                  {/* 7. Finition */}
                   <label style={labelStyle}>✨ Finition (facultatif)</label>
-                  <div style={{display:"flex",gap:8,marginBottom:20,alignItems:"center"}}>
-                    <input value={finition} onChange={e=>setFinition(e.target.value)} placeholder="Ex: AMG Line, GT, Allure..." style={{...inputStyle,flex:1,marginBottom:0}}/>
-                    {finition&&<button onClick={()=>copyField("finition",finition)} style={{padding:"13px 12px",borderRadius:12,border:"none",background:copiedKey==="finition"?"#ecfdf5":"#f3f4f6",color:copiedKey==="finition"?EMERALD:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{copiedKey==="finition"?"✅":"📋"}</button>}
-                  </div>
+                  <input value={finition} onChange={e=>setFinition(e.target.value)} placeholder="Ex: AMG Line, GT, Allure..." style={{...inputStyle,marginBottom:20}}/>
 
                   <button onClick={()=>setStep(2)} disabled={!titreAnnonce||!marque}
                     style={{width:"100%",background:(!titreAnnonce||!marque)?"#d1d5db":"linear-gradient(135deg,#F97316,#EA580C)",color:"white",fontWeight:800,fontSize:17,borderRadius:16,padding:"16px 0",border:"none",cursor:(!titreAnnonce||!marque)?"not-allowed":"pointer"}}>
@@ -2088,14 +2071,9 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
               {step===2 && (
                 <div style={{filter:isPremium?"none":"blur(3px)",pointerEvents:isPremium?"auto":"none"}}>
 
-                  {/* 8. Kilométrage */}
                   <label style={labelStyle}>🛣️ Kilométrage</label>
-                  <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center"}}>
-                    <input type="number" value={km} onChange={e=>setKm(e.target.value)} placeholder="Ex: 95000" style={{...inputStyle,flex:1,marginBottom:0}}/>
-                    {km&&<button onClick={()=>copyField("km",String(Number(km)))} style={{padding:"13px 12px",borderRadius:12,border:"none",background:copiedKey==="km"?"#ecfdf5":"#f3f4f6",color:copiedKey==="km"?EMERALD:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{copiedKey==="km"?"✅":"📋"}</button>}
-                  </div>
+                  <input type="number" value={km} onChange={e=>setKm(e.target.value)} placeholder="Ex: 95000" style={{...inputStyle,marginBottom:16}}/>
 
-                  {/* 9. Équipements */}
                   <label style={labelStyle}>🔧 Équipements & options</label>
                   <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
                     {EQUIPEMENTS_LIST.map(eq=>(
@@ -2106,7 +2084,6 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
                     ))}
                   </div>
 
-                  {/* 10. Crit'Air */}
                   <label style={labelStyle}>🌿 Crit'Air — Certificat qualité de l'air</label>
                   <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
                     {CRITAIR_LIST.map(c=>(
@@ -2117,27 +2094,16 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
                     ))}
                   </div>
 
-                  {/* 11. Code VIN */}
                   <label style={labelStyle}>🔢 Code VIN — 3 derniers chiffres (facultatif)</label>
-                  <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center"}}>
-                    <input value={vin3} onChange={e=>setVin3(e.target.value.slice(0,3).toUpperCase())} placeholder="Ex: 4A2" maxLength={3} style={{...inputStyle,flex:1,marginBottom:0,letterSpacing:"0.2em",fontWeight:700}}/>
-                    {vin3&&<button onClick={()=>copyField("vin3",vin3)} style={{padding:"13px 12px",borderRadius:12,border:"none",background:copiedKey==="vin3"?"#ecfdf5":"#f3f4f6",color:copiedKey==="vin3"?EMERALD:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{copiedKey==="vin3"?"✅":"📋"}</button>}
-                  </div>
+                  <input value={vin3} onChange={e=>setVin3(e.target.value.slice(0,3).toUpperCase())} placeholder="Ex: 4A2" maxLength={3}
+                    style={{...inputStyle,marginBottom:16,letterSpacing:"0.2em",fontWeight:700}}/>
 
-                  {/* 12. Description */}
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                    <label style={{...labelStyle,marginBottom:0}}>📝 Description de l'annonce</label>
-                    {description&&<button onClick={()=>copyField("description",description)} style={{padding:"4px 10px",borderRadius:8,border:"none",background:copiedKey==="description"?"#ecfdf5":"#f3f4f6",color:copiedKey==="description"?EMERALD:"#6b7280",fontWeight:700,fontSize:11,cursor:"pointer"}}>{copiedKey==="description"?"✅ Copié !":"📋 Copier"}</button>}
-                  </div>
+                  <label style={labelStyle}>📝 Description de l'annonce</label>
                   <textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Décrivez l'état général, l'historique, les défauts éventuels..."
                     style={{...inputStyle,minHeight:90,resize:"vertical",marginBottom:16}}/>
 
-                  {/* 13. Prix */}
                   <label style={labelStyle}>💰 Prix de vente (€)</label>
-                  <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center"}}>
-                    <input type="number" value={prix} onChange={e=>setPrix(e.target.value)} placeholder="Ex: 12500" style={{...inputStyle,flex:1,marginBottom:0,fontSize:18,fontWeight:700}}/>
-                    {prix&&<button onClick={()=>copyField("prix",prix)} style={{padding:"13px 12px",borderRadius:12,border:"none",background:copiedKey==="prix"?"#ecfdf5":"#f3f4f6",color:copiedKey==="prix"?EMERALD:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{copiedKey==="prix"?"✅":"📋"}</button>}
-                  </div>
+                  <input type="number" value={prix} onChange={e=>setPrix(e.target.value)} placeholder="Ex: 12500" style={{...inputStyle,fontSize:18,fontWeight:700,marginBottom:10}}/>
                   {stats && (
                     <div style={{display:"flex",gap:8,marginBottom:16}}>
                       {[{label:"⚡️ Agressif",val:stats.pMin},{label:"🎯 Marché",val:stats.p25},{label:"💎 Haut",val:stats.p50}].map((p,i)=>(
@@ -2149,24 +2115,14 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
                     </div>
                   )}
 
-                  {/* 14. Localisation */}
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                    <label style={{...labelStyle,marginBottom:0}}>📍 Localisation</label>
-                    {(localisation&&ville)&&<button onClick={()=>copyField("loc",`${localisation} ${ville}`)} style={{padding:"4px 10px",borderRadius:8,border:"none",background:copiedKey==="loc"?"#ecfdf5":"#f3f4f6",color:copiedKey==="loc"?EMERALD:"#6b7280",fontWeight:700,fontSize:11,cursor:"pointer"}}>{copiedKey==="loc"?"✅ Copié !":"📋 Copier"}</button>}
-                  </div>
+                  <label style={labelStyle}>📍 Localisation</label>
                   <div style={{display:"flex",gap:8,marginBottom:16}}>
-                    <input type="text" value={localisation} onChange={e=>{ const val=e.target.value.replace(/\D/g,"").slice(0,5); setLocalisation(val); if(val.length===5){fetch(`https://geo.api.gouv.fr/communes?codePostal=${val}&fields=nom&limit=1`).then(r=>r.json()).then(d=>{if(d?.[0]?.nom)setVille(d[0].nom);}).catch(()=>{});} }} placeholder="Code postal" maxLength={5}
-                      style={{...inputStyle,width:"40%"}}/>
-                    <input type="text" value={ville} onChange={e=>setVille(e.target.value)} placeholder="Ville"
-                      style={{...inputStyle,width:"60%"}}/>
+                    <input type="text" value={localisation} onChange={e=>{ const val=e.target.value.replace(/\D/g,"").slice(0,5); setLocalisation(val); if(val.length===5){fetch(`https://geo.api.gouv.fr/communes?codePostal=${val}&fields=nom&limit=1`).then(r=>r.json()).then(d=>{if(d?.[0]?.nom)setVille(d[0].nom);}).catch(()=>{});} }} placeholder="Code postal" maxLength={5} style={{...inputStyle,width:"40%"}}/>
+                    <input type="text" value={ville} onChange={e=>setVille(e.target.value)} placeholder="Ville" style={{...inputStyle,width:"60%"}}/>
                   </div>
 
-                  {/* 15. Téléphone */}
                   <label style={labelStyle}>📞 Numéro de téléphone</label>
-                  <div style={{display:"flex",gap:8,marginBottom:20,alignItems:"center"}}>
-                    <input type="tel" value={tel} onChange={e=>setTel(e.target.value)} placeholder="Ex: 06 12 34 56 78" style={{...inputStyle,flex:1,marginBottom:0}}/>
-                    {tel&&<button onClick={()=>copyField("tel",tel)} style={{padding:"13px 12px",borderRadius:12,border:"none",background:copiedKey==="tel"?"#ecfdf5":"#f3f4f6",color:copiedKey==="tel"?EMERALD:"#6b7280",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{copiedKey==="tel"?"✅":"📋"}</button>}
-                  </div>
+                  <input type="tel" value={tel} onChange={e=>setTel(e.target.value)} placeholder="Ex: 06 12 34 56 78" style={{...inputStyle,marginBottom:20}}/>
 
                   <div style={{display:"flex",gap:10}}>
                     <button onClick={()=>setStep(1)} style={{flex:1,background:"white",color:"#6b7280",fontWeight:700,fontSize:15,borderRadius:16,padding:"14px 0",border:"2px solid #e5e7eb",cursor:"pointer"}}>← Retour</button>
@@ -2178,7 +2134,7 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
                 </div>
               )}
 
-              {/* ══ ÉTAPE 3 ══ */}
+              {/* ══ ÉTAPE 3 — Champs copiables en cards ══ */}
               {step===3 && (
                 <div>
                   <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:14,padding:"12px 16px",marginBottom:16,textAlign:"center"}}>
@@ -2191,17 +2147,22 @@ Titre sans l'année dans le modèle. Description 120-150 mots, emojis, points fo
                     {champsCopiables.map(c=>(
                       <div key={c.key} style={{background:"white",borderRadius:14,border:"1px solid #f3f4f6",boxShadow:"0 1px 3px rgba(0,0,0,0.05)",overflow:"hidden"}}>
                         <div style={{padding:"10px 14px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                          <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>{c.emoji} {c.label}</span>
-                          <button onClick={()=>copyField(c.key,c.value)}
-                            style={{fontSize:11,fontWeight:700,color:copiedKey===c.key?EMERALD:"#6b7280",background:copiedKey===c.key?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"4px 10px",cursor:"pointer"}}>
-                            {copiedKey===c.key?"✅ Copié !":"📋 Copier"}
-                          </button>
+                          <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>
+                            {c.emoji} {c.label}
+                            {c.listeLBC && <span style={{marginLeft:6,fontSize:9,fontWeight:800,color:"#F97316",background:"#FFF7ED",padding:"1px 5px",borderRadius:4}}>LISTE LBC</span>}
+                          </span>
+                          {!c.listeLBC && (
+                            <button onClick={()=>copyField(c.key,c.value)}
+                              style={{fontSize:11,fontWeight:700,color:copiedKey===c.key?EMERALD:"#6b7280",background:copiedKey===c.key?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"4px 10px",cursor:"pointer"}}>
+                              {copiedKey===c.key?"✅ Copié !":"📋 Copier"}
+                            </button>
+                          )}
                         </div>
                         <p style={{margin:0,padding:"0 14px 12px",fontSize:15,fontWeight:700,color:"#111",wordBreak:"break-word"}}>{c.value}</p>
                       </div>
                     ))}
 
-                    {/* IA */}
+                    {/* Description IA */}
                     <div style={{background:"white",borderRadius:14,border:"1px solid #f3f4f6",boxShadow:"0 1px 3px rgba(0,0,0,0.05)",overflow:"hidden"}}>
                       <div style={{padding:"10px 14px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                         <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>✨ Titre & Description IA</span>
