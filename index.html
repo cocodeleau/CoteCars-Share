@@ -1333,7 +1333,7 @@
       );
     }
 
-        function Results({ result, plate, onReset, onElargi, user, setShowLoginModal, onCreateAnnonce, onPrepareLbc }) {
+        function Results({ result, plate, onReset, onElargi, user, setShowLoginModal, onCreateAnnonce }) {
       const [copied, setCopied] = useState(false);
       const [showLogin, setShowLogin] = useState(false);
       const [showCount, setShowCount] = useState(5);
@@ -1473,12 +1473,9 @@
               </div>
             )}
             {result.peuResultats && <FinitionSimilaireBlock result={result} onElargi={onElargi} />}
-            <div style={{ marginBottom:12 }}>
-              <button onClick={onPrepareLbc} style={{ width:"100%", background:"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:"pointer" }}>
-                🔗 Publier sur Leboncoin
-              </button>
-              <p style={{ textAlign:"center", fontSize:12, color:"#9ca3af", margin:"6px 0 0" }}>Votre annonce sera aussi visible gratuitement sur CoteCars</p>
-            </div>
+            <button onClick={onCreateAnnonce} style={{ width:"100%", background:"linear-gradient(135deg,#6366F1,#4F46E5)", color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:"pointer", marginBottom:12 }}>
+              🏷️ Créer mon annonce
+            </button>
             <button onClick={onReset} style={{ width:"100%", background:`linear-gradient(135deg,${EMERALD},${EMERALD_DARK})`, color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:"pointer", marginBottom:12 }}>
               🔄 Nouvelle recherche
             </button>
@@ -1547,7 +1544,7 @@ Consignes de rédaction :
 4. Format : Utilise des emojis pertinents pour la lisibilité (🚗, ✅, 🛡️). Pas de gras inutile sur tout le texte, juste sur les infos clés.
 Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne pas faire de texte trop long.`;
 
-          const res = await fetch(`https://cotecars-api.vercel.app/api/gemini`, {
+          const res = await fetch(`https://cotecars-v2.vercel.app/api/gemini`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ prompt })
@@ -1751,463 +1748,6 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
                 </a>
               </div>
             )}
-          </div>
-        </div>
-      );
-    }
-
-
-    // ─── PUBLIER SUR LEBONCOIN ────────────────────────────────────
-    function PrepareAnnonceLbc({ result, plate: plateProp, user, km: kmProp, onClose }) {
-      const { veh, nom, stats, finition: finitionInit } = result;
-      const EMERALD = "#10B981";
-      const isPremium = !!user;
-      const anneeInit = veh.AWN_date_mise_en_circulation?.slice(-4) || "";
-      const energieInit = veh.AWN_energie || "";
-      const chInit = veh.AWN_puissance_KW ? Math.round(parseInt(veh.AWN_puissance_KW)*1.36) : "";
-      const marqueInit = nom?.split(" ")[0] || "";
-      const modeleInit = nom?.split(" ").slice(1).join(" ").replace(/\b(19|20)\d{2}\b/g,"").trim() || "";
-      const boiteInit = result.gearbox === "1" ? "Manuelle" : result.gearbox === "2" ? "Automatique" : "";
-      const toEL = e => ({"GAZOLE":"Diesel","ESSENCE":"Essence","ELECTRIQUE":"Électrique","HYBRIDE":"Hybride"})[e] || e || "";
-
-      const [step, setStep] = React.useState(1);
-
-      // Étape 1
-      const [typeVehicule, setTypeVehicule] = React.useState("Voiture");
-      const [photos, setPhotos] = React.useState([]);
-      const [plaqueInput, setPlaqueInput] = React.useState(plateProp || "");
-      const [plaqueLoading, setPlaqueLoading] = React.useState(false);
-      const [marque, setMarque] = React.useState(marqueInit);
-      const [modele, setModele] = React.useState(modeleInit);
-      const [annee, setAnnee] = React.useState(anneeInit);
-      const [energie, setEnergie] = React.useState(energieInit);
-      const [boite, setBoite] = React.useState(boiteInit);
-      const [nbPlaces, setNbPlaces] = React.useState("5");
-      const [nbPortes, setNbPortes] = React.useState("5");
-      const [puissance, setPuissance] = React.useState(String(chInit));
-      const [finition, setFinition] = React.useState(finitionInit || "");
-
-      // Étape 2
-      const [km, setKm] = React.useState(kmProp ? String(kmProp) : "");
-      const [equipements, setEquipements] = React.useState([]);
-      const [critair, setCritair] = React.useState("");
-      const [vin3, setVin3] = React.useState("");
-      const [defauts, setDefauts] = React.useState("");
-      const [prix, setPrix] = React.useState(stats?.p25 ? String(Math.round(stats.p25)) : "");
-      const [localisation, setLocalisation] = React.useState("");
-      const [ville, setVille] = React.useState("");
-      const [tel, setTel] = React.useState("");
-      const [publishing, setPublishing] = React.useState(false);
-
-      // Étape 3
-      const [copiedKey, setCopiedKey] = React.useState(null);
-      const [titreIA, setTitreIA] = React.useState("");
-      const [descriptionIA, setDescriptionIA] = React.useState("");
-      const [iaLoading, setIaLoading] = React.useState(false);
-      const [published, setPublished] = React.useState(false);
-
-      const TYPES = ["Voiture","Utilitaire","Moto","Scooter","Caravane / Camping-car","Bateau","Quad / SSV","Autre"];
-      const EQUIPS = ["Climatisation","Climatisation automatique","GPS / Navigation","Toit ouvrant","Toit panoramique","Sièges chauffants","Sièges en cuir","Caméra de recul","Aide au stationnement","Régulateur de vitesse","Limiteur de vitesse","Bluetooth","Apple CarPlay / Android Auto","Jantes alliage","Vitres électriques","Rétroviseurs électriques","Volant multifonction","Démarrage sans clé","Chargeur sans fil","Phares LED / Xénon","Attelage","Pack sport","Hayon électrique"];
-      const CRITAIRS = ["0 — Électrique / Hydrogène","1 — Essence récent (Euro 5/6)","2 — Essence Euro 4 / Diesel Euro 6","3 — Diesel Euro 5","4 — Diesel Euro 4","5 — Diesel Euro 3"];
-
-      const L = {display:"block",fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6};
-      const I = {width:"100%",padding:"13px 14px",border:"2px solid #e5e7eb",borderRadius:12,fontSize:15,boxSizing:"border-box",outline:"none",fontFamily:"inherit"};
-
-      function handlePhotos(e) {
-        const files = Array.from(e.target.files);
-        const readers = files.map(f => new Promise(res => { const r = new FileReader(); r.onload = ev => res({name:f.name,data:ev.target.result}); r.readAsDataURL(f); }));
-        Promise.all(readers).then(p => setPhotos(prev => [...prev,...p].slice(0,20)));
-      }
-
-      async function handleAutoFill() {
-        if (!plaqueInput || plaqueInput.length < 5) return;
-        setPlaqueLoading(true);
-        try {
-          const res = await fetch(`https://cotecars-v2.vercel.app/api/rapid-api-requests?plaque=${plaqueInput.replace(/[-\s]/g,"").toUpperCase()}`);
-          const data = await res.json();
-          const v = data.data || data.données || {};
-          if (v.AWN_marque) setMarque(v.AWN_marque);
-          if (v.AWN_modele) setModele((v.AWN_modele||"").replace(/\b(19|20)\d{2}\b/g,"").trim());
-          if (v.AWN_date_mise_en_circulation) setAnnee(v.AWN_date_mise_en_circulation.slice(-4));
-          if (v.AWN_energie) setEnergie(v.AWN_energie);
-          if (v.AWN_puissance_KW) setPuissance(String(Math.round(parseInt(v.AWN_puissance_KW)*1.36)));
-        } catch(e) { alert("Impossible de récupérer les infos."); }
-        setPlaqueLoading(false);
-      }
-
-      async function handlePublishAndNext() {
-        if (!user) return;
-        setPublishing(true);
-        try {
-          const photoUrls = [];
-          for (let p of photos) {
-            const blob = await fetch(p.data).then(r=>r.blob());
-            const fd = new FormData();
-            fd.append("file",blob); fd.append("upload_preset","CoteCars"); fd.append("cloud_name","di3xa7ldg");
-            const res = await fetch("https://api.cloudinary.com/v1_1/di3xa7ldg/image/upload",{method:"POST",body:fd});
-            const d = await res.json();
-            if (d.secure_url) photoUrls.push(d.secure_url);
-          }
-          await db.collection("annonces").add({
-            uid:user.uid, userEmail:user.email, userPhoto:user.photoURL||"",
-            plate:plaqueInput, nom:`${marque} ${modele}`.trim(), finition, annee, energie,
-            ch:parseInt(puissance)||0, km:parseInt(km)||null, gearbox:boite==="Manuelle"?"1":"2",
-            prix:parseInt(prix)||0, localisation:`${localisation}${ville?" "+ville:""}`,
-            defauts, options:equipements.join(", "), tel, photos:photoUrls,
-            nbPlaces, nbPortes, critair, vin3, typeVehicule,
-            stats:result.stats, createdAt:new Date().toISOString(), active:true, source:"lbc_flow",
-          });
-          setPublished(true);
-          setStep(3);
-          genererIA();
-        } catch(e) { alert("Erreur : "+e.message); }
-        setPublishing(false);
-      }
-
-      async function genererIA() {
-        setIaLoading(true);
-        try {
-          const prompt = `Tu es expert en rédaction d'annonces auto Leboncoin. Génère un titre accrocheur (max 70 caractères) et une description de vente percutante.
-
-Véhicule : ${marque} ${modele}${finition?" "+finition:""}
-Année : ${annee} | Kilométrage : ${km?Number(km).toLocaleString("fr-FR")+" km":"non renseigné"} | Carburant : ${toEL(energie)} | Boîte : ${boite} | Puissance : ${puissance} ch
-Prix : ${prix?Number(prix).toLocaleString("fr-FR")+" €":"non renseigné"} | Localisation : ${localisation} ${ville}
-Équipements : ${equipements.length>0?equipements.join(", "):"non renseignés"}
-Défauts et qualités : ${defauts||"non renseignés"}
-
-Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après :
-{"titre":"...","description":"..."}
-
-Le titre : accrocheur, sans répéter l'année dans le modèle, max 70 caractères.
-La description : 120-150 mots, emojis pertinents, points forts du modèle, état, appel à l'action.`;
-
-          const res = await fetch("https://cotecars-v2.vercel.app/api/gemini",{
-            method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({prompt})
-          });
-          const data = await res.json();
-          const raw = (data.text||"").trim();
-          const start = raw.indexOf("{");
-          const end = raw.lastIndexOf("}");
-          if (start===-1||end===-1) throw new Error("no json");
-          const parsed = JSON.parse(raw.slice(start,end+1));
-          setTitreIA(parsed.titre||"");
-          setDescriptionIA(parsed.description||"");
-        } catch(e) {
-          setTitreIA(`${marque} ${modele}${annee?" · "+annee:""}${km?" · "+Number(km).toLocaleString("fr-FR")+" km":""}`);
-          setDescriptionIA("La génération IA a rencontré une erreur. Vous pouvez réessayer avec le bouton 🔄");
-        }
-        setIaLoading(false);
-      }
-
-      function copy(key, val) {
-        navigator.clipboard.writeText(val).then(() => { setCopiedKey(key); setTimeout(()=>setCopiedKey(null),2000); });
-      }
-
-      function CopyBtn({ k, val }) {
-        if (!val||!String(val).trim()) return null;
-        return (
-          <button onClick={()=>copy(k,val)}
-            style={{fontSize:11,fontWeight:700,color:copiedKey===k?EMERALD:"#6b7280",background:copiedKey===k?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer",whiteSpace:"nowrap"}}>
-            {copiedKey===k?"✅ Copié":"📋 Copier"}
-          </button>
-        );
-      }
-
-      function Card({ k, emoji, label, val, lbc=false }) {
-        if (!val||!String(val).trim()) return null;
-        return (
-          <div style={{background:"white",borderRadius:14,border:"1px solid #f3f4f6",boxShadow:"0 1px 3px rgba(0,0,0,0.05)",overflow:"hidden",marginBottom:10}}>
-            <div style={{padding:"10px 14px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>
-                {emoji} {label}
-                {lbc&&<span style={{marginLeft:6,fontSize:9,fontWeight:800,color:"#F97316",background:"#FFF7ED",padding:"1px 5px",borderRadius:4}}>LISTE LBC</span>}
-              </span>
-              {!lbc && <CopyBtn k={k} val={String(val)} />}
-            </div>
-            <p style={{margin:0,padding:"0 14px 12px",fontSize:16,fontWeight:700,color:"#111",wordBreak:"break-word"}}>{val}</p>
-          </div>
-        );
-      }
-
-      const photosLbc = photos.slice(0,3);
-      const stepTitle = ["","📝 Infos du véhicule","📋 Détails & contact","🔗 Champs Leboncoin prêts !"][step];
-
-      return (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:3000,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
-          onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-          <div style={{background:"#f9fafb",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:480,maxHeight:"93vh",overflowY:"auto",paddingBottom:48}}>
-
-            {/* Header */}
-            <div style={{background:"white",borderRadius:"24px 24px 0 0",padding:"18px 20px 14px",position:"sticky",top:0,zIndex:10,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                <span style={{fontWeight:800,fontSize:16,color:"#111"}}>{stepTitle}</span>
-                <button onClick={onClose} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#9ca3af"}}>✕</button>
-              </div>
-              <div style={{display:"flex",gap:4}}>
-                {[1,2,3].map(s=><div key={s} style={{flex:1,height:4,borderRadius:999,background:step>=s?"#F97316":"#e5e7eb",transition:"background 0.3s"}}/>)}
-              </div>
-            </div>
-
-            <div style={{padding:"16px"}}>
-
-              {/* Paywall */}
-              {!isPremium && (
-                <div style={{background:"linear-gradient(135deg,#FFF7ED,#FEF3C7)",border:"2px solid #F97316",borderRadius:16,padding:"20px",marginBottom:16,textAlign:"center"}}>
-                  <div style={{fontSize:32,marginBottom:8}}>🔒</div>
-                  <p style={{fontWeight:800,fontSize:16,color:"#111",margin:"0 0 6px"}}>Fonctionnalité Premium</p>
-                  <p style={{fontSize:13,color:"#6b7280",margin:"0 0 16px",lineHeight:1.5}}>Publiez votre annonce Leboncoin en 2 minutes avec tous les champs pré-remplis.</p>
-                  <div style={{display:"flex",gap:8,marginBottom:14}}>
-                    <div style={{flex:1,background:"white",borderRadius:12,padding:"14px 8px",border:"2px solid #F97316"}}>
-                      <p style={{margin:0,fontWeight:800,fontSize:16,color:"#F97316"}}>2,99 €</p>
-                      <p style={{margin:"2px 0 0",fontSize:11,color:"#6b7280"}}>À l'unité</p>
-                    </div>
-                    <div style={{flex:1,background:"#F97316",borderRadius:12,padding:"14px 8px",border:"2px solid #F97316",position:"relative"}}>
-                      <div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",background:"#111",color:"white",fontSize:9,fontWeight:800,padding:"2px 8px",borderRadius:999,whiteSpace:"nowrap"}}>POPULAIRE</div>
-                      <p style={{margin:0,fontWeight:800,fontSize:16,color:"white"}}>9,99 €/mois</p>
-                      <p style={{margin:"2px 0 0",fontSize:11,color:"rgba(255,255,255,0.8)"}}>Illimité</p>
-                    </div>
-                  </div>
-                  <button onClick={()=>alert("Paiement bientôt disponible !")}
-                    style={{width:"100%",background:"linear-gradient(135deg,#F97316,#EA580C)",color:"white",fontWeight:800,fontSize:15,borderRadius:14,padding:"14px 0",border:"none",cursor:"pointer"}}>
-                    🚀 Débloquer maintenant
-                  </button>
-                </div>
-              )}
-
-              {/* ══ ÉTAPE 1 ══ */}
-              {step===1 && (
-                <div style={{filter:isPremium?"none":"blur(3px)",pointerEvents:isPremium?"auto":"none"}}>
-                  <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:12,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#166534",fontWeight:600}}>
-                    🚗 {nom}{finitionInit?` · ${finitionInit}`:""} · {anneeInit} · {toEL(energieInit)} · {chInit} ch
-                  </div>
-
-                  <label style={L}>🚘 Type de véhicule <span style={{fontSize:9,color:"#F97316",fontWeight:700}}>LISTE LBC</span></label>
-                  <select value={typeVehicule} onChange={e=>setTypeVehicule(e.target.value)} style={{...I,marginBottom:16,background:"white",cursor:"pointer"}}>
-                    {TYPES.map(t=><option key={t}>{t}</option>)}
-                  </select>
-
-                  <label style={L}>📸 Photos</label>
-                  <div style={{background:"#FFF7ED",border:"1px solid #FED7AA",borderRadius:10,padding:"8px 12px",fontSize:12,color:"#92400E",marginBottom:10}}>
-                    ℹ️ Les 3 premières photos iront sur Leboncoin. Vous pouvez en ajouter plus pour CoteCars.
-                  </div>
-                  <label style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"2px dashed #e5e7eb",borderRadius:16,padding:"18px",cursor:"pointer",marginBottom:photos.length>0?10:16,background:"#f9fafb"}}>
-                    <span style={{fontSize:28,marginBottom:4}}>📸</span>
-                    <span style={{fontSize:13,color:"#6b7280",fontWeight:600}}>Ajouter des photos</span>
-                    <span style={{fontSize:11,color:"#9ca3af",marginTop:2}}>{photos.length} photo(s) · {photosLbc.length}/3 pour Leboncoin</span>
-                    <input type="file" accept="image/*" multiple onChange={handlePhotos} style={{display:"none"}}/>
-                  </label>
-                  {photos.length>0&&(
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:16}}>
-                      {photos.map((p,i)=>(
-                        <div key={i} style={{position:"relative"}}>
-                          <img src={p.data} alt="" style={{width:"100%",aspectRatio:"1",objectFit:"cover",borderRadius:8,border:i<3?"2px solid #F97316":"2px solid #e5e7eb"}}/>
-                          {i<3&&<div style={{position:"absolute",top:2,left:2,background:"#F97316",color:"white",fontSize:8,fontWeight:800,padding:"1px 4px",borderRadius:4}}>LBC</div>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <label style={L}>🔍 Plaque d'immatriculation</label>
-                  <div style={{display:"flex",gap:8,marginBottom:4}}>
-                    <input value={plaqueInput} onChange={e=>setPlaqueInput(e.target.value.toUpperCase())} placeholder="AB-123-CD" style={{...I,flex:1,marginBottom:0}}/>
-                    <button onClick={handleAutoFill} disabled={plaqueLoading}
-                      style={{padding:"0 16px",background:"#111",color:"white",fontWeight:700,fontSize:13,borderRadius:12,border:"none",cursor:"pointer",whiteSpace:"nowrap"}}>
-                      {plaqueLoading?"...":"Valider"}
-                    </button>
-                  </div>
-                  <p style={{fontSize:11,color:"#9ca3af",margin:"0 0 12px"}}>Marque, modèle, année et énergie remplis automatiquement.</p>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-                    {[{l:"Marque",v:marque,s:setMarque,lbc:true},{l:"Modèle",v:modele,s:setModele,lbc:true},{l:"Année",v:annee,s:setAnnee,lbc:false}].map(f=>(
-                      <div key={f.l}>
-                        <label style={L}>{f.l}{f.lbc&&<span style={{marginLeft:4,fontSize:9,color:"#F97316",fontWeight:700}}>LISTE LBC</span>}</label>
-                        <input value={f.v} onChange={e=>f.s(e.target.value)} style={I}/>
-                      </div>
-                    ))}
-                    <div>
-                      <label style={L}>Énergie <span style={{fontSize:9,color:"#F97316",fontWeight:700}}>LISTE LBC</span></label>
-                      <input value={toEL(energie)} readOnly style={{...I,background:"#f9fafb",color:"#6b7280"}}/>
-                    </div>
-                  </div>
-
-                  <label style={L}>⚙️ Boîte de vitesse <span style={{fontSize:9,color:"#F97316",fontWeight:700}}>LISTE LBC</span></label>
-                  <div style={{display:"flex",gap:8,marginBottom:16}}>
-                    {["Manuelle","Automatique"].map(b=>(
-                      <button key={b} onClick={()=>setBoite(b)}
-                        style={{flex:1,padding:"13px 0",borderRadius:12,border:`2px solid ${boite===b?"#F97316":"#e5e7eb"}`,background:boite===b?"#FFF7ED":"white",color:boite===b?"#F97316":"#6b7280",fontWeight:700,fontSize:14,cursor:"pointer"}}>
-                        {b==="Manuelle"?"🔧 Manuelle":"⚙️ Automatique"}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
-                    <div>
-                      <label style={L}>🪑 Places <span style={{fontSize:8,color:"#F97316",fontWeight:700}}>LBC</span></label>
-                      <select value={nbPlaces} onChange={e=>setNbPlaces(e.target.value)} style={{...I,padding:"13px 10px",background:"white"}}>
-                        {["2","3","4","5","6","7","8","9"].map(n=><option key={n}>{n}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={L}>🚪 Portes <span style={{fontSize:8,color:"#F97316",fontWeight:700}}>LBC</span></label>
-                      <select value={nbPortes} onChange={e=>setNbPortes(e.target.value)} style={{...I,padding:"13px 10px",background:"white"}}>
-                        {["2","3","4","5"].map(n=><option key={n}>{n}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={L}>⚡️ Ch</label>
-                      <input type="number" value={puissance} onChange={e=>setPuissance(e.target.value)} style={I}/>
-                    </div>
-                  </div>
-
-                  <label style={L}>✨ Finition (facultatif)</label>
-                  <input value={finition} onChange={e=>setFinition(e.target.value)} placeholder="Ex: AMG Line, GT, Allure..." style={{...I,marginBottom:20}}/>
-
-                  <button onClick={()=>setStep(2)} disabled={!marque}
-                    style={{width:"100%",background:!marque?"#d1d5db":"linear-gradient(135deg,#F97316,#EA580C)",color:"white",fontWeight:800,fontSize:17,borderRadius:16,padding:"16px 0",border:"none",cursor:!marque?"not-allowed":"pointer"}}>
-                    Suivant →
-                  </button>
-                </div>
-              )}
-
-              {/* ══ ÉTAPE 2 ══ */}
-              {step===2 && (
-                <div style={{filter:isPremium?"none":"blur(3px)",pointerEvents:isPremium?"auto":"none"}}>
-
-                  <label style={L}>🛣️ Kilométrage</label>
-                  <input type="number" value={km} onChange={e=>setKm(e.target.value)} placeholder="Ex: 95000" style={{...I,marginBottom:16}}/>
-
-                  <label style={L}>🔧 Équipements & options</label>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
-                    {EQUIPS.map(eq=>(
-                      <button key={eq} onClick={()=>setEquipements(prev=>prev.includes(eq)?prev.filter(e=>e!==eq):[...prev,eq])}
-                        style={{padding:"7px 12px",borderRadius:999,border:`2px solid ${equipements.includes(eq)?"#F97316":"#e5e7eb"}`,background:equipements.includes(eq)?"#FFF7ED":"white",color:equipements.includes(eq)?"#F97316":"#6b7280",fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                        {eq}
-                      </button>
-                    ))}
-                  </div>
-
-                  <label style={L}>🌿 Crit'Air — Certificat qualité de l'air</label>
-                  <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
-                    {CRITAIRS.map(c=>(
-                      <button key={c} onClick={()=>setCritair(critair===c?"":c)}
-                        style={{padding:"10px 14px",borderRadius:12,border:`2px solid ${critair===c?"#10B981":"#e5e7eb"}`,background:critair===c?"#ecfdf5":"white",color:critair===c?"#10B981":"#6b7280",fontSize:13,fontWeight:600,cursor:"pointer",textAlign:"left"}}>
-                        {critair===c?"✅ ":"◯ "}{c}
-                      </button>
-                    ))}
-                  </div>
-
-                  <label style={L}>🔢 Code VIN — 3 derniers chiffres (facultatif)</label>
-                  <input value={vin3} onChange={e=>setVin3(e.target.value.slice(0,3).toUpperCase())} placeholder="Ex: 4A2" maxLength={3} style={{...I,marginBottom:16,letterSpacing:"0.2em",fontWeight:700}}/>
-
-                  <label style={L}>📝 Défauts & qualités du véhicule</label>
-                  <p style={{fontSize:12,color:"#6b7280",margin:"-4px 0 8px",lineHeight:1.5}}>Indiquez les défauts (rayures, pannes...) et les points forts (entretien suivi, première main...). L'IA rédigera la description complète.</p>
-                  <textarea value={defauts} onChange={e=>setDefauts(e.target.value)} placeholder="Ex: Légère rayure aile avant. Entretien suivi concessionnaire. Première main. Clim révisée."
-                    style={{...I,minHeight:90,resize:"vertical",marginBottom:16}}/>
-
-                  <label style={L}>💰 Prix de vente (€)</label>
-                  <input type="number" value={prix} onChange={e=>setPrix(e.target.value)} placeholder="Ex: 12500" style={{...I,fontSize:18,fontWeight:700,marginBottom:10}}/>
-                  {stats&&(
-                    <div style={{display:"flex",gap:8,marginBottom:16}}>
-                      {[{label:"⚡️ Agressif",val:stats.pMin},{label:"🎯 Marché",val:stats.p25},{label:"💎 Haut",val:stats.p50}].map((p,i)=>(
-                        <button key={i} onClick={()=>setPrix(String(Math.round(p.val)))}
-                          style={{flex:1,padding:"8px 4px",borderRadius:10,border:`2px solid ${String(Math.round(p.val))===prix?"#F97316":"#e5e7eb"}`,background:String(Math.round(p.val))===prix?"#FFF7ED":"white",fontSize:11,fontWeight:700,color:String(Math.round(p.val))===prix?"#F97316":"#6b7280",cursor:"pointer"}}>
-                          {p.label}<br/>{Math.round(p.val).toLocaleString("fr-FR")}€
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  <label style={L}>📍 Localisation</label>
-                  <div style={{display:"flex",gap:8,marginBottom:16}}>
-                    <input type="text" value={localisation} onChange={e=>{ const val=e.target.value.replace(/\D/g,"").slice(0,5); setLocalisation(val); if(val.length===5){fetch(`https://geo.api.gouv.fr/communes?codePostal=${val}&fields=nom&limit=1`).then(r=>r.json()).then(d=>{if(d?.[0]?.nom)setVille(d[0].nom);}).catch(()=>{});} }} placeholder="Code postal" maxLength={5} style={{...I,width:"40%"}}/>
-                    <input type="text" value={ville} onChange={e=>setVille(e.target.value)} placeholder="Ville" style={{...I,width:"60%"}}/>
-                  </div>
-
-                  <label style={L}>📞 Numéro de téléphone</label>
-                  <input type="tel" value={tel} onChange={e=>setTel(e.target.value)} placeholder="Ex: 06 12 34 56 78" style={{...I,marginBottom:20}}/>
-
-                  <div style={{display:"flex",gap:10}}>
-                    <button onClick={()=>setStep(1)} style={{flex:1,background:"white",color:"#6b7280",fontWeight:700,fontSize:15,borderRadius:16,padding:"14px 0",border:"2px solid #e5e7eb",cursor:"pointer"}}>← Retour</button>
-                    <button onClick={handlePublishAndNext} disabled={publishing||!tel||!prix||!localisation}
-                      style={{flex:2,background:(!tel||!prix||!localisation||publishing)?"#d1d5db":"linear-gradient(135deg,#F97316,#EA580C)",color:"white",fontWeight:800,fontSize:15,borderRadius:16,padding:"14px 0",border:"none",cursor:(!tel||!prix||!localisation||publishing)?"not-allowed":"pointer"}}>
-                      {publishing?"Publication...":"🚀 Publier & voir les champs"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* ══ ÉTAPE 3 ══ */}
-              {step===3 && (
-                <div>
-                  <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:14,padding:"12px 16px",marginBottom:16,textAlign:"center"}}>
-                    <p style={{fontSize:22,margin:"0 0 4px"}}>🎉</p>
-                    <p style={{fontWeight:800,fontSize:14,color:"#166534",margin:0}}>Annonce publiée sur CoteCars !</p>
-                    <p style={{fontSize:12,color:"#15803d",margin:"4px 0 0"}}>Copiez chaque champ ci-dessous dans Leboncoin.</p>
-                  </div>
-
-                  {/* Titre IA en premier */}
-                  <div style={{background:"white",borderRadius:14,border:"2px solid #F97316",boxShadow:"0 1px 3px rgba(0,0,0,0.05)",overflow:"hidden",marginBottom:10}}>
-                    <div style={{padding:"10px 14px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>📌 Titre de l'annonce</span>
-                      {titreIA&&!iaLoading&&<button onClick={()=>copy("titre",titreIA)} style={{fontSize:11,fontWeight:700,color:copiedKey==="titre"?EMERALD:"#6b7280",background:copiedKey==="titre"?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer"}}>{copiedKey==="titre"?"✅ Copié":"📋 Copier"}</button>}
-                    </div>
-                    {iaLoading?(
-                      <div style={{padding:"10px 14px 14px",display:"flex",alignItems:"center",gap:8}}>
-                        <div className="spinner" style={{width:16,height:16,borderRadius:"50%",border:"2px solid #e5e7eb",borderTopColor:"#8B5CF6",flexShrink:0}}/>
-                        <p style={{margin:0,fontSize:13,color:"#9ca3af"}}>Génération IA en cours...</p>
-                      </div>
-                    ):(
-                      <p style={{margin:0,padding:"0 14px 12px",fontSize:16,fontWeight:700,color:"#111"}}>{titreIA}</p>
-                    )}
-                  </div>
-
-                  <Card k="type"      emoji="🚘" label="Type de véhicule"      val={typeVehicule}        lbc={true}/>
-                  <Card k="marque"    emoji="🏷️" label="Marque"                val={marque}              lbc={true}/>
-                  <Card k="modele"    emoji="🚗" label="Modèle"                val={modele}              lbc={true}/>
-                  <Card k="annee"     emoji="📅" label="Année"                 val={annee}/>
-                  <Card k="energie"   emoji="⛽" label="Carburant"             val={toEL(energie)}       lbc={true}/>
-                  <Card k="boite"     emoji="⚙️" label="Boîte de vitesse"      val={boite}               lbc={true}/>
-                  <Card k="places"    emoji="🪑" label="Nombre de places"      val={nbPlaces}            lbc={true}/>
-                  <Card k="portes"    emoji="🚪" label="Nombre de portes"      val={nbPortes}            lbc={true}/>
-                  <Card k="puissance" emoji="⚡️" label="Puissance (ch)"        val={puissance}/>
-                  <Card k="finition"  emoji="✨" label="Finition / Version"    val={finition}/>
-                  <Card k="km"        emoji="🛣️" label="Kilométrage (km)"      val={km?String(Number(km)):""}/>
-                  <Card k="equips"    emoji="🔧" label="Équipements"           val={equipements.join(", ")}/>
-                  <Card k="critair"   emoji="🌿" label="Crit'Air"              val={critair}/>
-                  <Card k="vin3"      emoji="🔢" label="Code VIN (3 derniers)" val={vin3}/>
-                  <Card k="prix"      emoji="💰" label="Prix (€)"              val={prix}/>
-                  <Card k="loc"       emoji="📍" label="Localisation"          val={`${localisation}${ville?" "+ville:""}`}/>
-                  <Card k="tel"       emoji="📞" label="Téléphone"             val={tel}/>
-
-                  {/* Description IA */}
-                  <div style={{background:"white",borderRadius:14,border:"1px solid #f3f4f6",boxShadow:"0 1px 3px rgba(0,0,0,0.05)",overflow:"hidden",marginBottom:10}}>
-                    <div style={{padding:"10px 14px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>✨ Description IA</span>
-                      <div style={{display:"flex",gap:6}}>
-                        {descriptionIA&&!iaLoading&&<button onClick={()=>copy("desc",descriptionIA)} style={{fontSize:11,fontWeight:700,color:copiedKey==="desc"?EMERALD:"#6b7280",background:copiedKey==="desc"?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 10px",cursor:"pointer"}}>{copiedKey==="desc"?"✅ Copié":"📋 Copier"}</button>}
-                        {!iaLoading&&<button onClick={genererIA} style={{fontSize:11,fontWeight:700,color:"#9ca3af",background:"#f3f4f6",border:"none",borderRadius:8,padding:"5px 10px",cursor:"pointer"}}>🔄</button>}
-                      </div>
-                    </div>
-                    {iaLoading?(
-                      <div style={{padding:"10px 14px 14px",display:"flex",alignItems:"center",gap:8}}>
-                        <div className="spinner" style={{width:16,height:16,borderRadius:"50%",border:"2px solid #e5e7eb",borderTopColor:"#8B5CF6",flexShrink:0}}/>
-                        <p style={{margin:0,fontSize:13,color:"#9ca3af"}}>Génération IA en cours...</p>
-                      </div>
-                    ):(
-                      <div style={{padding:"0 14px 14px"}}>
-                        <textarea value={descriptionIA} onChange={e=>setDescriptionIA(e.target.value)}
-                          style={{width:"100%",fontSize:13,color:"#111",border:"1px solid #e5e7eb",borderRadius:10,padding:"10px",boxSizing:"border-box",lineHeight:1.6,minHeight:140,resize:"vertical",outline:"none",fontFamily:"inherit"}}/>
-                      </div>
-                    )}
-                  </div>
-
-                  <a href="https://www.leboncoin.fr/deposer-une-annonce" target="_blank" rel="noopener noreferrer"
-                    style={{display:"block",width:"100%",background:"linear-gradient(135deg,#F97316,#EA580C)",color:"white",fontWeight:800,fontSize:16,borderRadius:16,padding:"16px 0",textAlign:"center",textDecoration:"none",marginTop:6,boxSizing:"border-box"}}>
-                    🔗 Ouvrir Leboncoin pour publier →
-                  </a>
-                </div>
-              )}
-
-            </div>
           </div>
         </div>
       );
@@ -2517,7 +2057,7 @@ La description : 120-150 mots, emojis pertinents, points forts du modèle, état
             createdAt: new Date().toISOString()
           });
           // Envoyer notification email
-          fetch("https://cotecars-api.vercel.app/api/brevo-form-requests", {
+          fetch("https://cotecars-v2.vercel.app/api/brevo-form-requests", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ nom, tel, email, plaque, marque, modele, annee, km, erreur: apiErr })
@@ -2631,7 +2171,6 @@ La description : 120-150 mots, emojis pertinents, points forts du modèle, état
       const [state, setState] = useState("home");
       const [showAnnonces, setShowAnnonces] = React.useState(false);
       const [showCreateAnnonce, setShowCreateAnnonce] = React.useState(false);
-      const [showPrepareLbc, setShowPrepareLbc] = React.useState(false);
       const [plate, setPlate] = useState("");
       const [km, setKm] = useState("");
       const [gearbox, setGearbox] = useState("");
@@ -2671,7 +2210,7 @@ La description : 120-150 mots, emojis pertinents, points forts du modèle, état
         setLoadingFin(true);
         try {
           const pClean = p.replace(/-/g, "");
-          const sivRes = await fetch(`https://cotecars-api.vercel.app/api/rapid-api-requests?plaque=${pClean}`);
+          const sivRes = await fetch(`https://cotecars-v2.vercel.app/api/rapid-api-requests?plaque=${pClean}`);
           if (!sivRes.ok) return;
           const sivData = await sivRes.json();
           const veh = sivData.data || sivData.données || {};
@@ -2693,7 +2232,7 @@ La description : 120-150 mots, emojis pertinents, points forts du modèle, état
         setErr(""); setState("loading"); if(window.posthog) posthog.capture('recherche_lancee', {plaque, km, gearbox, finition});
         try {
           const plateClean = plate.replace(/-/g, "");
-          const sivRes = await fetch(`https://cotecars-api.vercel.app/api/rapid-api-requests?plaque=${plateClean}`);
+          const sivRes = await fetch(`https://cotecars-v2.vercel.app/api/rapid-api-requests?plaque=${plateClean}`);
           if (!sivRes.ok) throw new Error(`Plaque introuvable (${sivRes.status})`);
           const sivData = await sivRes.json();
           const veh = sivData.data || sivData.données || {};
@@ -2728,7 +2267,7 @@ La description : 120-150 mots, emojis pertinents, points forts du modèle, état
           if (fuelCode)  lbcParams.set("fuel", fuelCode);
           lbcParams.set("gearbox", gearbox);
           if (finition) lbcParams.set("finition", finition);
-          const lbcRes = await fetch(`https://cotecars-api.vercel.app/api/leboncoin?${lbcParams.toString()}`);
+          const lbcRes = await fetch(`https://cotecars-v2.vercel.app/api/leboncoin?${lbcParams.toString()}`);
           if (!lbcRes.ok) throw new Error(`Erreur marché (${lbcRes.status})`);
           const lbcData = await lbcRes.json();
           const rawAds = lbcData.ads || [];
@@ -2767,7 +2306,7 @@ La description : 120-150 mots, emojis pertinents, points forts du modèle, état
           if (result.chUser)    lbcParams.set("ch", result.chUser);
           if (result.fuelCode)  lbcParams.set("fuel", result.fuelCode);
           lbcParams.set("gearbox", result.gearbox);
-          const lbcRes = await fetch(`https://cotecars-api.vercel.app/api/leboncoin?${lbcParams.toString()}`);
+          const lbcRes = await fetch(`https://cotecars-v2.vercel.app/api/leboncoin?${lbcParams.toString()}`);
           if (!lbcRes.ok) throw new Error("Erreur marché");
           const lbcData = await lbcRes.json();
           const rawAds = lbcData.ads || [];
@@ -2797,7 +2336,7 @@ La description : 120-150 mots, emojis pertinents, points forts du modèle, état
 
       if (showAnnonces) return <AnnoncesPage onBack={() => setShowAnnonces(false)} user={user} />;
       if (state === "loading") return <>{showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}<Spinner /></>;
-      if (state === "results") return <>{showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}{showCreateAnnonce && <CreateAnnonce result={result} plate={plate} user={user} onClose={() => setShowCreateAnnonce(false)} onPublished={() => {}} />}{showPrepareLbc && <PrepareAnnonceLbc result={result} plate={plate} user={user} km={km} onClose={() => setShowPrepareLbc(false)} />}<Results result={result} plate={plate} onReset={handleReset} user={user} onElargi={handleElargi} setShowLoginModal={setShowLoginModal} onCreateAnnonce={() => setShowCreateAnnonce(true)} onPrepareLbc={() => setShowPrepareLbc(true)} /></>;
+      if (state === "results") return <>{showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}{showCreateAnnonce && <CreateAnnonce result={result} plate={plate} user={user} onClose={() => setShowCreateAnnonce(false)} onPublished={() => {}} />}<Results result={result} plate={plate} onReset={handleReset} user={user} onElargi={handleElargi} setShowLoginModal={setShowLoginModal} onCreateAnnonce={() => setShowCreateAnnonce(true)} /></>;
       if (state === "error") return (
         <ErrorPage apiErr={apiErr} plaque={plate} onReset={handleReset} />
       );
