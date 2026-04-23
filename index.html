@@ -1814,12 +1814,12 @@ Description : 120-150 mots, emojis pertinents, points forts du modèle, état, a
               </div>
             )}
             {result.peuResultats && <FinitionSimilaireBlock result={result} onElargi={onElargi} />}
-            <button onClick={onCreateAnnonce} style={{ width:"100%", background:"linear-gradient(135deg,#6366F1,#4F46E5)", color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:"pointer", marginBottom:12 }}>
-              🏷️ Créer mon annonce
-            </button>
-            <button onClick={onPrepareLbc} style={{ width:"100%", background:"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:"pointer", marginBottom:12, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-              <span>🔗</span><span>Préparer mon annonce Leboncoin</span>
-            </button>
+            <div style={{ marginBottom:12 }}>
+              <button onClick={onPrepareLbc} style={{ width:"100%", background:"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:"pointer" }}>
+                🔗 Publier sur Leboncoin
+              </button>
+              <p style={{ textAlign:"center", fontSize:12, color:"#9ca3af", margin:"6px 0 0" }}>Votre annonce sera aussi visible gratuitement sur CoteCars</p>
+            </div>
             <button onClick={onReset} style={{ width:"100%", background:`linear-gradient(135deg,${EMERALD},${EMERALD_DARK})`, color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:"pointer", marginBottom:12 }}>
               🔄 Nouvelle recherche
             </button>
