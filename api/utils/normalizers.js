@@ -28,6 +28,30 @@ const BMW_VIN = {
   "F01": "Série 7", "F02": "Série 7", "G11": "Série 7", "G12": "Série 7",
 };
 
+// Normalise la puissance en chevaux DIN réels depuis AWN_label
+// Ex: "RENAULT CLIO 1.5 DCI 75" → AWN_puissance_CH = 75
+// Fallback: AWN_puissance_KW * 1.36
+function normalizePuissance(data) {
+  if (!data || !data.data) return;
+  const label = (data.data.AWN_label || "").trim();
+  const kw = parseInt(data.data.AWN_puissance_KW || 0);
+
+  // Cherche le dernier nombre 2-3 chiffres dans le label = ch DIN
+  const m = label.match(/\b(\d{2,3})\s*$/);
+  if (m) {
+    const ch = parseInt(m[1]);
+    if (ch >= 50 && ch <= 700) {
+      data.data.AWN_puissance_CH = ch;
+      return;
+    }
+  }
+
+  // Fallback : AWN_puissance_KW * 1.36
+  if (kw) {
+    data.data.AWN_puissance_CH = Math.round(kw * 1.36);
+  }
+}
+
 function normalizeVehicle(data) {
   if (!data || !data.data) return data;
   const label   = (data.data.AWN_label   || "").toUpperCase();
@@ -81,6 +105,9 @@ function normalizeVehicle(data) {
   if (modele === "MEGANE" && (energie.includes("ELECTR") || label.includes("E-TECH"))) data.data.AWN_modele = "MEGANE E-TECH";
   if (modele === "208"  && energie.includes("ELECTR")) data.data.AWN_modele = "E-208";
   if (modele === "2008" && energie.includes("ELECTR")) data.data.AWN_modele = "E-2008";
+
+  // Normalise la puissance en ch DIN
+  normalizePuissance(data);
 
   return data;
 }
