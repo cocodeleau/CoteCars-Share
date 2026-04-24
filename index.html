@@ -1547,7 +1547,7 @@ Consignes de rédaction :
 4. Format : Utilise des emojis pertinents pour la lisibilité (🚗, ✅, 🛡️). Pas de gras inutile sur tout le texte, juste sur les infos clés.
 Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne pas faire de texte trop long.`;
 
-          const res = await fetch(`https://cotecars-api.vercel.app/api/gemini`, {
+          const res = await fetch(`/api/gemini`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ prompt })
@@ -1815,7 +1815,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
         if (!plaqueInput || plaqueInput.length < 5) return;
         setPlaqueLoading(true);
         try {
-          const res = await fetch("https://cotecars-api.vercel.app/api/rapid-api-requests?plaque="+plaqueInput.replace(/[-\s]/g,"").toUpperCase());
+          const res = await fetch("/api/rapid-api-requests?plaque="+plaqueInput.replace(/[-\s]/g,"").toUpperCase());
           const data = await res.json();
           const v = data.data || data.données || {};
           if (v.AWN_marque) setMarque(v.AWN_marque);
@@ -1861,7 +1861,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
         setIaLoading(true);
         try {
           const prompt = "Tu es expert en rédaction d'annonces auto Leboncoin. Rédige une description de vente percutante pour ce véhicule.\n\nVéhicule : "+marque+" "+modele+(finition?" "+finition:"")+"\nAnnée : "+annee+" | Kilométrage : "+(km?Number(km).toLocaleString("fr-FR")+" km":"non renseigné")+" | Carburant : "+toEL(energie)+" | Boîte : "+boite+" | Puissance : "+puissance+" ch\nPrix : "+(prix?Number(prix).toLocaleString("fr-FR")+" €":"non renseigné")+" | Localisation : "+localisation+" "+ville+"\nÉquipements : "+(equipements.length>0?equipements.join(", "):"non renseignés")+"\nDéfauts et qualités : "+(defauts||"non renseignés")+"\n\nRéponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après :\n{\"description\":\"...\"}\n\nDescription : 120-150 mots, emojis pertinents, points forts du modèle, état du véhicule, appel à l'action.";
-          const res = await fetch("https://cotecars-api.vercel.app/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
+          const res = await fetch("/api/gemini",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
           const data = await res.json();
           const raw = (data.text||"").trim();
           const start = raw.indexOf("{");
@@ -2481,7 +2481,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
             createdAt: new Date().toISOString()
           });
           // Envoyer notification email
-          fetch("https://cotecars-api.vercel.app/api/brevo-form-requests", {
+          fetch("/api/brevo-form-requests", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ nom, tel, email, plaque, marque, modele, annee, km, erreur: apiErr })
@@ -2635,7 +2635,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
         setLoadingFin(true);
         try {
           const pClean = p.replace(/-/g, "");
-          const sivRes = await fetch(`https://cotecars-api.vercel.app/api/rapid-api-requests?plaque=${pClean}`);
+          const sivRes = await fetch(`/api/rapid-api-requests?plaque=${pClean}`);
           if (!sivRes.ok) return;
           const sivData = await sivRes.json();
           const veh = sivData.data || sivData.données || {};
@@ -2657,7 +2657,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
         setErr(""); setState("loading"); if(window.posthog) posthog.capture('recherche_lancee', {plaque, km, gearbox, finition});
         try {
           const plateClean = plate.replace(/-/g, "");
-          const sivRes = await fetch(`https://cotecars-api.vercel.app/api/rapid-api-requests?plaque=${plateClean}`);
+          const sivRes = await fetch(`/api/rapid-api-requests?plaque=${plateClean}`);
           if (!sivRes.ok) throw new Error(`Plaque introuvable (${sivRes.status})`);
           const sivData = await sivRes.json();
           const veh = sivData.data || sivData.données || {};
@@ -2692,7 +2692,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
           if (fuelCode)  lbcParams.set("fuel", fuelCode);
           lbcParams.set("gearbox", gearbox);
           if (finition) lbcParams.set("finition", finition);
-          const lbcRes = await fetch(`https://cotecars-api.vercel.app/api/leboncoin?${lbcParams.toString()}`);
+          const lbcRes = await fetch(`/api/leboncoin?${lbcParams.toString()}`);
           if (!lbcRes.ok) throw new Error(`Erreur marché (${lbcRes.status})`);
           const lbcData = await lbcRes.json();
           const rawAds = lbcData.ads || [];
@@ -2731,7 +2731,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
           if (result.chUser)    lbcParams.set("ch", result.chUser);
           if (result.fuelCode)  lbcParams.set("fuel", result.fuelCode);
           lbcParams.set("gearbox", result.gearbox);
-          const lbcRes = await fetch(`https://cotecars-api.vercel.app/api/leboncoin?${lbcParams.toString()}`);
+          const lbcRes = await fetch(`/api/leboncoin?${lbcParams.toString()}`);
           if (!lbcRes.ok) throw new Error("Erreur marché");
           const lbcData = await lbcRes.json();
           const rawAds = lbcData.ads || [];
