@@ -9,7 +9,7 @@ module.exports = async function handler(req, res) {
   if (!plaque) return res.status(400).json({ error: "Plaque manquante" });
 
   try {
-    const url = `https://api-plaque-immatriculation-siv.p.rapidapi.com/get-vehicule-info2?token=TokenDemoRapidapi&host_name=https%3A%2F%2Fapiplaqueimmatriculation.com&immatriculation=${plaque}`;
+    const url = `https://api-plaque-immatriculation-siv.p.rapidapi.com/get-vehicule-info?host_name=https%3A%2F%2Fapiplaqueimmatriculation.com&immatriculation=${plaque}`;
     const response = await fetch(url, {
       method: "GET",
       headers: {
