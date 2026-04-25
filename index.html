@@ -71,15 +71,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>  <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; background: #f9fafb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-    .spinner { animation: spin 0.9s linear infinite; }
-    .pulse { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
-    select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; }
-  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <div id="root"></div>
@@ -1340,9 +1333,9 @@
       const isConnected = !!user;
       const { veh, nom, ads, stats, finition, peuResultats } = result;
       const fmt = n => n ? n.toLocaleString("fr-FR") + " €" : "N/A";
-      const allAds = [...ads].filter(a => a.price?.[0] > 500).sort((a, b) => a.price[0] - b.price[0]);
-      const medianAds = allAds.map(a => a.price[0]).sort((a,b)=>a-b)[Math.floor(allAds.length * 0.5)] || 0;
-      const allCleanAds = allAds.filter(a => a.price[0] >= medianAds * 0.6).slice(0, 25);
+      const allAds = [...ads].filter(a => a.price?.[0] > 500).sort((a, b) => a.price?.[0] - b.price[0]);
+      const medianAds = allAds.map(a => a.price?.[0]).sort((a,b)=>a-b)[Math.floor(allAds.length * 0.5)] || 0;
+      const allCleanAds = allAds.filter(a => a.price?.[0] >= medianAds * 0.6).slice(0, 25);
       const cleanAds = allCleanAds.slice(0, showCount);
 
       function handleCopy() {
@@ -1362,7 +1355,7 @@
           cleanAds.forEach((ad, i) => {
             const km = (ad.attributes || []).find(x => x.key === "mileage")?.value_label || "";
             const year = (ad.attributes || []).find(x => x.key === "regdate")?.value_label || "";
-            lines.push(`${i+1}. ${ad.subject} — ${ad.price[0].toLocaleString("fr-FR")} €${year ? " · " + year : ""}${km ? " · " + parseInt(km).toLocaleString("fr-FR") + " km" : ""}`);
+            lines.push(`${i+1}. ${ad.subject} — ${ad.price?.[0]?.toLocaleString("fr-FR")} €${year ? " · " + year : ""}${km ? " · " + parseInt(km).toLocaleString("fr-FR") + " km" : ""}`);
             lines.push(`   ${ad.url}`);
           });
         }
@@ -1448,7 +1441,7 @@
                         </p>
                       </div>
                       <div style={{ textAlign:"right", flexShrink:0 }}>
-                        <span style={{ fontSize:15, fontWeight:800, color:EMERALD }}>{ad.price[0].toLocaleString("fr-FR")} €</span>
+                        <span style={{ fontSize:15, fontWeight:800, color:EMERALD }}>{ad.price?.[0]?.toLocaleString("fr-FR")} €</span>
                         <p style={{ margin:"2px 0 0", fontSize:10, color:"#9ca3af" }}>Pro</p>
                       </div>
                     </a>
@@ -2324,7 +2317,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
                       <div>
                         <p style={{ margin:0, fontWeight:800, fontSize:14, color:"#111" }}>{a.nom}{a.finition ? ` · ${a.finition}` : ""}</p>
-                        <p style={{ margin:"2px 0 0", fontSize:12, color:"#9ca3af" }}>{a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km.toLocaleString("fr-FR")} km` : ""}</p>
+                        <p style={{ margin:"2px 0 0", fontSize:12, color:"#9ca3af" }}>{a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km?.toLocaleString("fr-FR")} km` : ""}</p>
                       </div>
                       <span style={{ fontWeight:800, fontSize:18, color:EMERALD, whiteSpace:"nowrap" }}>{a.prix?.toLocaleString("fr-FR")} €</span>
                     </div>
@@ -2373,7 +2366,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                 <div>
                   <h1 style={{ fontWeight:800, fontSize:20, color:"#111", margin:"0 0 4px" }}>{a.nom}{a.finition ? ` · ${a.finition}` : ""}</h1>
-                  <p style={{ margin:0, fontSize:13, color:"#6b7280" }}>{a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km.toLocaleString("fr-FR")} km` : ""} · {a.gearbox==="1"?"Manuelle":"Automatique"}</p>
+                  <p style={{ margin:0, fontSize:13, color:"#6b7280" }}>{a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km?.toLocaleString("fr-FR")} km` : ""} · {a.gearbox==="1"?"Manuelle":"Automatique"}</p>
                 </div>
                 <span style={{ fontWeight:800, fontSize:26, color:EMERALD }}>{a.prix?.toLocaleString("fr-FR")} €</span>
               </div>
@@ -2385,15 +2378,15 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
                   <div style={{ display:"flex", gap:8 }}>
                     <div style={{ flex:1, textAlign:"center" }}>
                       <p style={{ margin:0, fontSize:10, color:"#6b7280" }}>Agressif</p>
-                      <p style={{ margin:0, fontWeight:700, fontSize:14, color:"#F59E0B" }}>{Math.round(a.stats.pMin).toLocaleString("fr-FR")}€</p>
+                      <p style={{ margin:0, fontWeight:700, fontSize:14, color:"#F59E0B" }}>{Math.round(a.stats?.pMin || 0).toLocaleString("fr-FR")}€</p>
                     </div>
                     <div style={{ flex:1, textAlign:"center" }}>
                       <p style={{ margin:0, fontSize:10, color:"#6b7280" }}>Marché</p>
-                      <p style={{ margin:0, fontWeight:700, fontSize:14, color:EMERALD }}>{Math.round(a.stats.p25).toLocaleString("fr-FR")}€</p>
+                      <p style={{ margin:0, fontWeight:700, fontSize:14, color:EMERALD }}>{Math.round(a.stats?.p25 || 0).toLocaleString("fr-FR")}€</p>
                     </div>
                     <div style={{ flex:1, textAlign:"center" }}>
                       <p style={{ margin:0, fontSize:10, color:"#6b7280" }}>Haut</p>
-                      <p style={{ margin:0, fontWeight:700, fontSize:14, color:"#6366F1" }}>{Math.round(a.stats.p50).toLocaleString("fr-FR")}€</p>
+                      <p style={{ margin:0, fontWeight:700, fontSize:14, color:"#6366F1" }}>{Math.round(a.stats?.p50 || 0).toLocaleString("fr-FR")}€</p>
                     </div>
                   </div>
                 </div>
@@ -2409,7 +2402,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
                   { label:"Énergie", val: a.energie },
                   { label:"Puissance DIN", val: a.ch ? `${a.ch} ch` : null },
                   { label:"Boîte de vitesse", val: a.gearbox === "1" ? "Manuelle" : "Automatique" },
-                  { label:"Kilométrage", val: a.km ? `${a.km.toLocaleString("fr-FR")} km` : null },
+                  { label:"Kilométrage", val: a.km ? `${a.km?.toLocaleString("fr-FR")} km` : null },
                   { label:"Localisation", val: a.localisation },
                 ].filter(r => r.val).map((r, i, arr) => (
                   <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"10px 14px", borderBottom: i < arr.length-1 ? "1px solid #f9fafb" : "none" }}>
