@@ -1,5 +1,5 @@
 const { normalizeVehicle } = require("./utils/normalizers.js");
-const { KEYS, URLS, CORS_HEADERS } = require("./utils/constants.js");
+const { KEYS, CORS_HEADERS } = require("./utils/constants.js");
 
 module.exports = async function handler(req, res) {
   Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
@@ -9,11 +9,13 @@ module.exports = async function handler(req, res) {
   if (!plaque) return res.status(400).json({ error: "Plaque manquante" });
 
   try {
-    const response = await fetch(`${URLS.rapidApi}/?plaque=${plaque}`, {
+    const url = `https://api-plaque-immatriculation-siv.p.rapidapi.com/get-vehicule-info2?token=TokenDemoRapidapi&host_name=https%3A%2F%2Fapiplaqueimmatriculation.com&immatriculation=${plaque}`;
+    const response = await fetch(url, {
       method: "GET",
       headers: {
         "x-rapidapi-key":  KEYS.rapidApi,
-        "x-rapidapi-host": "france-license-plate-api-siv-lite2.p.rapidapi.com",
+        "x-rapidapi-host": "api-plaque-immatriculation-siv.p.rapidapi.com",
+        "Content-Type":    "application/json",
       },
     });
     const data = await response.json();

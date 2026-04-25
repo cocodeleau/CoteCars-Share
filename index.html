@@ -1386,7 +1386,15 @@
             <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:16, padding:"12px 16px", marginBottom:16 }}>
               <p style={{ margin:0, color:"#166534", fontWeight:600, fontSize:14 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
               {nom && <p style={{ margin:"4px 0 0", color:"#15803d", fontWeight:700, fontSize:13 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
-              <p style={{ margin:"4px 0 0", color:"#166534", fontSize:12 }}>{veh.AWN_energie} · {veh.AWN_puissance_CH} ch · {veh.AWN_date_mise_en_circulation}</p>
+              <p style={{ margin:"4px 0 0", color:"#166534", fontSize:12 }}>{veh.AWN_energie} · {veh.AWN_puissance_CH} ch · {veh.AWN_boite || ""} · {veh.AWN_date_mise_en_circulation}</p>
+              {(veh.AWN_version||veh.AWN_nb_portes||veh.AWN_cylindres) && (
+                <p style={{ margin:"2px 0 0", color:"#166534", fontSize:12 }}>
+                  {veh.AWN_version ? veh.AWN_version+" · " : ""}
+                  {veh.AWN_nb_portes ? veh.AWN_nb_portes+" portes · " : ""}
+                  {veh.AWN_passagers ? veh.AWN_passagers+" places · " : ""}
+                  {veh.AWN_cylindres ? veh.AWN_cylindres+" cyl." : ""}
+                </p>
+              )}
             </div>
             {stats ? (
               <div style={{ position:"relative", marginBottom:16 }}>
@@ -1525,7 +1533,7 @@ Données du véhicule :
 * Année : ${annee}
 * Kilométrage : ${km ? km.toLocaleString("fr-FR") + " km" : "Non renseigné"}
 * Énergie : ${energie}
-* Boîte : ${result.gearbox === "1" ? "Manuelle" : "Automatique"}
+* Boîte : ${result.veh?.AWN_boite || ""}
 * Prix : ${parseInt(prix).toLocaleString("fr-FR")} €
 * Localisation : ${localisation}${ville ? " " + ville : ""}
 * État/Options spécifiques : ${[options, defauts].filter(Boolean).join(" | ") || "Non renseigné"}
@@ -1565,7 +1573,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
             `• Puissance : ${ch} ch`,
             `• Année : ${annee}`,
             km ? `• Kilométrage : ${km.toLocaleString("fr-FR")} km` : null,
-            `• Boîte : ${result.gearbox === "1" ? "Manuelle" : "Automatique"}`,
+            `• Boîte : ${result.veh?.AWN_boite || ""}`,
             finition ? `• Finition : ${finition}` : null, ``,
             options ? `✅ Équipements :\n${options}` : null, ``,
             description ? `📝 Description :\n${description}` : null, ``,
@@ -1598,7 +1606,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
             energie,
             ch,
             km: km || null,
-            gearbox: result.gearbox,
+            gearbox: result.gearbox || "", boite: result.veh?.AWN_boite || "",
             prix: parseInt(prix),
             localisation: `${localisation}${ville ? " " + ville : ""}`,
             defauts,
@@ -1751,7 +1759,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
       const chInit = veh.AWN_puissance_CH || "";
       const marqueInit = nom?.split(" ")[0] || "";
       const modeleInit = nom?.split(" ").slice(1).join(" ").replace(/\b(19|20)\d{2}\b/g,"").trim() || "";
-      const boiteInit = result.gearbox === "1" ? "Manuelle" : result.gearbox === "2" ? "Automatique" : "";
+      const boiteInit = veh.AWN_boite || (result.gearbox === "1" ? "Manuelle" : result.gearbox === "2" ? "Automatique" : "");
       const toEL = e => ({"GAZOLE":"Diesel","ESSENCE":"Essence","ELECTRIQUE":"Électrique","HYBRIDE":"Hybride"})[e] || e || "";
 
       const [step, setStep] = React.useState(1);
@@ -1810,6 +1818,8 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
           if (v.AWN_date_mise_en_circulation) setAnnee(v.AWN_date_mise_en_circulation.slice(-4));
           if (v.AWN_energie) setEnergie(v.AWN_energie);
           if (v.AWN_puissance_CH) setPuissance(String(v.AWN_puissance_CH));
+          if (v.AWN_boite) setBoite(v.AWN_boite);
+          if (v.AWN_nb_portes) setNbPortes(v.AWN_nb_portes || "5");
         } catch(e) { alert("Impossible de récupérer les infos."); }
         setPlaqueLoading(false);
       }
@@ -1843,7 +1853,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
       async function genererIA() {
         setIaLoading(true);
         try {
-          const motorisation = veh?.AWN_label || (marque+" "+modele);
+          const motorisation = veh?.AWN_version || veh?.AWN_label || (marque+" "+modele);
           const prompt = `Génère une annonce de vente automobile professionnelle et structurée pour le véhicule suivant :
 Modèle : ${motorisation}${finition ? " "+finition : ""}
 Année : ${annee}
@@ -2417,7 +2427,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   { label:"Année", val: a.annee },
                   { label:"Énergie", val: a.energie },
                   { label:"Puissance DIN", val: a.ch ? `${a.ch} ch` : null },
-                  { label:"Boîte de vitesse", val: a.gearbox === "1" ? "Manuelle" : "Automatique" },
+                  { label:"Boîte de vitesse", val: a.boite || (a.gearbox === "1" ? "Manuelle" : a.gearbox === "2" ? "Automatique" : "") },
                   { label:"Kilométrage", val: a.km ? `${a.km?.toLocaleString("fr-FR")} km` : null },
                   { label:"Localisation", val: a.localisation },
                 ].filter(r => r.val).map((r, i, arr) => (
@@ -2607,7 +2617,6 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       const [showPrepareLbc, setShowPrepareLbc] = React.useState(false);
       const [plate, setPlate] = useState("");
       const [km, setKm] = useState("");
-      const [gearbox, setGearbox] = useState("");
       const [finition, setFinition] = useState("");
       const [finitionsList, setFinitionsList] = useState([]);
       const [vehicleInfo, setVehicleInfo] = useState(null);
@@ -2662,8 +2671,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
       async function handleAnalyze() {
         if (plate.length < 7) { setErr("Veuillez saisir une plaque valide (ex: AB-123-CD)"); return; }
-        if (!gearbox) { setErr("Veuillez sélectionner le type de boîte de vitesse."); return; }
-        setErr(""); setState("loading"); if(window.posthog) posthog.capture('recherche_lancee', {plaque, km, gearbox, finition});
+        setErr(""); setState("loading"); if(window.posthog) posthog.capture('recherche_lancee', {plaque, km, finition});
         try {
           const plateClean = plate.replace(/-/g, "");
           const sivRes = await fetch(`/api/rapid-api-requests?plaque=${plateClean}`);
@@ -2678,6 +2686,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           const kmUser = km ? parseInt(km) : null;
           const anneeUser = veh.AWN_date_mise_en_circulation ? parseInt(veh.AWN_date_mise_en_circulation.slice(-4)) : null;
           const chUser = veh.AWN_puissance_CH || null;
+          const gearbox = veh.AWN_boite === "Manuelle" ? "1" : veh.AWN_boite === "Automatique" ? "2" : "";
           const energieRaw = veh.AWN_energie || "";
           const FUEL_CODES = {
             "ESSENCE": "1",
@@ -2739,7 +2748,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           if (result.anneeUser) lbcParams.set("annee", result.anneeUser);
           if (result.chUser)    lbcParams.set("ch", result.chUser);
           if (result.fuelCode)  lbcParams.set("fuel", result.fuelCode);
-          lbcParams.set("gearbox", result.gearbox);
+          if (result.gearbox) lbcParams.set("gearbox", result.gearbox);
           const lbcRes = await fetch(`/api/leboncoin?${lbcParams.toString()}`);
           if (!lbcRes.ok) throw new Error("Erreur marché");
           const lbcData = await lbcRes.json();
@@ -2758,7 +2767,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       }
 
       function handleReset() {
-        setState("home"); setPlate(""); setKm(""); setGearbox("");
+        setState("home"); setPlate(""); setKm("");
         setFinition(""); setFinitionsList([]); setVehicleInfo(null); setFinLoaded(false);
         setErr(""); setApiErr(""); setResult(null);
       }
@@ -2829,17 +2838,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                 </div>
               </div>
 
-              <div style={{ marginBottom:16 }}>
-                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>Boîte de vitesse</label>
-                <div style={{ display:"flex", gap:8 }}>
-                  {[{ val:"1", label:"🔧 Manuelle" }, { val:"2", label:"⚙️ Automatique" }].map(opt => (
-                    <button key={opt.val} onClick={() => setGearbox(opt.val)}
-                      style={{ flex:1, padding:"14px 0", borderRadius:12, border:`2px solid ${gearbox === opt.val ? EMERALD : "#e5e7eb"}`, background: gearbox === opt.val ? "#ecfdf5" : "white", color: gearbox === opt.val ? EMERALD : "#6b7280", fontWeight:700, fontSize:14, cursor:"pointer", transition:"all 0.2s" }}>
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+
 
               {finitionsList.length > 0 && (
                 <div style={{ marginBottom:16 }}>

@@ -28,86 +28,56 @@ const BMW_VIN = {
   "F01": "Série 7", "F02": "Série 7", "G11": "Série 7", "G12": "Série 7",
 };
 
-// Normalise la puissance en chevaux DIN réels depuis AWN_label
-// Ex: "RENAULT CLIO 1.5 DCI 75" → AWN_puissance_CH = 75
-// Fallback: AWN_puissance_KW * 1.36
-function normalizePuissance(data) {
-  if (!data || !data.data) return;
-  const label = (data.data.AWN_label || "").trim();
-  const kw = parseInt(data.data.AWN_puissance_KW || 0);
-
-  // Cherche le dernier nombre 2-3 chiffres dans le label = ch DIN
-  const m = label.match(/\b(\d{2,3})\s*$/);
-  if (m) {
-    const ch = parseInt(m[1]);
-    if (ch >= 50 && ch <= 700) {
-      data.data.AWN_puissance_CH = ch;
-      return;
-    }
-  }
-
-  // Fallback : AWN_puissance_KW * 1.36
-  if (kw) {
-    data.data.AWN_puissance_CH = Math.round(kw * 1.36);
-  }
-}
-
 function normalizeVehicle(data) {
   if (!data || !data.data) return data;
-  const label   = (data.data.AWN_label   || "").toUpperCase();
-  const modele  = (data.data.AWN_modele  || "").toUpperCase();
-  const marque  = (data.data.AWN_marque  || "").toUpperCase();
-  const energie = (data.data.AWN_energie || "").toUpperCase();
-  const vin     = (data.data.AWN_VIN     || "").toUpperCase();
+  const d = data.data;
 
+  const marque = (d.marque || "").toUpperCase().trim();
+  const vin    = (d.vin    || "").toUpperCase().trim();
+
+  // Normalisation marque/modele
   if (marque === "MERCEDES") {
-    data.data.AWN_marque = "MERCEDES-BENZ";
+    d.AWN_marque = "MERCEDES-BENZ";
     const vinCode = vin.substring(3, 6);
-    if (MERCEDES_VIN[vinCode]) {
-      data.data.AWN_modele = MERCEDES_VIN[vinCode];
-    } else if (modele === "CLASSE") {
-      if      (label.includes("SLK"))                              data.data.AWN_modele = "Classe SLK";
-      else if (label.includes("SLC"))                              data.data.AWN_modele = "Classe SLC";
-      else if (label.includes("SL ") || label.endsWith("SL"))     data.data.AWN_modele = "Classe SL";
-      else if (label.includes("CLA"))                              data.data.AWN_modele = "Classe CLA";
-      else if (label.includes("CLK"))                              data.data.AWN_modele = "Classe CLK";
-      else if (label.includes("CLS"))                              data.data.AWN_modele = "Classe CLS";
-      else if (label.includes("GLA"))                              data.data.AWN_modele = "Classe GLA";
-      else if (label.includes("GLB"))                              data.data.AWN_modele = "Classe GLB";
-      else if (label.includes("GLC"))                              data.data.AWN_modele = "Classe GLC";
-      else if (label.includes("GLE"))                              data.data.AWN_modele = "Classe GLE";
-      else if (label.includes("GLK"))                              data.data.AWN_modele = "Classe GLK";
-      else if (label.includes("GLS"))                              data.data.AWN_modele = "Classe GLS";
-      else if (label.includes("CLASSE A") || label.match(/\bA\s+\d{3}/)) data.data.AWN_modele = "Classe A";
-      else if (label.includes("CLASSE B") || label.match(/\bB\s+\d{3}/)) data.data.AWN_modele = "Classe B";
-      else if (label.includes("CLASSE C") || label.match(/\bC\s+\d{3}/)) data.data.AWN_modele = "Classe C";
-      else if (label.includes("CLASSE E") || label.match(/\bE\s+\d{3}/)) data.data.AWN_modele = "Classe E";
-      else if (label.includes("CLASSE G"))                         data.data.AWN_modele = "Classe G";
-      else if (label.includes("CLASSE M") || label.includes("ML")) data.data.AWN_modele = "Classe M";
-      else if (label.includes("CLASSE R"))                         data.data.AWN_modele = "Classe R";
-      else if (label.includes("CLASSE S") || label.match(/\bS\s+\d{3}/)) data.data.AWN_modele = "Classe S";
-      else if (label.includes("CLASSE V"))                         data.data.AWN_modele = "Classe V";
-      else if (label.includes("CLASSE X"))                         data.data.AWN_modele = "Classe X";
-    }
-  }
-
-  if (marque === "B.M.W." || marque === "BMW") {
-    data.data.AWN_marque = "BMW";
+    d.AWN_modele = MERCEDES_VIN[vinCode] || d.modele || "";
+  } else if (marque === "B.M.W." || marque === "BMW") {
+    d.AWN_marque = "BMW";
     const vinCode = vin.substring(3, 6);
-    if (BMW_VIN[vinCode]) data.data.AWN_modele = BMW_VIN[vinCode];
+    d.AWN_modele = BMW_VIN[vinCode] || d.modele || "";
+  } else {
+    d.AWN_marque = d.marque || "";
+    d.AWN_modele = d.modele || "";
   }
 
-  if (modele === "IONIQ") {
-    if (label.includes("IONIQ 6") || label.includes("IONIQ6")) data.data.AWN_modele = "IONIQ 6";
-    else if (energie.includes("ELECTR") || label.includes("58 KWH") || label.includes("72 KWH") || label.includes("77 KWH")) data.data.AWN_modele = "IONIQ 5";
-  }
+  // Energie
+  const ENERGIE_MAP = {
+    "DIESEL": "GAZOLE", "ESSENCE": "ESSENCE", "ELECTRIC": "ELECTRIQUE",
+    "HYBRID": "HYBRIDE", "GPL": "GPL", "GNV": "GAZ NATUREL (GNV)",
+  };
+  const energieUp = (d.energieNGC || "").toUpperCase();
+  d.AWN_energie = ENERGIE_MAP[energieUp] || d.energieNGC || "";
+  if (energieUp.includes("ELECTRIC")) d.AWN_energie = "ELECTRIQUE";
+  if (energieUp.includes("HYBRID"))   d.AWN_energie = "HYBRIDE";
 
-  if (modele === "MEGANE" && (energie.includes("ELECTR") || label.includes("E-TECH"))) data.data.AWN_modele = "MEGANE E-TECH";
-  if (modele === "208"  && energie.includes("ELECTR")) data.data.AWN_modele = "E-208";
-  if (modele === "2008" && energie.includes("ELECTR")) data.data.AWN_modele = "E-2008";
+  // Champs standards
+  d.AWN_date_mise_en_circulation = d.date1erCir_fr || "";
+  d.AWN_VIN     = vin;
+  d.AWN_label   = d.version || "";
 
-  // Normalise la puissance en ch DIN
-  normalizePuissance(data);
+  // Puissance CH directe
+  const chRaw = (d.puisFiscReelCH || "").replace(/\s*CH\s*/i, "").trim();
+  d.AWN_puissance_CH = chRaw ? parseInt(chRaw) : null;
+
+  // Boite de vitesse
+  const bv = (d.boite_vitesse || "").toUpperCase();
+  d.AWN_boite = bv === "M" ? "Manuelle" : bv === "A" ? "Automatique" : "";
+
+  // Infos supplémentaires
+  d.AWN_version   = d.version      || "";
+  d.AWN_nb_portes = d.nb_portes    || "";
+  d.AWN_passagers = d.nr_passagers || "";
+  d.AWN_cylindres = d.cylindres    || "";
+  d.AWN_couleur   = d.couleur      || "";
 
   return data;
 }
