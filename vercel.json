@@ -5,6 +5,7 @@
     { "source": "/api/lbc-finitions",       "destination": "/api/lbc-finitions-requests.js" },
     { "source": "/api/leboncoin",           "destination": "/api/lbc-piloterr-requests.js" },
     { "source": "/api/lbc-marques-codes",   "destination": "/api/lbc-marques-codes.js" },
-    { "source": "/api/rapid-api-requests",  "destination": "/api/rapid-api-requests.js" }
+    { "source": "/api/rapid-api-requests",  "destination": "/api/rapid-api-requests.js" },
+    { "source": "/style.css",              "destination": "/style.css" }
   ]
 }
