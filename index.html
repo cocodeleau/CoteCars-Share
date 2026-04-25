@@ -72,6 +72,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
@@ -90,6 +91,7 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+    const storage = firebase.storage();
     const googleProvider = new firebase.auth.GoogleAuthProvider();
 
     const EMERALD = "#10B981";
@@ -1583,16 +1585,10 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
           const photoUrls = [];
           for (let i = 0; i < photos.length; i++) {
             const p = photos[i];
-            const formData = new FormData();
-            formData.append("file", p.file);
-            formData.append("upload_preset", "CoteCars");
-            formData.append("cloud_name", "di3xa7ldg");
-            const res = await fetch("https://api.cloudinary.com/v1_1/di3xa7ldg/image/upload", {
-              method: "POST",
-              body: formData,
-            });
-            const data = await res.json();
-            if (data.secure_url) photoUrls.push(data.secure_url);
+            const ref = storage.ref(`annonces/${Date.now()}_${p.name}`);
+            await ref.put(p.file);
+            const url = await ref.getDownloadURL();
+            if (url) photoUrls.push(url);
           }
           const annonce = {
             uid: user.uid,
@@ -1827,11 +1823,10 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
         try {
           const photoUrls = [];
           for (let p of photos) {
-            const fd = new FormData();
-            fd.append("file",p.file); fd.append("upload_preset","CoteCars"); fd.append("cloud_name","di3xa7ldg");
-            const res = await fetch("https://api.cloudinary.com/v1_1/di3xa7ldg/image/upload",{method:"POST",body:fd});
-            const d = await res.json();
-            if (d.secure_url) photoUrls.push(d.secure_url);
+            const ref = storage.ref(`annonces/${Date.now()}_${p.name}`);
+            await ref.put(p.file);
+            const url = await ref.getDownloadURL();
+            if (url) photoUrls.push(url);
           }
           await db.collection("annonces").add({
             uid:user.uid, userEmail:user.email, userPhoto:user.photoURL||"",
