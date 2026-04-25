@@ -1505,13 +1505,12 @@
       const km = result.kmUser || "";
 
       function handlePhotos(e) {
-        const files = Array.from(e.target.files).slice(0, 8);
-        const readers = files.map(f => new Promise(res => {
-          const r = new FileReader();
-          r.onload = ev => res({ name: f.name, data: ev.target.result });
-          r.readAsDataURL(f);
-        }));
-        Promise.all(readers).then(setPhotos);
+        const files = Array.from(e.target.files);
+        const newPhotos = files.map(f => ({ file: f, name: f.name, data: URL.createObjectURL(f) }));
+        setPhotos(prev => {
+          const combined = Array.isArray(prev) ? [...prev, ...newPhotos] : newPhotos;
+          return combined.slice(0, 8);
+        });
       }
 
       async function generateLbcText() {
@@ -1584,9 +1583,8 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
           const photoUrls = [];
           for (let i = 0; i < photos.length; i++) {
             const p = photos[i];
-            const blob = await fetch(p.data).then(r => r.blob());
             const formData = new FormData();
-            formData.append("file", blob);
+            formData.append("file", p.file);
             formData.append("upload_preset", "CoteCars");
             formData.append("cloud_name", "di3xa7ldg");
             const res = await fetch("https://api.cloudinary.com/v1_1/di3xa7ldg/image/upload", {
@@ -1800,8 +1798,11 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
 
       function handlePhotos(e) {
         const files = Array.from(e.target.files);
-        const readers = files.map(f => new Promise(res => { const r = new FileReader(); r.onload = ev => res({name:f.name,data:ev.target.result}); r.readAsDataURL(f); }));
-        Promise.all(readers).then(p => setPhotos(prev => [...prev,...p].slice(0,20)));
+        const newPhotos = files.map(f => ({ file: f, name: f.name, data: URL.createObjectURL(f) }));
+        setPhotos(prev => {
+          const combined = Array.isArray(prev) ? [...prev, ...newPhotos] : newPhotos;
+          return combined.slice(0, 20);
+        });
       }
 
       async function handleAutoFill() {
@@ -1826,9 +1827,8 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
         try {
           const photoUrls = [];
           for (let p of photos) {
-            const blob = await fetch(p.data).then(r=>r.blob());
             const fd = new FormData();
-            fd.append("file",blob); fd.append("upload_preset","CoteCars"); fd.append("cloud_name","di3xa7ldg");
+            fd.append("file",p.file); fd.append("upload_preset","CoteCars"); fd.append("cloud_name","di3xa7ldg");
             const res = await fetch("https://api.cloudinary.com/v1_1/di3xa7ldg/image/upload",{method:"POST",body:fd});
             const d = await res.json();
             if (d.secure_url) photoUrls.push(d.secure_url);
