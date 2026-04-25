@@ -1582,14 +1582,11 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
         setLoading(true);
         try {
           // Upload photos sur Cloudinary
-          const photoUrls = [];
-          for (let i = 0; i < photos.length; i++) {
-            const p = photos[i];
-            const ref = storage.ref(`annonces/${Date.now()}_${p.name}`);
+          const photoUrls = await Promise.all(photos.map(async p => {
+            const ref = storage.ref(`annonces/${Date.now()}_${Math.random().toString(36).slice(2)}_${p.name}`);
             await ref.put(p.file);
-            const url = await ref.getDownloadURL();
-            if (url) photoUrls.push(url);
-          }
+            return ref.getDownloadURL();
+          }));
           const annonce = {
             uid: user.uid,
             userEmail: user.email,
@@ -1821,13 +1818,11 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
         if (!user) return;
         setPublishing(true);
         try {
-          const photoUrls = [];
-          for (let p of photos) {
-            const ref = storage.ref(`annonces/${Date.now()}_${p.name}`);
+          const photoUrls = await Promise.all(photos.map(async p => {
+            const ref = storage.ref(`annonces/${Date.now()}_${Math.random().toString(36).slice(2)}_${p.name}`);
             await ref.put(p.file);
-            const url = await ref.getDownloadURL();
-            if (url) photoUrls.push(url);
-          }
+            return ref.getDownloadURL();
+          }));
           await db.collection("annonces").add({
             uid:user.uid, userEmail:user.email, userPhoto:user.photoURL||"",
             plate:plaqueInput, nom:(marque+" "+modele).trim(), finition, annee, energie,
