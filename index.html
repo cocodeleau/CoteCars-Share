@@ -2615,6 +2615,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       const [showAnnonces, setShowAnnonces] = React.useState(false);
       const [showCreateAnnonce, setShowCreateAnnonce] = React.useState(false);
       const [showPrepareLbc, setShowPrepareLbc] = React.useState(false);
+      const [gearbox, setGearbox] = useState("");
+      const [showPuissanceConfirm, setShowPuissanceConfirm] = React.useState(false);
+      const [puissanceConfirmValue, setPuissanceConfirmValue] = React.useState("");
+      const [pendingResult, setPendingResult] = React.useState(null);
       const [plate, setPlate] = useState("");
       const [km, setKm] = useState("");
       const [finition, setFinition] = useState("");
@@ -2671,7 +2675,8 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
       async function handleAnalyze() {
         if (plate.length < 7) { setErr("Veuillez saisir une plaque valide (ex: AB-123-CD)"); return; }
-        setErr(""); setState("loading"); if(window.posthog) posthog.capture('recherche_lancee', {plaque, km, finition});
+        if (!gearbox) { setErr("Veuillez sélectionner le type de boîte de vitesse."); return; }
+        setErr(""); setState("loading"); if(window.posthog) posthog.capture('recherche_lancee', {plaque, km, gearbox, finition});
         try {
           const plateClean = plate.replace(/-/g, "");
           const sivRes = await fetch(`/api/rapid-api-requests?plaque=${plateClean}`);
@@ -2686,7 +2691,6 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           const kmUser = km ? parseInt(km) : null;
           const anneeUser = veh.AWN_date_mise_en_circulation ? parseInt(veh.AWN_date_mise_en_circulation.slice(-4)) : null;
           const chUser = veh.AWN_puissance_CH || null;
-          const gearbox = veh.AWN_boite === "Manuelle" ? "1" : veh.AWN_boite === "Automatique" ? "2" : "";
           const energieRaw = veh.AWN_energie || "";
           const FUEL_CODES = {
             "ESSENCE": "1",
@@ -2727,8 +2731,16 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             db.collection("historique").doc(user?.uid).set({ items: newHisto }).catch(() => {});
           }
 
-          setResult({ veh, nom, ads, stats, finition, peuResultats, marque, modele, kmUser, anneeUser, chUser, fuelCode, gearbox, finitionsList: finitionsList2 });
-          setState("results"); if(window.posthog) posthog.capture('vehicule_identifie', {marque, modele, finition, km: kmUser});
+          const resultData = { veh, nom, ads, stats, finition, peuResultats, marque, modele, kmUser, anneeUser, chUser, fuelCode, gearbox, finitionsList: finitionsList2 };
+          if (veh.AWN_puissance_SUSPECT) {
+            setPendingResult(resultData);
+            setPuissanceConfirmValue("");
+            setShowPuissanceConfirm(true);
+            setState("home");
+          } else {
+            setResult(resultData);
+            setState("results");
+          } if(window.posthog) posthog.capture('vehicule_identifie', {marque, modele, finition, km: kmUser});
         } catch(e) {
           setApiErr(e.message || "Une erreur est survenue.");
           setState("error"); if(window.posthog) posthog.capture('recherche_erreur', {plaque, erreur: e.message});
@@ -2767,7 +2779,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       }
 
       function handleReset() {
-        setState("home"); setPlate(""); setKm("");
+        setState("home"); setPlate(""); setKm(""); setGearbox("");
         setFinition(""); setFinitionsList([]); setVehicleInfo(null); setFinLoaded(false);
         setErr(""); setApiErr(""); setResult(null);
       }
@@ -2787,6 +2799,40 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       return (
         <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"#f9fafb", display:"flex", flexDirection:"column" }}>
           {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+          {showPuissanceConfirm && pendingResult && (
+            <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+              <div style={{background:"white",borderRadius:20,padding:"28px 24px",width:"100%",maxWidth:360,boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+                <p style={{fontWeight:800,fontSize:17,color:"#111",margin:"0 0 10px"}}>⚠️ Puissance à confirmer</p>
+                <p style={{fontSize:13,color:"#6b7280",margin:"0 0 16px",lineHeight:1.5}}>
+                  La puissance détectée ({pendingResult.veh.AWN_puissance_CH} ch) semble incorrecte pour ce véhicule.<br/>Veuillez saisir la vraie puissance en chevaux DIN.
+                </p>
+                <input type="number" value={puissanceConfirmValue} onChange={e=>setPuissanceConfirmValue(e.target.value)}
+                  placeholder="Ex: 75" style={{width:"100%",padding:"13px 14px",border:"2px solid #e5e7eb",borderRadius:12,fontSize:18,fontWeight:700,marginBottom:14,boxSizing:"border-box",outline:"none"}}/>
+                <button onClick={()=>{
+                  const ch = parseInt(puissanceConfirmValue);
+                  if (!ch || ch < 30 || ch > 1000) return;
+                  const r = {...pendingResult};
+                  r.veh.AWN_puissance_CH = ch;
+                  r.chUser = ch;
+                  setResult(r);
+                  setShowPuissanceConfirm(false);
+                  setPendingResult(null);
+                  setState("results");
+                }} disabled={!puissanceConfirmValue}
+                  style={{width:"100%",background:!puissanceConfirmValue?"#d1d5db":EMERALD,color:"white",fontWeight:800,fontSize:16,borderRadius:14,padding:"14px 0",border:"none",cursor:!puissanceConfirmValue?"not-allowed":"pointer",marginBottom:10}}>
+                  ✅ Confirmer
+                </button>
+                <button onClick={()=>{
+                  setResult(pendingResult);
+                  setShowPuissanceConfirm(false);
+                  setPendingResult(null);
+                  setState("results");
+                }} style={{width:"100%",background:"#f3f4f6",color:"#6b7280",fontWeight:700,fontSize:14,borderRadius:14,padding:"12px 0",border:"none",cursor:"pointer"}}>
+                  Ignorer et continuer
+                </button>
+              </div>
+            </div>
+          )}
           <div style={{ background:"white", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:"1px solid #f3f4f6" }}>
             <span style={{ fontWeight:800, fontSize:20, color:EMERALD }}>CoteCars</span>
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -2855,6 +2901,18 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   </p>
                 </div>
               )}
+
+              <div style={{ marginBottom:16 }}>
+                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>Boîte de vitesse</label>
+                <div style={{ display:"flex", gap:8 }}>
+                  {[{ val:"1", label:"🔧 Manuelle" }, { val:"2", label:"⚙️ Automatique" }].map(opt => (
+                    <button key={opt.val} onClick={() => setGearbox(opt.val)}
+                      style={{ flex:1, padding:"14px 0", borderRadius:12, border:`2px solid ${gearbox === opt.val ? EMERALD : "#e5e7eb"}`, background: gearbox === opt.val ? "#ecfdf5" : "white", color: gearbox === opt.val ? EMERALD : "#6b7280", fontWeight:700, fontSize:14, cursor:"pointer", transition:"all 0.2s" }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {err && <p style={{ color:"#ef4444", fontSize:14, textAlign:"center", margin:"0 0 12px" }}>{err}</p>}
               <button onClick={handleAnalyze} style={{ width:"100%", background:`linear-gradient(135deg,${EMERALD},${EMERALD_DARK})`, color:"white", fontWeight:800, fontSize:18, borderRadius:16, padding:"18px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 14px rgba(16,185,129,0.35)" }}>
