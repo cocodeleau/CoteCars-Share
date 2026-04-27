@@ -2808,16 +2808,37 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                 </p>
                 <input type="number" value={puissanceConfirmValue} onChange={e=>setPuissanceConfirmValue(e.target.value)}
                   placeholder="Ex: 75" style={{width:"100%",padding:"13px 14px",border:"2px solid #e5e7eb",borderRadius:12,fontSize:18,fontWeight:700,marginBottom:14,boxSizing:"border-box",outline:"none"}}/>
-                <button onClick={()=>{
+                <button onClick={async ()=>{
                   const ch = parseInt(puissanceConfirmValue);
                   if (!ch || ch < 30 || ch > 1000) return;
-                  const r = {...pendingResult};
-                  r.veh.AWN_puissance_CH = ch;
-                  r.chUser = ch;
-                  setResult(r);
                   setShowPuissanceConfirm(false);
                   setPendingResult(null);
-                  setState("results");
+                  setState("loading");
+                  try {
+                    const r = {...pendingResult};
+                    r.veh.AWN_puissance_CH = ch;
+                    r.chUser = ch;
+                    // Relancer la recherche LBC avec le bon ch
+                    const lbcParams = new URLSearchParams({ marque: r.marque, modele: r.modele });
+                    if (r.kmUser)    lbcParams.set("km", r.kmUser);
+                    if (r.anneeUser) lbcParams.set("annee", r.anneeUser);
+                    lbcParams.set("ch", ch);
+                    if (r.fuelCode)  lbcParams.set("fuel", r.fuelCode);
+                    lbcParams.set("gearbox", r.gearbox);
+                    if (r.finition)  lbcParams.set("finition", r.finition);
+                    const lbcRes = await fetch(`/api/leboncoin?${lbcParams.toString()}`);
+                    const lbcData = await lbcRes.json();
+                    const rawAds = lbcData.ads || [];
+                    const ads = filterAds(rawAds, r.kmUser, r.anneeUser, ch, r.marque, r.modele, r.finition);
+                    const stats = computeStats(ads);
+                    r.ads = ads;
+                    r.stats = stats;
+                    r.peuResultats = r.finition && ads.length < 5;
+                    setResult(r);
+                    setState("results");
+                  } catch(e) {
+                    setState("results");
+                  }
                 }} disabled={!puissanceConfirmValue}
                   style={{width:"100%",background:!puissanceConfirmValue?"#d1d5db":EMERALD,color:"white",fontWeight:800,fontSize:16,borderRadius:14,padding:"14px 0",border:"none",cursor:!puissanceConfirmValue?"not-allowed":"pointer",marginBottom:10}}>
                   ✅ Confirmer
