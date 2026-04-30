@@ -28,7 +28,7 @@
   <meta name="twitter:image" content="https://cotecars.fr/og-image.png" />
 
   <!-- Thème mobile -->
-  <meta name="theme-color" content="#10B981" />
+  <meta name="theme-color" content="#1a3fdb" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="CoteCars" />
@@ -94,7 +94,7 @@
     const storage = firebase.storage();
     const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-    const EMERALD = "#10B981";
+    const EMERALD = "#1a3fdb";
 
     function LoginModal({ onClose }) {
       const [mode, setMode] = React.useState("login"); // login | register | forgot
@@ -204,7 +204,7 @@
       );
     }
 
-    const EMERALD_DARK = "#059669";
+    const EMERALD_DARK = "#0f28a8";
 
         const FINITIONS = {
       "PEUGEOT_104": ["GL", "GLD", "SR", "ZS"],
@@ -1034,18 +1034,160 @@
     }
 
     function Spinner() {
-      const [step, setStep] = useState(0);
-      const steps = ["Recherche de votre véhicule...", "Analyse du marché Leboncoin...", "Calcul des prix en cours..."];
-      useState(() => {
+      const [step, setStep] = React.useState(0);
+      const steps = [
+        { label:"Recherche de votre véhicule...", done:false },
+        { label:"Analyse du marché Leboncoin...", done:false },
+        { label:"Calcul des prix en cours...", done:false },
+      ];
+      React.useEffect(() => {
         const t = setInterval(() => setStep(p => p + 1 < steps.length ? p + 1 : p), 2500);
         return () => clearInterval(t);
-      });
+      }, []);
+
+      // Desktop : plein écran 2 colonnes avec skeleton
+      // Mobile : centré avec spinner animé
       return (
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"100vh", padding:"0 24px" }}>
-          <div className="spinner" style={{ width:80, height:80, borderRadius:"50%", border:"4px solid #e5e7eb", borderTopColor:EMERALD, marginBottom:32 }} />
-          <p style={{ color:"#6b7280", fontSize:16, textAlign:"center", margin:0 }}>{steps[step]}</p>
-          <div style={{ display:"flex", gap:6, marginTop:16 }}>
-            {steps.map((_,i) => <div key={i} style={{ width:8, height:8, borderRadius:"50%", background: i<=step ? EMERALD : "#d1d5db", transition:"background 0.3s" }} />)}
+        <div style={{ minHeight:"100vh", background:"#f0f4fa", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+          <style>{`
+            @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+            @keyframes floatorb { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
+            @keyframes pulseRing { 0%{transform:scale(1);opacity:0.6} 100%{transform:scale(2.2);opacity:0} }
+            @keyframes spinSvg { to{transform:rotate(360deg)} }
+            @keyframes fillbar { 0%{width:0%} 70%{width:85%} 100%{width:85%} }
+            @keyframes bounceDot { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+            @keyframes shimmer { from{transform:translateX(-100%)} to{transform:translateX(100%)} }
+            .sk { position:relative;overflow:hidden;background:#e2e8f0;border-radius:8px; }
+            .sk::after { content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.65),transparent);animation:shimmer 1.5s infinite; }
+            .pr { width:6px;height:6px;border-radius:50%;background:#1a3fdb;animation:bounceDot 1.2s ease-in-out infinite; }
+            .pr:nth-child(2){animation-delay:0.15s} .pr:nth-child(3){animation-delay:0.3s}
+          `}</style>
+
+          {/* MOBILE view (< 900px) */}
+          <div style={{ display:"block" }} className="mobile-spinner">
+            <style>{`.mobile-spinner { display:block } @media(min-width:900px){.mobile-spinner{display:none}}`}</style>
+            <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"16px 20px 20px", position:"relative", overflow:"hidden" }}>
+              <div style={{ position:"absolute", top:-40, right:-40, width:120, height:120, borderRadius:"50%", background:"rgba(255,255,255,0.06)" }} />
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                <span style={{ color:"white", fontWeight:700, fontSize:18 }}>Cote<span style={{color:"#93c5fd"}}>Cars</span></span>
+              </div>
+              <span style={{ color:"rgba(255,255,255,0.75)", fontSize:12 }}>Analyse en cours…</span>
+            </div>
+            <div style={{ padding:"14px", opacity:0.3, filter:"blur(1px)" }}>
+              <div className="sk" style={{ height:12, width:"50%", marginBottom:10 }} />
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:10 }}>
+                <div className="sk" style={{ height:48, borderRadius:10 }} />
+                <div className="sk" style={{ height:48, borderRadius:10 }} />
+                <div className="sk" style={{ height:48, borderRadius:10 }} />
+              </div>
+              <div className="sk" style={{ height:10, width:"70%", marginBottom:6 }} />
+              <div className="sk" style={{ height:34, borderRadius:9, marginBottom:6 }} />
+              <div className="sk" style={{ height:34, borderRadius:9, marginBottom:6 }} />
+              <div className="sk" style={{ height:34, borderRadius:9 }} />
+            </div>
+            <div style={{ position:"absolute", top:90, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16 }}>
+              <div style={{ position:"relative", width:56, height:56, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <div style={{ position:"absolute", width:56, height:56, borderRadius:"50%", border:"2px solid #1a3fdb", opacity:0, animation:"pulseRing 2s ease-out infinite" }} />
+                <div style={{ position:"absolute", width:56, height:56, borderRadius:"50%", border:"2px solid #1a3fdb", opacity:0, animation:"pulseRing 2s ease-out 0.6s infinite" }} />
+                <div style={{ position:"absolute", width:56, height:56, borderRadius:"50%", border:"2px solid #1a3fdb", opacity:0, animation:"pulseRing 2s ease-out 1.2s infinite" }} />
+                <svg style={{ animation:"spinSvg 1.2s linear infinite" }} width="56" height="56" viewBox="0 0 56 56">
+                  <circle cx="28" cy="28" r="22" fill="none" stroke="#e2e8f0" strokeWidth="3"/>
+                  <circle cx="28" cy="28" r="22" fill="none" stroke="#1a3fdb" strokeWidth="3" strokeLinecap="round" strokeDasharray="138" strokeDashoffset="100"/>
+                </svg>
+                <div style={{ position:"absolute", fontSize:18 }}>🚗</div>
+              </div>
+              <div style={{ fontSize:13, fontWeight:700, color:"#1a1a2e" }}>Analyse en cours</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:8, width:190 }}>
+                {steps.map((s, i) => (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, fontSize:11, color:"#6b80a0", opacity: i > step ? 0.4 : 1 }}>
+                    <div style={{ width:18, height:18, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:9, background: i < step ? "#dcfce7" : i === step ? "#eff4ff" : "#f0f4f8", border: i === step ? "1.5px solid #1a3fdb" : "none", color: i < step ? "#16a34a" : "#c0cce0" }}>
+                      {i < step ? "✓" : ""}
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div>{s.label.replace("...", i <= step ? "…" : "")}</div>
+                      {i === step && <div style={{ height:3, borderRadius:99, background:"#e2e8f0", overflow:"hidden", marginTop:2 }}><div style={{ height:"100%", borderRadius:99, background:"linear-gradient(90deg,#1a3fdb,#60a5fa)", animation:"fillbar 1.8s ease-in-out infinite" }}/></div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display:"flex", gap:5 }}>
+                <div className="pr" /><div className="pr" /><div className="pr" />
+              </div>
+            </div>
+          </div>
+
+          {/* DESKTOP view (≥ 900px) */}
+          <div style={{ display:"none" }} className="desktop-spinner">
+            <style>{`@media(min-width:900px){.desktop-spinner{display:block!important}}`}</style>
+            <div style={{ minWidth:900, fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+              <div style={{ background:"white", borderBottom:"0.5px solid #e2e8f5", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10 }}>
+                <span style={{ fontSize:20, fontWeight:700, color:"#1a1a2e" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
+                <div style={{ display:"flex", gap:20, alignItems:"center" }}>
+                  <span style={{ fontSize:13, color:"#8fa0b8" }}>🏷️ Nos annonces</span>
+                  <span style={{ fontSize:13, color:"#8fa0b8" }}>Comment ça marche</span>
+                </div>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"360px 1fr", minHeight:"calc(100vh - 56px)", marginTop:56 }}>
+                <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"32px 28px", display:"flex", flexDirection:"column", justifyContent:"center", gap:16 }}>
+                  <div className="sk" style={{ height:14, width:"60%", background:"rgba(255,255,255,0.15)" }} />
+                  <div className="sk" style={{ height:22, width:"80%", background:"rgba(255,255,255,0.15)" }} />
+                  <div className="sk" style={{ height:22, width:"70%", background:"rgba(255,255,255,0.15)" }} />
+                  <div style={{ height:16 }} />
+                  <div className="sk" style={{ height:52, borderRadius:12, background:"rgba(255,255,255,0.15)" }} />
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                    <div className="sk" style={{ height:42, borderRadius:10, background:"rgba(255,255,255,0.15)" }} />
+                    <div className="sk" style={{ height:42, borderRadius:10, background:"rgba(255,255,255,0.15)" }} />
+                  </div>
+                  <div className="sk" style={{ height:46, borderRadius:10, background:"rgba(255,255,255,0.15)" }} />
+                  <div className="sk" style={{ height:48, borderRadius:12, background:"rgba(255,255,255,0.25)" }} />
+                </div>
+                <div style={{ padding:"32px 40px", display:"flex", flexDirection:"column", gap:20 }}>
+                  <div className="sk" style={{ height:80, borderRadius:16 }} />
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
+                    <div className="sk" style={{ height:80, borderRadius:14 }} />
+                    <div className="sk" style={{ height:80, borderRadius:14 }} />
+                    <div className="sk" style={{ height:80, borderRadius:14 }} />
+                  </div>
+                  <div className="sk" style={{ height:10, width:"30%" }} />
+                  <div className="sk" style={{ height:52, borderRadius:12 }} />
+                  <div className="sk" style={{ height:52, borderRadius:12 }} />
+                  <div className="sk" style={{ height:52, borderRadius:12 }} />
+                  <div className="sk" style={{ height:52, borderRadius:12 }} />
+                  <div style={{ display:"flex", gap:12 }}>
+                    <div className="sk" style={{ flex:1, height:46, borderRadius:12 }} />
+                    <div className="sk" style={{ flex:1, height:46, borderRadius:12 }} />
+                  </div>
+                  <div style={{ position:"absolute", top:"50%", left:"calc(360px + 50%)", transform:"translate(-50%,-50%)", display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
+                    <div style={{ position:"relative", width:56, height:56, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      <div style={{ position:"absolute", width:56, height:56, borderRadius:"50%", border:"2px solid #1a3fdb", opacity:0, animation:"pulseRing 2s ease-out infinite" }} />
+                      <div style={{ position:"absolute", width:56, height:56, borderRadius:"50%", border:"2px solid #1a3fdb", opacity:0, animation:"pulseRing 2s ease-out 0.6s infinite" }} />
+                      <svg style={{ animation:"spinSvg 1.2s linear infinite" }} width="56" height="56" viewBox="0 0 56 56">
+                        <circle cx="28" cy="28" r="22" fill="none" stroke="#e2e8f0" strokeWidth="3"/>
+                        <circle cx="28" cy="28" r="22" fill="none" stroke="#1a3fdb" strokeWidth="3" strokeLinecap="round" strokeDasharray="138" strokeDashoffset="100"/>
+                      </svg>
+                      <div style={{ position:"absolute", fontSize:20 }}>🚗</div>
+                    </div>
+                    <div style={{ fontSize:14, fontWeight:700, color:"#1a1a2e" }}>Analyse en cours</div>
+                    <div style={{ display:"flex", flexDirection:"column", gap:8, width:200 }}>
+                      {steps.map((s, i) => (
+                        <div key={i} style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:"#6b80a0", opacity: i > step ? 0.4 : 1 }}>
+                          <div style={{ width:18, height:18, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:9, background: i < step ? "#dcfce7" : i === step ? "#eff4ff" : "#f0f4f8", border: i === step ? "1.5px solid #1a3fdb" : "none", color: i < step ? "#16a34a" : "#c0cce0" }}>
+                            {i < step ? "✓" : ""}
+                          </div>
+                          <div style={{ flex:1 }}>
+                            <div>{s.label}</div>
+                            {i === step && <div style={{ height:3, borderRadius:99, background:"#e2e8f0", overflow:"hidden", marginTop:2 }}><div style={{ height:"100%", borderRadius:99, background:"linear-gradient(90deg,#1a3fdb,#60a5fa)", animation:"fillbar 1.8s ease-in-out infinite" }}/></div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display:"flex", gap:5 }}>
+                      <div className="pr" /><div className="pr" /><div className="pr" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -1376,19 +1518,19 @@
               </div>
             ) : (
               <button onClick={() => setShowLoginModal(true)}
-                style={{ fontSize:11, fontWeight:700, color:EMERALD, background:"#f0fdf4", padding:"6px 12px", borderRadius:999, border:"1px solid #bbf7d0", cursor:"pointer" }}>
+                style={{ fontSize:11, fontWeight:700, color:EMERALD, background:"#eff4ff", padding:"6px 12px", borderRadius:999, border:"1px solid #93c5fd", cursor:"pointer" }}>
                 Se connecter
               </button>
 
             )}
           </div>
           <div style={{ padding:"20px 20px 80px" }}>
-            <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:16, padding:"12px 16px", marginBottom:16 }}>
-              <p style={{ margin:0, color:"#166534", fontWeight:600, fontSize:14 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
-              {nom && <p style={{ margin:"4px 0 0", color:"#15803d", fontWeight:700, fontSize:13 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
-              <p style={{ margin:"4px 0 0", color:"#166534", fontSize:12 }}>{veh.AWN_energie} · {veh.AWN_puissance_CH} ch · {veh.AWN_boite || ""} · {veh.AWN_date_mise_en_circulation}</p>
+            <div style={{ background:"#eff4ff", border:"1px solid #93c5fd", borderRadius:16, padding:"12px 16px", marginBottom:16 }}>
+              <p style={{ margin:0, color:"#1e3a8a", fontWeight:600, fontSize:14 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
+              {nom && <p style={{ margin:"4px 0 0", color:"#0f28a8", fontWeight:700, fontSize:13 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
+              <p style={{ margin:"4px 0 0", color:"#1e3a8a", fontSize:12 }}>{veh.AWN_energie} · {veh.AWN_puissance_CH} ch · {veh.AWN_boite || ""} · {veh.AWN_date_mise_en_circulation}</p>
               {(veh.AWN_version||veh.AWN_nb_portes||veh.AWN_cylindres) && (
-                <p style={{ margin:"2px 0 0", color:"#166534", fontSize:12 }}>
+                <p style={{ margin:"2px 0 0", color:"#1e3a8a", fontSize:12 }}>
                   {veh.AWN_version ? veh.AWN_version+" · " : ""}
                   {veh.AWN_nb_portes ? veh.AWN_nb_portes+" portes · " : ""}
                   {veh.AWN_passagers ? veh.AWN_passagers+" places · " : ""}
@@ -1405,7 +1547,7 @@
                 </div>
                 {[
                   { icon:"⚡️", label:"PRIX AGRESSIF", sub:"Vente rapide garantie", val:stats.pMin, color:"#F59E0B", bg:"#FFFBEB" },
-                  { icon:"🎯", label:"PRIX MARCHÉ", sub:"Le plus de contacts", val:stats.p25, color:EMERALD, bg:"#ECFDF5" },
+                  { icon:"🎯", label:"PRIX MARCHÉ", sub:"Le plus de contacts", val:stats.p25, color:EMERALD, bg:"#eff4ff" },
                   { icon:"💎", label:"PRIX HAUT", sub:"Marge de négociation", val:stats.p50, color:"#6366F1", bg:"#EEF2FF" },
                 ].map((c, i) => (
                   <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 16px", background:c.bg, borderBottom: i < 2 ? "1px solid #f3f4f6" : "none" }}>
@@ -1485,7 +1627,7 @@
             <button onClick={onReset} style={{ width:"100%", background:`linear-gradient(135deg,${EMERALD},${EMERALD_DARK})`, color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:"pointer", marginBottom:12 }}>
               🔄 Nouvelle recherche
             </button>
-            <button onClick={handleCopy} style={{ width:"100%", background: copied ? "#ecfdf5" : "white", color: copied ? EMERALD : "#6b7280", fontWeight:700, fontSize:15, borderRadius:16, padding:"14px 0", border:`2px solid ${copied ? EMERALD : "#e5e7eb"}`, cursor:"pointer", transition:"all 0.2s" }}>
+            <button onClick={handleCopy} style={{ width:"100%", background: copied ? "#eff4ff" : "white", color: copied ? EMERALD : "#6b7280", fontWeight:700, fontSize:15, borderRadius:16, padding:"14px 0", border:`2px solid ${copied ? EMERALD : "#e5e7eb"}`, cursor:"pointer", transition:"all 0.2s" }}>
               {copied ? "✅ Rapport copié !" : "📋 Copier le rapport"}
             </button>
           </div>
@@ -1643,7 +1785,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
             {/* Étape 1 — Infos */}
             {step===1 && (
               <div>
-                <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:12, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#166534" }}>
+                <div style={{ background:"#eff4ff", border:"1px solid #93c5fd", borderRadius:12, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#1e3a8a" }}>
                   🚗 <strong>{nom}</strong>{finition ? ` · ${finition}` : ""} · {annee} · {energie} · {ch} ch
                 </div>
                 <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Prix demandé (€)</label>
@@ -1653,7 +1795,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
                   <div style={{ display:"flex", gap:8, marginBottom:16 }}>
                     {[{label:"⚡️ Agressif", val:result.stats.pMin},{label:"🎯 Marché", val:result.stats.p25},{label:"💎 Haut", val:result.stats.p50}].map((p,i)=>(
                       <button key={i} onClick={()=>setPrix(String(Math.round(p.val)))}
-                        style={{ flex:1, padding:"8px 4px", borderRadius:10, border:`2px solid ${String(Math.round(p.val))===prix?"#10B981":"#e5e7eb"}`, background:String(Math.round(p.val))===prix?"#ecfdf5":"white", fontSize:11, fontWeight:700, color:String(Math.round(p.val))===prix?"#10B981":"#6b7280", cursor:"pointer" }}>
+                        style={{ flex:1, padding:"8px 4px", borderRadius:10, border:`2px solid ${String(Math.round(p.val))===prix?"#1a3fdb":"#e5e7eb"}`, background:String(Math.round(p.val))===prix?"#eff4ff":"white", fontSize:11, fontWeight:700, color:String(Math.round(p.val))===prix?"#1a3fdb":"#6b7280", cursor:"pointer" }}>
                         {p.label}<br/>{Math.round(p.val).toLocaleString("fr-FR")}€
                       </button>
                     ))}
@@ -1682,7 +1824,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
                 <textarea value={defauts} onChange={e=>setDefauts(e.target.value)} placeholder="Ex: Rayure sur l'aile avant droite, climatisation à revoir..."
                   style={{ width:"100%", padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:14, marginBottom:16, boxSizing:"border-box", outline:"none", minHeight:80, resize:"vertical" }} />
                 <button onClick={()=>setStep(2)} disabled={!prix||!localisation||!ville}
-                  style={{ width:"100%", background:(!prix||!localisation||!ville)?"#d1d5db":"linear-gradient(135deg,#10B981,#059669)", color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:(!prix||!localisation||!ville)?"not-allowed":"pointer" }}>
+                  style={{ width:"100%", background:(!prix||!localisation||!ville)?"#d1d5db":"linear-gradient(135deg,#1a3fdb,#0f28a8)", color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:(!prix||!localisation||!ville)?"not-allowed":"pointer" }}>
                   Suivant →
                 </button>
               </div>
@@ -1711,7 +1853,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
                 <div style={{ display:"flex", gap:10 }}>
                   <button onClick={()=>setStep(1)} style={{ flex:1, background:"white", color:"#6b7280", fontWeight:700, fontSize:15, borderRadius:16, padding:"14px 0", border:"2px solid #e5e7eb", cursor:"pointer" }}>← Retour</button>
                   <button onClick={handlePublish} disabled={loading||!tel}
-                    style={{ flex:2, background:(!tel||loading)?"#d1d5db":"linear-gradient(135deg,#10B981,#059669)", color:"white", fontWeight:800, fontSize:16, borderRadius:16, padding:"14px 0", border:"none", cursor:(!tel||loading)?"not-allowed":"pointer" }}>
+                    style={{ flex:2, background:(!tel||loading)?"#d1d5db":"linear-gradient(135deg,#1a3fdb,#0f28a8)", color:"white", fontWeight:800, fontSize:16, borderRadius:16, padding:"14px 0", border:"none", cursor:(!tel||loading)?"not-allowed":"pointer" }}>
                     {loading ? "Publication..." : "🚀 Publier l'annonce"}
                   </button>
                 </div>
@@ -1721,10 +1863,10 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
             {/* Étape 3 — Succès + texte LBC */}
             {step===3 && (
               <div>
-                <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:16, padding:"16px", marginBottom:16, textAlign:"center" }}>
+                <div style={{ background:"#eff4ff", border:"1px solid #93c5fd", borderRadius:16, padding:"16px", marginBottom:16, textAlign:"center" }}>
                   <p style={{ fontSize:28, margin:"0 0 8px" }}>🎉</p>
-                  <p style={{ fontWeight:800, fontSize:16, color:"#166534", margin:0 }}>Annonce publiée sur CoteCars !</p>
-                  <p style={{ fontSize:13, color:"#15803d", margin:"4px 0 0" }}>Elle est maintenant visible par les acheteurs.</p>
+                  <p style={{ fontWeight:800, fontSize:16, color:"#1e3a8a", margin:0 }}>Annonce publiée sur CoteCars !</p>
+                  <p style={{ fontSize:13, color:"#0f28a8", margin:"4px 0 0" }}>Elle est maintenant visible par les acheteurs.</p>
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
                   <p style={{ fontSize:13, fontWeight:700, color:"#111", margin:0 }}>✨ Texte IA pour Leboncoin :</p>
@@ -1734,7 +1876,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
                 </div>
                 <textarea readOnly value={lbcText} style={{ width:"100%", minHeight:220, padding:"14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:12, boxSizing:"border-box", outline:"none", resize:"vertical", color:"#374151", background:"#f9fafb" }} />
                 <button onClick={() => { navigator.clipboard.writeText(lbcText); setCopied(true); setTimeout(()=>setCopied(false),2500); }}
-                  style={{ width:"100%", background:copied?"#ecfdf5":"white", color:copied?"#10B981":"#6b7280", fontWeight:700, fontSize:15, borderRadius:16, padding:"14px 0", border:`2px solid ${copied?"#10B981":"#e5e7eb"}`, cursor:"pointer", marginTop:10, transition:"all 0.2s" }}>
+                  style={{ width:"100%", background:copied?"#eff4ff":"white", color:copied?"#1a3fdb":"#6b7280", fontWeight:700, fontSize:15, borderRadius:16, padding:"14px 0", border:`2px solid ${copied?"#1a3fdb":"#e5e7eb"}`, cursor:"pointer", marginTop:10, transition:"all 0.2s" }}>
                   {copied ? "✅ Copié !" : "📋 Copier le texte Leboncoin"}
                 </button>
                 <a href="https://www.leboncoin.fr/deposer-une-annonce" target="_blank" rel="noopener noreferrer"
@@ -1752,7 +1894,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
     // ─── PUBLIER SUR LEBONCOIN ────────────────────────────────────
     function PrepareAnnonceLbc({ result, plate: plateProp, user, km: kmProp, onClose }) {
       const { veh, nom, stats, finition: finitionInit } = result;
-      const EMERALD = "#10B981";
+      const EMERALD = "#1a3fdb";
       const isPremium = !!user;
       const anneeInit = veh.AWN_date_mise_en_circulation?.slice(-4) || "";
       const energieInit = veh.AWN_energie || "";
@@ -1901,7 +2043,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       function CopyBtn({ k, val }) {
         if (!val||!String(val).trim()) return null;
         return (
-          <button onClick={()=>copy(k,val)} style={{fontSize:11,fontWeight:700,color:copiedKey===k?EMERALD:"#6b7280",background:copiedKey===k?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer",whiteSpace:"nowrap"}}>
+          <button onClick={()=>copy(k,val)} style={{fontSize:11,fontWeight:700,color:copiedKey===k?EMERALD:"#6b7280",background:copiedKey===k?"#eff4ff":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer",whiteSpace:"nowrap"}}>
             {copiedKey===k?"✅ Copié":"📋 Copier"}
           </button>
         );
@@ -1970,7 +2112,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               {/* ══ ÉTAPE 1 ══ */}
               {step===1&&(
                 <div style={{filter:isPremium?"none":"blur(3px)",pointerEvents:isPremium?"auto":"none"}}>
-                  <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:12,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#166534",fontWeight:600}}>
+                  <div style={{background:"#eff4ff",border:"1px solid #93c5fd",borderRadius:12,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#1e3a8a",fontWeight:600}}>
                     🚗 {nom}{finitionInit?" · "+finitionInit:""} · {anneeInit} · {toEL(energieInit)} · {chInit} ch
                   </div>
 
@@ -2080,7 +2222,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
                     {CRITAIRS.map(c=>(
                       <button key={c} onClick={()=>setCritair(critair===c?"":c)}
-                        style={{padding:"10px 14px",borderRadius:12,border:"2px solid "+(critair===c?"#10B981":"#e5e7eb"),background:critair===c?"#ecfdf5":"white",color:critair===c?"#10B981":"#6b7280",fontSize:13,fontWeight:600,cursor:"pointer",textAlign:"left"}}>
+                        style={{padding:"10px 14px",borderRadius:12,border:"2px solid "+(critair===c?"#1a3fdb":"#e5e7eb"),background:critair===c?"#eff4ff":"white",color:critair===c?"#1a3fdb":"#6b7280",fontSize:13,fontWeight:600,cursor:"pointer",textAlign:"left"}}>
                         {critair===c?"✅ ":"◯ "}{c}
                       </button>
                     ))}
@@ -2128,17 +2270,17 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               {/* ══ ÉTAPE 3 ══ */}
               {step===3&&(
                 <div>
-                  <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:14,padding:"12px 16px",marginBottom:16,textAlign:"center"}}>
+                  <div style={{background:"#eff4ff",border:"1px solid #93c5fd",borderRadius:14,padding:"12px 16px",marginBottom:16,textAlign:"center"}}>
                     <p style={{fontSize:22,margin:"0 0 4px"}}>🎉</p>
-                    <p style={{fontWeight:800,fontSize:14,color:"#166534",margin:0}}>Annonce publiée sur CoteCars !</p>
-                    <p style={{fontSize:12,color:"#15803d",margin:"4px 0 0"}}>Copiez chaque champ ci-dessous dans Leboncoin.</p>
+                    <p style={{fontWeight:800,fontSize:14,color:"#1e3a8a",margin:0}}>Annonce publiée sur CoteCars !</p>
+                    <p style={{fontSize:12,color:"#0f28a8",margin:"4px 0 0"}}>Copiez chaque champ ci-dessous dans Leboncoin.</p>
                   </div>
 
                   {/* Titre calculé — toujours affiché immédiatement */}
                   <div style={{background:"white",borderRadius:14,border:"2px solid #F97316",boxShadow:"0 1px 3px rgba(0,0,0,0.05)",overflow:"hidden",marginBottom:10}}>
                     <div style={{padding:"10px 14px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>📌 Titre de l'annonce</span>
-                      {titreIA&&<button onClick={()=>copy("titre",titreIA)} style={{fontSize:11,fontWeight:700,color:copiedKey==="titre"?EMERALD:"#6b7280",background:copiedKey==="titre"?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer"}}>{copiedKey==="titre"?"✅ Copié":"📋 Copier"}</button>}
+                      {titreIA&&<button onClick={()=>copy("titre",titreIA)} style={{fontSize:11,fontWeight:700,color:copiedKey==="titre"?EMERALD:"#6b7280",background:copiedKey==="titre"?"#eff4ff":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer"}}>{copiedKey==="titre"?"✅ Copié":"📋 Copier"}</button>}
                     </div>
                     <p style={{margin:0,padding:"0 14px 12px",fontSize:16,fontWeight:700,color:"#111"}}>{titreIA}</p>
                   </div>
@@ -2166,7 +2308,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                     <div style={{padding:"10px 14px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>✨ Description IA</span>
                       <div style={{display:"flex",gap:6}}>
-                        {descriptionIA&&!iaLoading&&<button onClick={()=>copy("desc",descriptionIA)} style={{fontSize:11,fontWeight:700,color:copiedKey==="desc"?EMERALD:"#6b7280",background:copiedKey==="desc"?"#ecfdf5":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 10px",cursor:"pointer"}}>{copiedKey==="desc"?"✅ Copié":"📋 Copier"}</button>}
+                        {descriptionIA&&!iaLoading&&<button onClick={()=>copy("desc",descriptionIA)} style={{fontSize:11,fontWeight:700,color:copiedKey==="desc"?EMERALD:"#6b7280",background:copiedKey==="desc"?"#eff4ff":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 10px",cursor:"pointer"}}>{copiedKey==="desc"?"✅ Copié":"📋 Copier"}</button>}
                         {!iaLoading&&<button onClick={genererIA} style={{fontSize:11,fontWeight:700,color:"#9ca3af",background:"#f3f4f6",border:"none",borderRadius:8,padding:"5px 10px",cursor:"pointer"}}>🔄</button>}
                       </div>
                     </div>
@@ -2399,8 +2541,8 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <p style={{ fontSize:13, color:"#6b7280", margin:"0 0 16px" }}>📍 {a.localisation}</p>
 
               {a.stats && (
-                <div style={{ background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:14, padding:"12px 14px", marginBottom:16 }}>
-                  <p style={{ margin:"0 0 8px", fontSize:11, fontWeight:800, color:"#16a34a", textTransform:"uppercase", letterSpacing:"0.08em" }}>📊 Prix estimé par CoteCars</p>
+                <div style={{ background:"#eff4ff", border:"1px solid #93c5fd", borderRadius:14, padding:"12px 14px", marginBottom:16 }}>
+                  <p style={{ margin:"0 0 8px", fontSize:11, fontWeight:800, color:"#1a3fdb", textTransform:"uppercase", letterSpacing:"0.08em" }}>📊 Prix estimé par CoteCars</p>
                   <div style={{ display:"flex", gap:8 }}>
                     <div style={{ flex:1, textAlign:"center" }}>
                       <p style={{ margin:0, fontSize:10, color:"#6b7280" }}>Agressif</p>
@@ -2459,7 +2601,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
               <div style={{ background:"white", border:"1px solid #f3f4f6", borderRadius:16, padding:"16px", marginTop:16 }}>
                 <p style={{ fontWeight:700, fontSize:14, color:"#111", margin:"0 0 12px" }}>📞 Contacter le vendeur</p>
-                <a href={`tel:${a.tel}`} style={{ display:"block", width:"100%", background:`linear-gradient(135deg,${EMERALD},#059669)`, color:"white", fontWeight:800, fontSize:16, borderRadius:14, padding:"14px 0", textAlign:"center", textDecoration:"none", boxSizing:"border-box" }}>
+                <a href={`tel:${a.tel}`} style={{ display:"block", width:"100%", background:`linear-gradient(135deg,${EMERALD},#0f28a8)`, color:"white", fontWeight:800, fontSize:16, borderRadius:14, padding:"14px 0", textAlign:"center", textDecoration:"none", boxSizing:"border-box" }}>
                   Appeler {a.tel}
                 </a>
               </div>
@@ -2535,7 +2677,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
               <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:3 }}>Plaque d'immatriculation</label>
               <input value={plaque} readOnly
-                style={{ width:"100%", padding:"10px 12px", border:"2px solid #10B981", borderRadius:10, fontSize:14, marginBottom:8, boxSizing:"border-box", outline:"none", fontWeight:700, color:"#111", background:"#f0fdf4", letterSpacing:"2px" }} />
+                style={{ width:"100%", padding:"10px 12px", border:"2px solid #1a3fdb", borderRadius:10, fontSize:14, marginBottom:8, boxSizing:"border-box", outline:"none", fontWeight:700, color:"#111", background:"#eff4ff", letterSpacing:"2px" }} />
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
                 <div>
                   <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:3 }}>Nom *</label>
@@ -2580,7 +2722,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               </div>
 
               <button onClick={handleSubmit} disabled={!isValid||sending}
-                style={{ width:"100%", background:!isValid?"#d1d5db":"linear-gradient(135deg,#10B981,#059669)", color:"white", fontWeight:800, fontSize:15, borderRadius:12, padding:"13px 0", border:"none", cursor:!isValid?"not-allowed":"pointer", marginBottom:8 }}>
+                style={{ width:"100%", background:!isValid?"#d1d5db":"linear-gradient(135deg,#1a3fdb,#0f28a8)", color:"white", fontWeight:800, fontSize:15, borderRadius:12, padding:"13px 0", border:"none", cursor:!isValid?"not-allowed":"pointer", marginBottom:8 }}>
                 {sending ? "Envoi en cours..." : "📩 Envoyer ma demande"}
               </button>
               <button onClick={onReset} style={{ width:"100%", background:"#f3f4f6", color:"#6b7280", fontWeight:700, fontSize:13, borderRadius:12, padding:"11px 0", border:"none", cursor:"pointer" }}>
@@ -2593,7 +2735,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <div style={{ fontSize:56, marginBottom:12 }}>✅</div>
               <h3 style={{ fontWeight:800, fontSize:18, color:"#111", margin:"0 0 8px" }}>Demande envoyée !</h3>
               <p style={{ color:"#6b7280", fontSize:14, margin:"0 0 20px" }}>Nous reviendrons vers vous rapidement avec votre estimation gratuite.</p>
-              <button onClick={onReset} style={{ width:"100%", background:"linear-gradient(135deg,#10B981,#059669)", color:"white", fontWeight:800, fontSize:16, borderRadius:14, padding:"14px 0", border:"none", cursor:"pointer" }}>
+              <button onClick={onReset} style={{ width:"100%", background:"linear-gradient(135deg,#1a3fdb,#0f28a8)", color:"white", fontWeight:800, fontSize:16, borderRadius:14, padding:"14px 0", border:"none", cursor:"pointer" }}>
                 🔄 Nouvelle recherche
               </button>
             </div>
@@ -2796,8 +2938,19 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
         <ErrorPage apiErr={apiErr} plaque={plate} onReset={handleReset} />
       );
 
+      const BLUE = "#1a3fdb";
+      const BLUE_DARK = "#0f28a8";
+
       return (
-        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"#f9fafb", display:"flex", flexDirection:"column" }}>
+        <div style={{ fontFamily:"'DM Sans',-apple-system,sans-serif", background:"#f0f4fa", minHeight:"100vh" }}>
+          <style>{`
+            @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+            @keyframes floatorb{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
+            @keyframes pulseGreen{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
+            .cc-mobile{display:flex;flex-direction:column;}
+            .cc-desktop{display:none;}
+            @media(min-width:900px){.cc-mobile{display:none!important;}.cc-desktop{display:block!important;}body{overflow-x:auto;}}
+          `}</style>
           {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
           {showPuissanceConfirm && pendingResult && (
             <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
@@ -2811,219 +2964,308 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                 <button onClick={async ()=>{
                   const ch = parseInt(puissanceConfirmValue);
                   if (!ch || ch < 30 || ch > 1000) return;
-                  setShowPuissanceConfirm(false);
-                  setPendingResult(null);
-                  setState("loading");
+                  setShowPuissanceConfirm(false); setPendingResult(null); setState("loading");
                   try {
-                    const r = {...pendingResult};
-                    r.veh.AWN_puissance_CH = ch;
-                    r.chUser = ch;
-                    // Relancer la recherche LBC avec le bon ch
+                    const r = {...pendingResult}; r.veh.AWN_puissance_CH = ch; r.chUser = ch;
                     const lbcParams = new URLSearchParams({ marque: r.marque, modele: r.modele });
-                    if (r.kmUser)    lbcParams.set("km", r.kmUser);
+                    if (r.kmUser) lbcParams.set("km", r.kmUser);
                     if (r.anneeUser) lbcParams.set("annee", r.anneeUser);
                     lbcParams.set("ch", ch);
-                    if (r.fuelCode)  lbcParams.set("fuel", r.fuelCode);
+                    if (r.fuelCode) lbcParams.set("fuel", r.fuelCode);
                     lbcParams.set("gearbox", r.gearbox);
-                    if (r.finition)  lbcParams.set("finition", r.finition);
+                    if (r.finition) lbcParams.set("finition", r.finition);
                     const lbcRes = await fetch(`/api/leboncoin?${lbcParams.toString()}`);
                     const lbcData = await lbcRes.json();
                     const rawAds = lbcData.ads || [];
                     const ads = filterAds(rawAds, r.kmUser, r.anneeUser, ch, r.marque, r.modele, r.finition);
                     const stats = computeStats(ads);
-                    r.ads = ads;
-                    r.stats = stats;
+                    r.ads = ads; r.stats = stats;
                     r.peuResultats = r.finition && ads.length < 5;
-                    setResult(r);
-                    setState("results");
-                  } catch(e) {
-                    setState("results");
-                  }
+                    setResult(r); setState("results");
+                  } catch(e) { setState("results"); }
                 }} disabled={!puissanceConfirmValue}
-                  style={{width:"100%",background:!puissanceConfirmValue?"#d1d5db":EMERALD,color:"white",fontWeight:800,fontSize:16,borderRadius:14,padding:"14px 0",border:"none",cursor:!puissanceConfirmValue?"not-allowed":"pointer",marginBottom:10}}>
+                  style={{width:"100%",background:!puissanceConfirmValue?"#d1d5db":BLUE,color:"white",fontWeight:800,fontSize:16,borderRadius:14,padding:"14px 0",border:"none",cursor:!puissanceConfirmValue?"not-allowed":"pointer",marginBottom:10}}>
                   ✅ Confirmer
                 </button>
-                <button onClick={()=>{
-                  setResult(pendingResult);
-                  setShowPuissanceConfirm(false);
-                  setPendingResult(null);
-                  setState("results");
-                }} style={{width:"100%",background:"#f3f4f6",color:"#6b7280",fontWeight:700,fontSize:14,borderRadius:14,padding:"12px 0",border:"none",cursor:"pointer"}}>
+                <button onClick={()=>{ setResult(pendingResult); setShowPuissanceConfirm(false); setPendingResult(null); setState("results"); }}
+                  style={{width:"100%",background:"#f3f4f6",color:"#6b7280",fontWeight:700,fontSize:14,borderRadius:14,padding:"12px 0",border:"none",cursor:"pointer"}}>
                   Ignorer et continuer
                 </button>
               </div>
             </div>
           )}
-          <div style={{ background:"white", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:"1px solid #f3f4f6" }}>
-            <span style={{ fontWeight:800, fontSize:20, color:EMERALD }}>CoteCars</span>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <button onClick={() => setShowAnnonces(true)} style={{ fontSize:11, fontWeight:700, color:"#6366F1", background:"#eef2ff", padding:"6px 10px", borderRadius:999, border:"1px solid #c7d2fe", cursor:"pointer" }}>🏷️ Nos annonces</button>
-            {user ? (
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                {user?.photoURL && <img src={user.photoURL} width={28} height={28} style={{ borderRadius:"50%", border:"2px solid #e5e7eb" }} alt="" />}
-                <button onClick={() => auth.signOut()} style={{ fontSize:11, color:"#9ca3af", background:"#f3f4f6", padding:"4px 10px", borderRadius:999, border:"none", cursor:"pointer" }}>Déconnexion</button>
-              </div>
-            ) : (
-              <button onClick={() => setShowLoginModal(true)}
-                style={{ fontSize:11, fontWeight:700, color:EMERALD, background:"#f0fdf4", padding:"6px 12px", borderRadius:999, border:"1px solid #bbf7d0", cursor:"pointer" }}>
-                Se connecter
-              </button>
-            )}
-            </div>
-          </div>
-          <div style={{ flex:1, padding:"32px 20px" }}>
-            <div style={{ textAlign:"center", marginBottom:32 }}>
-              <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:999, padding:"4px 12px", marginBottom:16 }}>
-                <div className="pulse" style={{ width:8, height:8, borderRadius:"50%", background:"#22c55e", display:"inline-block" }} />
-                <span style={{ fontSize:12, fontWeight:600, color:"#16a34a" }}>{(()=>{ const d=new Date(); const seed=(d.getFullYear()*366+d.getMonth()*31+d.getDate())*9301+49297; const base=1800+((seed%17))*35+(d.getDate()*12); return `+${base.toLocaleString("fr-FR")} analyses ce mois-ci`; })()}</span>
-              </div>
-              <h1 style={{ fontWeight:800, fontSize:30, color:"#111", lineHeight:1.2, margin:"0 0 12px" }}>
-                Vendez votre voiture<br /><span style={{ color:EMERALD }}>au prix fort.</span>
-              </h1>
-              <p style={{ color:"#6b7280", fontSize:16, margin:0 }}>Ne laissez plus des milliers d'euros<br />sur la table.</p>
-            </div>
-
-            <div style={{ background:"white", borderRadius:24, boxShadow:"0 4px 24px rgba(0,0,0,0.07)", border:"1px solid #f3f4f6", padding:20 }}>
-              <div style={{ marginBottom:16 }}>
-                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>Plaque d'immatriculation</label>
-                <LicensePlate value={plate} onChange={handlePlateChange} />
-                <p style={{ margin:"6px 0 0", fontSize:11, color:"#9ca3af", textAlign:"center" }}>
-                  Format accepté : AB-123-CD ou AB123CD
-                </p>
-                {plate.length >= 7 && loadingFin && (
-                  <p style={{ margin:"6px 0 0", fontSize:12, color:"#9ca3af", textAlign:"center" }}>Chargement des finitions...</p>
-                )}
-              </div>
-
-              <div style={{ marginBottom:16 }}>
-                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>Kilométrage</label>
-                <div style={{ display:"flex", alignItems:"center", border:"2px solid #e5e7eb", borderRadius:12, overflow:"hidden", height:56 }}>
-                  <input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="85 000"
-                    style={{ flex:1, padding:"0 16px", fontSize:18, fontWeight:700, border:"none", outline:"none", background:"transparent", color:"#111" }}
-                    inputMode="numeric" />
-                  <span style={{ padding:"0 16px", color:"#9ca3af", fontWeight:600, fontSize:14 }}>km</span>
+          {/* ═══ MOBILE ═══ */}
+          <div className="cc-mobile" style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh" }}>
+            <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"16px 20px 24px", position:"relative", overflow:"hidden" }}>
+              <div style={{ position:"absolute", top:-50, right:-50, width:160, height:160, borderRadius:"50%", background:"rgba(255,255,255,0.06)" }} />
+              <div style={{ position:"absolute", bottom:-30, left:-20, width:100, height:100, borderRadius:"50%", background:"rgba(255,255,255,0.04)" }} />
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, position:"relative", zIndex:1 }}>
+                <span style={{ fontWeight:700, fontSize:20, color:"white" }}>Cote<span style={{color:"#93c5fd"}}>Cars</span></span>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <button onClick={() => setShowAnnonces(true)} style={{ fontSize:10, fontWeight:700, color:"white", background:"rgba(255,255,255,0.15)", padding:"5px 10px", borderRadius:999, border:"1px solid rgba(255,255,255,0.25)", cursor:"pointer" }}>🏷️ Annonces</button>
+                  {user ? (
+                    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                      {user?.photoURL && <img src={user.photoURL} width={26} height={26} style={{ borderRadius:"50%", border:"2px solid rgba(255,255,255,0.3)" }} alt="" />}
+                      <button onClick={() => auth.signOut()} style={{ fontSize:10, color:"rgba(255,255,255,0.7)", background:"rgba(255,255,255,0.1)", padding:"4px 8px", borderRadius:999, border:"none", cursor:"pointer" }}>Déco</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setShowLoginModal(true)} style={{ fontSize:10, fontWeight:700, color:"white", background:"rgba(255,255,255,0.2)", padding:"5px 10px", borderRadius:999, border:"1px solid rgba(255,255,255,0.3)", cursor:"pointer" }}>Se connecter</button>
+                  )}
                 </div>
               </div>
-
-
-
+              <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(255,255,255,0.12)", borderRadius:999, padding:"4px 12px", marginBottom:10, position:"relative", zIndex:1 }}>
+                <div className="pulse" style={{ width:7, height:7, borderRadius:"50%", background:"#93c5fd", display:"inline-block" }} />
+                <span style={{ fontSize:11, color:"rgba(255,255,255,0.85)", fontWeight:600 }}>{(()=>{ const d=new Date(); const seed=(d.getFullYear()*366+d.getMonth()*31+d.getDate())*9301+49297; const base=1800+((seed%17))*35+(d.getDate()*12); return `+${base.toLocaleString("fr-FR")} analyses ce mois-ci`; })()}</span>
+              </div>
+              <h1 style={{ color:"white", fontWeight:700, fontSize:24, lineHeight:1.25, margin:"0 0 6px", position:"relative", zIndex:1 }}>Vendez votre voiture<br/><span style={{color:"#93c5fd"}}>au vrai prix.</span></h1>
+              <p style={{ color:"rgba(255,255,255,0.65)", fontSize:13, margin:0, position:"relative", zIndex:1 }}>Basé sur Leboncoin, pas l'Argus.</p>
+            </div>
+            <div style={{ margin:"-14px 16px 0", background:"white", borderRadius:20, padding:"18px 16px", boxShadow:"0 4px 24px rgba(26,63,219,0.12)", border:"0.5px solid #e2e8f5" }}>
+              <div style={{ marginBottom:14 }}>
+                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>Plaque d'immatriculation</label>
+                <LicensePlate value={plate} onChange={handlePlateChange} />
+                <p style={{ margin:"5px 0 0", fontSize:11, color:"#8fa0b8", textAlign:"center" }}>Format accepté : AB-123-CD ou AB123CD</p>
+                {plate.length >= 7 && loadingFin && <p style={{ margin:"4px 0 0", fontSize:11, color:"#8fa0b8", textAlign:"center" }}>Chargement des finitions...</p>}
+              </div>
+              <div style={{ marginBottom:14 }}>
+                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>Kilométrage</label>
+                <div style={{ display:"flex", alignItems:"center", border:"1.5px solid #e2e8f5", borderRadius:12, overflow:"hidden", height:50 }}>
+                  <input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="85 000"
+                    style={{ flex:1, padding:"0 14px", fontSize:17, fontWeight:700, border:"none", outline:"none", background:"transparent", color:"#1a1a2e" }} inputMode="numeric" />
+                  <span style={{ padding:"0 14px", color:"#8fa0b8", fontWeight:600, fontSize:13 }}>km</span>
+                </div>
+              </div>
               {finitionsList.length > 0 && (
-                <div style={{ marginBottom:16 }}>
-                  <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>
+                <div style={{ marginBottom:14 }}>
+                  <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>
                     Finition {vehicleInfo ? `· ${vehicleInfo.marque} ${vehicleInfo.modele}` : ""}
                   </label>
                   <select value={finition} onChange={e => setFinition(e.target.value)}
-                    style={{ width:"100%", height:56, padding:"0 40px 0 16px", fontSize:15, fontWeight:600, color: finition ? "#111" : "#9ca3af", border:"2px solid #e5e7eb", borderRadius:12, background:"white", cursor:"pointer", outline:"none" }}>
+                    style={{ width:"100%", height:50, padding:"0 40px 0 14px", fontSize:14, fontWeight:600, color: finition ? "#1a1a2e" : "#8fa0b8", border:"1.5px solid #e2e8f5", borderRadius:12, background:"white", cursor:"pointer", outline:"none" }}>
                     <option value="">Toutes les finitions</option>
                     {finitionsList.map(f => <option key={f} value={f}>{f}</option>)}
                   </select>
-                  <p style={{ margin:"8px 0 0", fontSize:12, color:"#F59E0B", display:"flex", alignItems:"center", gap:4 }}>
-                    💡 Pour une analyse plus précise, sélectionnez la finition de votre véhicule.
-                  </p>
+                  <p style={{ margin:"6px 0 0", fontSize:11, color:"#f59e0b" }}>💡 Pour une analyse plus précise, sélectionnez la finition.</p>
                 </div>
               )}
-
               <div style={{ marginBottom:16 }}>
-                <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>Boîte de vitesse</label>
+                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>Boîte de vitesse</label>
                 <div style={{ display:"flex", gap:8 }}>
                   {[{ val:"1", label:"🔧 Manuelle" }, { val:"2", label:"⚙️ Automatique" }].map(opt => (
                     <button key={opt.val} onClick={() => setGearbox(opt.val)}
-                      style={{ flex:1, padding:"14px 0", borderRadius:12, border:`2px solid ${gearbox === opt.val ? EMERALD : "#e5e7eb"}`, background: gearbox === opt.val ? "#ecfdf5" : "white", color: gearbox === opt.val ? EMERALD : "#6b7280", fontWeight:700, fontSize:14, cursor:"pointer", transition:"all 0.2s" }}>
+                      style={{ flex:1, padding:"12px 0", borderRadius:11, border:`1.5px solid ${gearbox === opt.val ? "#1a3fdb" : "#e2e8f5"}`, background: gearbox === opt.val ? "#eff4ff" : "white", color: gearbox === opt.val ? "#1a3fdb" : "#8fa0b8", fontWeight:700, fontSize:13, cursor:"pointer", transition:"all 0.2s" }}>
                       {opt.label}
                     </button>
                   ))}
                 </div>
               </div>
-
-              {err && <p style={{ color:"#ef4444", fontSize:14, textAlign:"center", margin:"0 0 12px" }}>{err}</p>}
-              <button onClick={handleAnalyze} style={{ width:"100%", background:`linear-gradient(135deg,${EMERALD},${EMERALD_DARK})`, color:"white", fontWeight:800, fontSize:18, borderRadius:16, padding:"18px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 14px rgba(16,185,129,0.35)" }}>
+              {err && <p style={{ color:"#ef4444", fontSize:13, textAlign:"center", margin:"0 0 10px" }}>{err}</p>}
+              <button onClick={handleAnalyze} style={{ width:"100%", background:"linear-gradient(135deg,#1a3fdb,#0f28a8)", color:"white", fontWeight:700, fontSize:16, borderRadius:14, padding:"16px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 16px rgba(26,63,219,0.35)" }}>
                 Analyser le marché 🚀
               </button>
-              <p style={{ textAlign:"center", fontSize:12, color:"#9ca3af", margin:"12px 0 0" }}>Résultat instantané · Aucune inscription</p>
+              <p style={{ textAlign:"center", fontSize:11, color:"#8fa0b8", margin:"10px 0 0" }}>Résultat instantané · Aucune inscription</p>
             </div>
-
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginTop:24 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, margin:"18px 16px 0" }}>
               {[{icon:"⚡️",label:"Instantané"},{icon:"🎯",label:"Prix précis"},{icon:"🔒",label:"100% privé"}].map((item,i) => (
-                <div key={i} style={{ background:"white", borderRadius:16, padding:12, textAlign:"center", boxShadow:"0 1px 3px rgba(0,0,0,0.06)", border:"1px solid #f3f4f6" }}>
-                  <div style={{ fontSize:20, marginBottom:4 }}>{item.icon}</div>
-                  <div style={{ fontSize:12, fontWeight:600, color:"#4b5563" }}>{item.label}</div>
+                <div key={i} style={{ background:"white", borderRadius:14, padding:12, textAlign:"center", boxShadow:"0 1px 4px rgba(26,63,219,0.06)", border:"0.5px solid #e2e8f5" }}>
+                  <div style={{ fontSize:18, marginBottom:3 }}>{item.icon}</div>
+                  <div style={{ fontSize:11, fontWeight:600, color:"#4b5563" }}>{item.label}</div>
                 </div>
               ))}
             </div>
-
             {historique.length > 0 && (
-              <div style={{ marginTop:24 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-                  <span style={{ fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em" }}>🕐 Recherches récentes</span>
-                  <button onClick={clearHistorique} style={{ fontSize:11, color:"#9ca3af", background:"none", border:"none", cursor:"pointer", padding:0 }}>Effacer</button>
+              <div style={{ margin:"20px 16px 0" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                  <span style={{ fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em" }}>🕐 Recherches récentes</span>
+                  <button onClick={clearHistorique} style={{ fontSize:11, color:"#8fa0b8", background:"none", border:"none", cursor:"pointer", padding:0 }}>Effacer</button>
                 </div>
-                <div style={{ background:"white", borderRadius:16, border:"1px solid #f3f4f6", boxShadow:"0 1px 3px rgba(0,0,0,0.06)", overflow:"hidden" }}>
+                <div style={{ background:"white", borderRadius:14, border:"0.5px solid #e2e8f5", overflow:"hidden" }}>
                   {historique.map((h, i) => (
                     <button key={i} onClick={() => { setPlate(h.plate); setKm(h.km ? String(h.km) : ""); }}
-                      style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 16px", borderBottom: i < historique.length-1 ? "1px solid #f9fafb" : "none", background:"white", border:"none", borderBottom: i < historique.length-1 ? "1px solid #f9fafb" : "none", cursor:"pointer", textAlign:"left" }}>
+                      style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 14px", borderBottom: i < historique.length-1 ? "1px solid #f8faff" : "none", background:"white", border:"none", cursor:"pointer", textAlign:"left" }}>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#111" }}>{h.plate}</p>
-                        <p style={{ margin:"2px 0 0", fontSize:11, color:"#9ca3af", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nom}{h.finition ? " · " + h.finition : ""}</p>
+                        <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#1a1a2e" }}>{h.plate}</p>
+                        <p style={{ margin:"2px 0 0", fontSize:11, color:"#8fa0b8", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nom}{h.finition ? " · " + h.finition : ""}</p>
                         {h.stats && (
-                          <div style={{ display:"flex", gap:6, marginTop:6, flexWrap:"wrap" }}>
-                            <span style={{ fontSize:10, fontWeight:700, color:"#F59E0B", background:"#FFFBEB", padding:"2px 6px", borderRadius:999, whiteSpace:"nowrap" }}>⚡️ {h.stats.pMin?.toLocaleString("fr-FR")}€</span>
-                            <span style={{ fontSize:10, fontWeight:700, color:EMERALD, background:"#ECFDF5", padding:"2px 6px", borderRadius:999, whiteSpace:"nowrap" }}>🎯 {h.stats.p25?.toLocaleString("fr-FR")}€</span>
-                            <span style={{ fontSize:10, fontWeight:700, color:"#6366F1", background:"#EEF2FF", padding:"2px 6px", borderRadius:999, whiteSpace:"nowrap" }}>💎 {h.stats.p50?.toLocaleString("fr-FR")}€</span>
+                          <div style={{ display:"flex", gap:5, marginTop:5, flexWrap:"wrap" }}>
+                            <span style={{ fontSize:10, fontWeight:700, color:"#f59e0b", background:"#fffbeb", padding:"2px 6px", borderRadius:999 }}>⚡️ {h.stats.pMin?.toLocaleString("fr-FR")}€</span>
+                            <span style={{ fontSize:10, fontWeight:700, color:"#1a3fdb", background:"#eff4ff", padding:"2px 6px", borderRadius:999 }}>🎯 {h.stats.p25?.toLocaleString("fr-FR")}€</span>
+                            <span style={{ fontSize:10, fontWeight:700, color:"#6366f1", background:"#eef2ff", padding:"2px 6px", borderRadius:999 }}>💎 {h.stats.p50?.toLocaleString("fr-FR")}€</span>
                           </div>
                         )}
                       </div>
-                      <div style={{ textAlign:"right", flexShrink:0, marginLeft:12 }}>
-                        <p style={{ margin:0, fontSize:10, color:"#9ca3af" }}>{h.date}</p>
+                      <div style={{ textAlign:"right", flexShrink:0, marginLeft:10 }}>
+                        <p style={{ margin:0, fontSize:10, color:"#8fa0b8" }}>{h.date}</p>
                       </div>
                     </button>
                   ))}
                 </div>
               </div>
             )}
-
-            {/* Section Comment ça marche */}
-            <div style={{ marginTop:40, paddingTop:32, borderTop:"1px solid #f3f4f6" }}>
-              <div style={{ textAlign:"center", marginBottom:24 }}>
-                <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:999, padding:"4px 12px", marginBottom:12 }}>
-                  <span style={{ fontSize:12, fontWeight:600, color:"#16a34a" }}>Comment ça marche</span>
+            <div style={{ margin:"28px 16px 0", paddingBottom:32 }}>
+              <div style={{ textAlign:"center", marginBottom:18 }}>
+                <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#eff4ff", border:"1px solid #93c5fd", borderRadius:999, padding:"4px 12px", marginBottom:10 }}>
+                  <span style={{ fontSize:11, fontWeight:600, color:"#1a3fdb" }}>Comment ça marche</span>
                 </div>
-                <h2 style={{ fontWeight:800, fontSize:22, color:"#111", margin:"0 0 6px" }}>Simple comme bonjour</h2>
-                <p style={{ color:"#6b7280", fontSize:14, margin:0 }}>Obtenez le prix du marché en 30 secondes</p>
+                <h2 style={{ fontWeight:700, fontSize:20, color:"#1a1a2e", margin:"0 0 4px" }}>Simple comme bonjour</h2>
+                <p style={{ color:"#8fa0b8", fontSize:13, margin:0 }}>Obtenez le prix du marché en 30 secondes</p>
               </div>
-
-              <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                 {[
-                  { num:"1", icon:"🔍", title:"Entrez votre plaque", desc:"On identifie automatiquement votre véhicule (marque, modèle, année, motorisation) via la base officielle SIV.", color:EMERALD },
-                  { num:"2", icon:"📊", title:"On analyse Leboncoin", desc:"On analyse en temps réel les annonces de professionnels sur Leboncoin similaires à votre véhicule.", color:"#6366F1" },
-                  { num:"3", icon:"💰", title:"Vous obtenez 3 prix", desc:"Prix agressif pour vendre vite, prix marché pour le maximum de contacts, prix haut avec marge de négociation.", color:"#F59E0B" },
+                  { num:"1", icon:"🔍", title:"Entrez votre plaque", desc:"On identifie automatiquement votre véhicule (marque, modèle, année, motorisation) via la base officielle SIV.", color:"#1a3fdb" },
+                  { num:"2", icon:"📊", title:"On analyse Leboncoin", desc:"On analyse en temps réel les annonces de professionnels sur Leboncoin similaires à votre véhicule.", color:"#6366f1" },
+                  { num:"3", icon:"💰", title:"Vous obtenez 3 prix", desc:"Prix agressif pour vendre vite, prix marché pour le maximum de contacts, prix haut avec marge de négociation.", color:"#f59e0b" },
                 ].map((step, i) => (
-                  <div key={i} style={{ display:"flex", gap:16, alignItems:"flex-start", background:"white", borderRadius:16, padding:"16px", border:"1px solid #f3f4f6", boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
-                    <div style={{ width:40, height:40, minWidth:40, borderRadius:"50%", background:step.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>
-                      {step.icon}
-                    </div>
+                  <div key={i} style={{ display:"flex", gap:14, alignItems:"flex-start", background:"white", borderRadius:14, padding:"14px", border:"0.5px solid #e2e8f5" }}>
+                    <div style={{ width:36, height:36, minWidth:36, borderRadius:"50%", background:step.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>{step.icon}</div>
                     <div>
-                      <p style={{ margin:"0 0 4px", fontSize:13, fontWeight:800, color:"#111" }}>{step.num}. {step.title}</p>
-                      <p style={{ margin:0, fontSize:13, color:"#6b7280", lineHeight:1.5 }}>{step.desc}</p>
+                      <p style={{ margin:"0 0 3px", fontSize:13, fontWeight:700, color:"#1a1a2e" }}>{step.num}. {step.title}</p>
+                      <p style={{ margin:0, fontSize:12, color:"#8fa0b8", lineHeight:1.5 }}>{step.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
-
-              <div style={{ marginTop:20, background:"#f0fdf4", border:"1px solid #bbf7d0", borderRadius:16, padding:"16px" }}>
-                <p style={{ margin:0, fontSize:13, color:"#166534", fontWeight:600, marginBottom:4 }}>🔒 Vos données restent privées</p>
-                <p style={{ margin:0, fontSize:12, color:"#15803d", lineHeight:1.5 }}>On ne stocke ni votre plaque, ni vos informations personnelles. L'analyse est anonyme et instantanée.</p>
+              <div style={{ marginTop:14, background:"#eff4ff", border:"1px solid #93c5fd", borderRadius:14, padding:"14px" }}>
+                <p style={{ margin:0, fontSize:12, color:"#1a3fdb", fontWeight:600, marginBottom:3 }}>🔒 Vos données restent privées</p>
+                <p style={{ margin:0, fontSize:11, color:"#3b5bdb", lineHeight:1.5 }}>On ne stocke ni votre plaque, ni vos informations personnelles.</p>
               </div>
-
-              <div style={{ marginTop:32, paddingBottom:16, textAlign:"center" }}>
-                <p style={{ fontSize:11, color:"#9ca3af", margin:0 }}>© 2025 CoteCars ·
-                  <a href="/mentions-legales.html" style={{ color:"#9ca3af", marginLeft:6 }}>Mentions légales</a> ·
-                  <a href="/cgu.html" style={{ color:"#9ca3af", marginLeft:6 }}>CGU</a>
+              <div style={{ marginTop:24, textAlign:"center" }}>
+                <p style={{ fontSize:11, color:"#8fa0b8", margin:0 }}>© 2025 CoteCars ·
+                  <a href="/mentions-legales.html" style={{ color:"#8fa0b8", marginLeft:6 }}>Mentions légales</a> ·
+                  <a href="/cgu.html" style={{ color:"#8fa0b8", marginLeft:6 }}>CGU</a>
                 </p>
               </div>
             </div>
+          </div>
 
+          {/* ═══ DESKTOP ≥ 900px ═══ */}
+          <div className="cc-desktop" style={{ minWidth:900 }}>
+            <div style={{ background:"white", borderBottom:"0.5px solid #e2e8f5", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
+              <span style={{ fontSize:20, fontWeight:700, color:"#1a1a2e", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
+              <div style={{ display:"flex", gap:20, alignItems:"center" }}>
+                <button onClick={() => setShowAnnonces(true)} style={{ fontSize:13, color:"#8fa0b8", fontWeight:500, background:"none", border:"none", cursor:"pointer" }}>🏷️ Nos annonces</button>
+                <span style={{ fontSize:13, color:"#8fa0b8", fontWeight:500 }}>Comment ça marche</span>
+                {user ? (
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    {user?.photoURL && <img src={user.photoURL} width={28} height={28} style={{ borderRadius:"50%", border:"2px solid #e2e8f5" }} alt="" />}
+                    <button onClick={() => auth.signOut()} style={{ fontSize:12, color:"#8fa0b8", background:"#f8faff", padding:"5px 12px", borderRadius:999, border:"0.5px solid #e2e8f5", cursor:"pointer" }}>Déconnexion</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowLoginModal(true)} style={{ background:"#1a3fdb", color:"white", borderRadius:8, padding:"7px 16px", fontSize:13, fontWeight:600, border:"none", cursor:"pointer" }}>Se connecter</button>
+                )}
+              </div>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"360px 1fr", minHeight:"calc(100vh - 56px)", marginTop:56 }}>
+              <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"32px 28px", position:"sticky", top:56, height:"calc(100vh - 56px)", overflow:"hidden", display:"flex", flexDirection:"column", justifyContent:"space-between" }}>
+                <div style={{ position:"absolute", top:-60, right:-60, width:200, height:200, borderRadius:"50%", background:"rgba(255,255,255,0.06)" }} />
+                <div style={{ position:"absolute", bottom:-40, left:-20, width:150, height:150, borderRadius:"50%", background:"rgba(255,255,255,0.04)" }} />
+                <div style={{ position:"relative", zIndex:1 }}>
+                  <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(255,255,255,0.12)", borderRadius:999, padding:"5px 14px", marginBottom:18 }}>
+                    <div className="pulse" style={{ width:7, height:7, borderRadius:"50%", background:"#93c5fd", display:"inline-block" }} />
+                    <span style={{ fontSize:11, color:"rgba(255,255,255,0.8)", fontWeight:600 }}>{(()=>{ const d=new Date(); const seed=(d.getFullYear()*366+d.getMonth()*31+d.getDate())*9301+49297; const base=1800+((seed%17))*35+(d.getDate()*12); return `+${base.toLocaleString("fr-FR")} analyses ce mois-ci`; })()}</span>
+                  </div>
+                  <h1 style={{ color:"white", fontSize:22, fontWeight:700, lineHeight:1.3, margin:"0 0 6px" }}>Connaissez le vrai<br/>prix de votre voiture</h1>
+                  <p style={{ color:"rgba(255,255,255,0.6)", fontSize:12, lineHeight:1.6, margin:"0 0 20px" }}>Basé sur les vraies annonces Leboncoin,<br/>pas sur l'Argus.</p>
+                  <div>
+                    <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6, display:"block" }}>Plaque d'immatriculation</label>
+                    <div style={{ marginBottom:12 }}><LicensePlate value={plate} onChange={handlePlateChange} /></div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+                      <div>
+                        <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5, display:"block" }}>Kilométrage</label>
+                        <div style={{ display:"flex", alignItems:"center", background:"rgba(255,255,255,0.1)", borderRadius:10, border:"1px solid rgba(255,255,255,0.18)", height:42, overflow:"hidden" }}>
+                          <input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="85 000"
+                            style={{ flex:1, padding:"0 10px", fontSize:14, fontWeight:600, border:"none", outline:"none", background:"transparent", color:"white" }} inputMode="numeric" />
+                          <span style={{ padding:"0 10px", color:"rgba(255,255,255,0.5)", fontSize:12 }}>km</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5, display:"block" }}>Finition</label>
+                        <select value={finition} onChange={e => setFinition(e.target.value)}
+                          style={{ width:"100%", height:42, padding:"0 10px", fontSize:13, fontWeight:600, color: finition ? "white" : "rgba(255,255,255,0.5)", border:"1px solid rgba(255,255,255,0.18)", borderRadius:10, background:"rgba(255,255,255,0.1)", cursor:"pointer", outline:"none" }}>
+                          <option value="" style={{color:"#333"}}>Toutes</option>
+                          {finitionsList.map(f => <option key={f} value={f} style={{color:"#333"}}>{f}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6, display:"block" }}>Boîte de vitesse</label>
+                    <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+                      {[{ val:"1", label:"🔧 Manuelle" }, { val:"2", label:"⚙️ Automatique" }].map(opt => (
+                        <button key={opt.val} onClick={() => setGearbox(opt.val)}
+                          style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1.5px solid ${gearbox === opt.val ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.2)"}`, background: gearbox === opt.val ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)", color: gearbox === opt.val ? "white" : "rgba(255,255,255,0.45)", fontWeight:600, fontSize:13, cursor:"pointer" }}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                    {err && <p style={{ color:"#fca5a5", fontSize:12, margin:"0 0 10px" }}>{err}</p>}
+                    <button onClick={handleAnalyze} style={{ width:"100%", background:"white", color:"#1a3fdb", fontWeight:700, fontSize:14, borderRadius:12, padding:"13px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 20px rgba(0,0,0,0.18)" }}>
+                      Analyser le marché →
+                    </button>
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:14, flexWrap:"wrap", position:"relative", zIndex:1 }}>
+                  {["Instantané","100% gratuit","Données réelles","100% privé"].map((t,i) => (
+                    <div key={i} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"rgba(255,255,255,0.5)" }}>
+                      <div style={{ width:5, height:5, borderRadius:"50%", background:"#60a5fa", flexShrink:0 }} />{t}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ padding:"32px 40px", overflowY:"auto", overflowX:"hidden", display:"flex", flexDirection:"column", gap:20, minWidth:0 }}>
+                {historique.length > 0 && (
+                  <div>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                      <span style={{ fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em" }}>🕐 Recherches récentes</span>
+                      <button onClick={clearHistorique} style={{ fontSize:11, color:"#8fa0b8", background:"none", border:"none", cursor:"pointer" }}>Effacer</button>
+                    </div>
+                    <div style={{ background:"white", borderRadius:14, border:"0.5px solid #e2e8f5", overflow:"hidden" }}>
+                      {historique.slice(0,5).map((h, i) => (
+                        <button key={i} onClick={() => { setPlate(h.plate); setKm(h.km ? String(h.km) : ""); }}
+                          style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 16px", borderBottom: i < Math.min(historique.length,5)-1 ? "1px solid #f8faff" : "none", background:"white", border:"none", cursor:"pointer", textAlign:"left" }}>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#1a1a2e" }}>{h.plate}</p>
+                            <p style={{ margin:"2px 0 0", fontSize:11, color:"#8fa0b8", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nom}{h.finition ? " · " + h.finition : ""}</p>
+                          </div>
+                          {h.stats && (
+                            <div style={{ display:"flex", gap:6, flexShrink:0, marginLeft:12 }}>
+                              <span style={{ fontSize:11, fontWeight:700, color:"#f59e0b", background:"#fffbeb", padding:"2px 8px", borderRadius:999 }}>⚡️ {h.stats.pMin?.toLocaleString("fr-FR")}€</span>
+                              <span style={{ fontSize:11, fontWeight:700, color:"#1a3fdb", background:"#eff4ff", padding:"2px 8px", borderRadius:999 }}>🎯 {h.stats.p25?.toLocaleString("fr-FR")}€</span>
+                              <span style={{ fontSize:11, fontWeight:700, color:"#6366f1", background:"#eef2ff", padding:"2px 8px", borderRadius:999 }}>💎 {h.stats.p50?.toLocaleString("fr-FR")}€</span>
+                            </div>
+                          )}
+                          <span style={{ fontSize:10, color:"#8fa0b8", marginLeft:12, flexShrink:0 }}>{h.date}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <div style={{ fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:12 }}>Comment ça marche</div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12 }}>
+                    {[
+                      { num:"1", title:"Entrez votre plaque", desc:"Identification automatique via la base SIV officielle." },
+                      { num:"2", title:"On analyse Leboncoin", desc:"Annonces de pros filtrées en temps réel pour votre modèle." },
+                      { num:"3", title:"3 prix précis", desc:"Agressif, marché ou haut — choisissez votre stratégie." },
+                    ].map((s,i) => (
+                      <div key={i} style={{ background:"white", borderRadius:14, padding:16, border:"0.5px solid #e2e8f5" }}>
+                        <div style={{ width:28, height:28, borderRadius:8, background:"#eff4ff", color:"#1a3fdb", fontSize:13, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:8 }}>{s.num}</div>
+                        <div style={{ fontSize:13, fontWeight:700, color:"#1a1a2e", marginBottom:4 }}>{s.title}</div>
+                        <div style={{ fontSize:12, color:"#8fa0b8", lineHeight:1.5 }}>{s.desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ background:"#eff4ff", border:"1px solid #93c5fd", borderRadius:14, padding:"14px 16px" }}>
+                  <p style={{ margin:"0 0 3px", fontSize:13, color:"#1a3fdb", fontWeight:700 }}>🔒 Vos données restent privées</p>
+                  <p style={{ margin:0, fontSize:12, color:"#3b5bdb", lineHeight:1.5 }}>On ne stocke ni votre plaque, ni vos informations personnelles.</p>
+                </div>
+                <div style={{ textAlign:"center", paddingTop:8, borderTop:"1px solid #e8edf5" }}>
+                  <p style={{ fontSize:11, color:"#c0cce0", margin:0 }}>© 2025 CoteCars · <a href="/mentions-legales.html" style={{color:"#c0cce0"}}>Mentions légales</a> · <a href="/cgu.html" style={{color:"#c0cce0"}}>CGU</a></p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+      );        </div>
       );
     }
 
