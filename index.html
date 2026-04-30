@@ -6,7 +6,7 @@
 
   <!-- SEO de base -->
   <title>CoteCars — Connaissez le vrai prix de votre voiture</title>
-  <meta name="description" content="Entrez votre plaque d'immatriculation et obtenez instantanément le prix du marché de votre voiture basé sur les vraies annonces Leboncoin. Gratuit, rapide, précis." />
+  <meta name="description" content="Entrez votre plaque d&apos;immatriculation et obtenez instantanément le prix du marché de votre voiture basé sur les vraies annonces Leboncoin. Gratuit, rapide, précis." />
   <meta name="keywords" content="cote voiture, prix voiture occasion, estimation voiture, valeur voiture, argus voiture, leboncoin prix, cote auto, vendre voiture prix juste" />
   <meta name="author" content="CoteCars" />
   <meta name="robots" content="index, follow" />
@@ -16,7 +16,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://cotecars.fr/" />
   <meta property="og:title" content="CoteCars — Connaissez le vrai prix de votre voiture" />
-  <meta property="og:description" content="Analysez le marché en 10 secondes avec votre plaque d'immatriculation. Prix basés sur les vraies annonces Leboncoin, pas sur l'Argus." />
+  <meta property="og:description" content="Analysez le marché en 10 secondes avec votre plaque d&apos;immatriculation. Prix basés sur les vraies annonces Leboncoin, pas sur l&apos;Argus." />
   <meta property="og:image" content="https://cotecars.fr/og-image.png" />
   <meta property="og:locale" content="fr_FR" />
   <meta property="og:site_name" content="CoteCars" />
@@ -24,7 +24,7 @@
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="CoteCars — Connaissez le vrai prix de votre voiture" />
-  <meta name="twitter:description" content="Analysez le marché en 10 secondes avec votre plaque d'immatriculation. Prix basés sur les vraies annonces Leboncoin." />
+  <meta name="twitter:description" content="Analysez le marché en 10 secondes avec votre plaque d&apos;immatriculation. Prix basés sur les vraies annonces Leboncoin." />
   <meta name="twitter:image" content="https://cotecars.fr/og-image.png" />
 
   <!-- Thème mobile -->
@@ -41,7 +41,7 @@
     "@type": "WebApplication",
     "name": "CoteCars",
     "url": "https://cotecars.fr",
-    "description": "Outil d'estimation du prix de marché d'une voiture d'occasion basé sur les annonces Leboncoin, via la plaque d'immatriculation.",
+    "description": "Outil d'estimation du prix de marché d'une voiture d'occasion basé sur les annonces Leboncoin, via la plaque d&apos;immatriculation.",
     "applicationCategory": "FinanceApplication",
     "operatingSystem": "All",
     "offers": {
@@ -2095,7 +2095,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <div style={{display:"flex",gap:8,marginBottom:14}}>
                     <div style={{flex:1,background:"white",borderRadius:12,padding:"14px 8px",border:"2px solid #F97316"}}>
                       <p style={{margin:0,fontWeight:800,fontSize:16,color:"#F97316"}}>2,99 €</p>
-                      <p style={{margin:"2px 0 0",fontSize:11,color:"#6b7280"}}>À l'unité</p>
+                      <p style={{margin:"2px 0 0",fontSize:11,color:"#6b7280"}}>À l&apos;unité</p>
                     </div>
                     <div style={{flex:1,background:"#F97316",borderRadius:12,padding:"14px 8px",border:"2px solid #F97316",position:"relative"}}>
                       <div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",background:"#111",color:"white",fontSize:9,fontWeight:800,padding:"2px 8px",borderRadius:999,whiteSpace:"nowrap"}}>POPULAIRE</div>
@@ -2142,7 +2142,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                     </div>
                   )}
 
-                  <label style={L}>🔍 Plaque d'immatriculation</label>
+                  <label style={L}>🔍 Plaque d&apos;immatriculation</label>
                   <div style={{display:"flex",gap:8,marginBottom:4}}>
                     <input value={plaqueInput} onChange={e=>setPlaqueInput(e.target.value.toUpperCase())} placeholder="AB-123-CD" style={{...I,flex:1,marginBottom:0}}/>
                     <button onClick={handleAutoFill} disabled={plaqueLoading} style={{padding:"0 16px",background:"#111",color:"white",fontWeight:700,fontSize:13,borderRadius:12,border:"none",cursor:"pointer",whiteSpace:"nowrap"}}>
@@ -2218,7 +2218,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                     ))}
                   </div>
 
-                  <label style={L}>🌿 Crit'Air <span style={{fontSize:10,color:"#9ca3af",fontWeight:400,textTransform:"none",letterSpacing:0}}>(facultatif)</span></label>
+                  <label style={L}>🌿 Crit&apos;Air <span style={{fontSize:10,color:"#9ca3af",fontWeight:400,textTransform:"none",letterSpacing:0}}>(facultatif)</span></label>
                   <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
                     {CRITAIRS.map(c=>(
                       <button key={c} onClick={()=>setCritair(critair===c?"":c)}
@@ -2232,7 +2232,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <input value={vin3} onChange={e=>setVin3(e.target.value.slice(0,3).toUpperCase())} placeholder="Ex: 4A2" maxLength={3} style={{...I,marginBottom:16,letterSpacing:"0.2em",fontWeight:700}}/>
 
                   <label style={L}>📝 Défauts & qualités du véhicule</label>
-                  <p style={{fontSize:12,color:"#6b7280",margin:"-4px 0 8px",lineHeight:1.5}}>Indiquez les défauts et les points forts. L'IA rédigera la description complète.</p>
+                  <p style={{fontSize:12,color:"#6b7280",margin:"-4px 0 8px",lineHeight:1.5}}>Indiquez les défauts et les points forts. L&apos;IA rédigera la description complète.</p>
                   <textarea value={defauts} onChange={e=>setDefauts(e.target.value)} placeholder="Ex: Légère rayure aile avant. Entretien suivi concessionnaire. Première main." style={{...I,minHeight:90,resize:"vertical",marginBottom:16}}/>
 
                   <label style={L}>💰 Prix de vente (€)</label>
@@ -2279,7 +2279,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   {/* Titre calculé — toujours affiché immédiatement */}
                   <div style={{background:"white",borderRadius:14,border:"2px solid #F97316",boxShadow:"0 1px 3px rgba(0,0,0,0.05)",overflow:"hidden",marginBottom:10}}>
                     <div style={{padding:"10px 14px 6px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>📌 Titre de l'annonce</span>
+                      <span style={{fontSize:11,fontWeight:800,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em"}}>📌 Titre de l&apos;annonce</span>
                       {titreIA&&<button onClick={()=>copy("titre",titreIA)} style={{fontSize:11,fontWeight:700,color:copiedKey==="titre"?EMERALD:"#6b7280",background:copiedKey==="titre"?"#eff4ff":"#f3f4f6",border:"none",borderRadius:8,padding:"5px 12px",cursor:"pointer"}}>{copiedKey==="titre"?"✅ Copié":"📋 Copier"}</button>}
                     </div>
                     <p style={{margin:0,padding:"0 14px 12px",fontSize:16,fontWeight:700,color:"#111"}}>{titreIA}</p>
@@ -2297,7 +2297,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <Card k="finition"  emoji="✨" label="Finition / Version"     val={finition}/>
                   <Card k="km"        emoji="🛣️" label="Kilométrage (km)"       val={km?String(Number(km)):""}/>
                   <Card k="equips"    emoji="🔧" label="Équipements"            val={equipements.join(", ")}/>
-                  <Card k="critair"   emoji="🌿" label="Crit'Air"               val={critair}/>
+                  <Card k="critair"   emoji="🌿" label="Crit&apos;Air"               val={critair}/>
                   <Card k="vin3"      emoji="🔢" label="Code VIN (3 derniers)"  val={vin3}/>
                   <Card k="prix"      emoji="💰" label="Prix (€)"               val={prix}/>
                   <Card k="loc"       emoji="📍" label="Localisation"           val={localisation+(ville?" "+ville:"")}/>
@@ -2672,10 +2672,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
           {!submitted ? (
             <div style={{ width:"100%", background:"white", borderRadius:20, padding:"20px", boxShadow:"0 4px 16px rgba(0,0,0,0.08)", animation:"fadeIn 0.4s ease" }}>
-              <p style={{ fontWeight:800, fontSize:15, color:"#111", margin:"0 0 4px", textAlign:"center" }}>📬 On s'occupe de vous !</p>
-              <p style={{ color:"#6b7280", fontSize:12, margin:"0 0 14px", textAlign:"center" }}>Remplissez le formulaire et nous vous fournirons l'estimation gratuitement.</p>
+              <p style={{ fontWeight:800, fontSize:15, color:"#111", margin:"0 0 4px", textAlign:"center" }}>📬 On s&apos;occupe de vous !</p>
+              <p style={{ color:"#6b7280", fontSize:12, margin:"0 0 14px", textAlign:"center" }}>Remplissez le formulaire et nous vous fournirons l&apos;estimation gratuitement.</p>
 
-              <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:3 }}>Plaque d'immatriculation</label>
+              <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:3 }}>Plaque d&apos;immatriculation</label>
               <input value={plaque} readOnly
                 style={{ width:"100%", padding:"10px 12px", border:"2px solid #1a3fdb", borderRadius:10, fontSize:14, marginBottom:8, boxSizing:"border-box", outline:"none", fontWeight:700, color:"#111", background:"#eff4ff", letterSpacing:"2px" }} />
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
@@ -3018,11 +3018,11 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                 <span style={{ fontSize:11, color:"rgba(255,255,255,0.85)", fontWeight:600 }}>{(()=>{ const d=new Date(); const seed=(d.getFullYear()*366+d.getMonth()*31+d.getDate())*9301+49297; const base=1800+((seed%17))*35+(d.getDate()*12); return `+${base.toLocaleString("fr-FR")} analyses ce mois-ci`; })()}</span>
               </div>
               <h1 style={{ color:"white", fontWeight:700, fontSize:24, lineHeight:1.25, margin:"0 0 6px", position:"relative", zIndex:1 }}>Vendez votre voiture<br/><span style={{color:"#93c5fd"}}>au vrai prix.</span></h1>
-              <p style={{ color:"rgba(255,255,255,0.65)", fontSize:13, margin:0, position:"relative", zIndex:1 }}>Basé sur Leboncoin, pas l'Argus.</p>
+              <p style={{ color:"rgba(255,255,255,0.65)", fontSize:13, margin:0, position:"relative", zIndex:1 }}>Basé sur Leboncoin, pas l&apos;Argus.</p>
             </div>
             <div style={{ margin:"-14px 16px 0", background:"white", borderRadius:20, padding:"18px 16px", boxShadow:"0 4px 24px rgba(26,63,219,0.12)", border:"0.5px solid #e2e8f5" }}>
               <div style={{ marginBottom:14 }}>
-                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>Plaque d'immatriculation</label>
+                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>Plaque d&apos;immatriculation</label>
                 <LicensePlate value={plate} onChange={handlePlateChange} />
                 <p style={{ margin:"5px 0 0", fontSize:11, color:"#8fa0b8", textAlign:"center" }}>Format accepté : AB-123-CD ou AB123CD</p>
                 {plate.length >= 7 && loadingFin && <p style={{ margin:"4px 0 0", fontSize:11, color:"#8fa0b8", textAlign:"center" }}>Chargement des finitions...</p>}
@@ -3165,9 +3165,9 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                     <span style={{ fontSize:11, color:"rgba(255,255,255,0.8)", fontWeight:600 }}>{(()=>{ const d=new Date(); const seed=(d.getFullYear()*366+d.getMonth()*31+d.getDate())*9301+49297; const base=1800+((seed%17))*35+(d.getDate()*12); return `+${base.toLocaleString("fr-FR")} analyses ce mois-ci`; })()}</span>
                   </div>
                   <h1 style={{ color:"white", fontSize:22, fontWeight:700, lineHeight:1.3, margin:"0 0 6px" }}>Connaissez le vrai<br/>prix de votre voiture</h1>
-                  <p style={{ color:"rgba(255,255,255,0.6)", fontSize:12, lineHeight:1.6, margin:"0 0 20px" }}>Basé sur les vraies annonces Leboncoin,<br/>pas sur l'Argus.</p>
+                  <p style={{ color:"rgba(255,255,255,0.6)", fontSize:12, lineHeight:1.6, margin:"0 0 20px" }}>Basé sur les vraies annonces Leboncoin, pas sur l&apos;Argus.</p>
                   <div>
-                    <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6, display:"block" }}>Plaque d'immatriculation</label>
+                    <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6, display:"block" }}>Plaque d&apos;immatriculation</label>
                     <div style={{ marginBottom:12 }}><LicensePlate value={plate} onChange={handlePlateChange} /></div>
                     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
                       <div>
@@ -3265,7 +3265,6 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             </div>
           </div>
         </div>
-      );        </div>
       );
     }
 
