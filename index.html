@@ -1064,8 +1064,8 @@
           `}</style>
 
           {/* MOBILE view (< 900px) */}
-          <div style={{ display:"block" }} className="mobile-spinner">
-            <style>{`.mobile-spinner { display:block } @media(min-width:900px){.mobile-spinner{display:none}}`}</style>
+          <div className="mobile-spinner">
+            <style>{`.mobile-spinner { display:block } @media(min-width:900px){.mobile-spinner{display:none!important}}`}</style>
             <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"16px 20px 20px", position:"relative", overflow:"hidden" }}>
               <div style={{ position:"absolute", top:-40, right:-40, width:120, height:120, borderRadius:"50%", background:"rgba(255,255,255,0.06)" }} />
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
@@ -1117,8 +1117,8 @@
           </div>
 
           {/* DESKTOP view (≥ 900px) */}
-          <div style={{ display:"none" }} className="desktop-spinner">
-            <style>{`@media(min-width:900px){.desktop-spinner{display:block!important}}`}</style>
+          <div className="desktop-spinner">
+            <style>{`.desktop-spinner{display:none} @media(min-width:900px){.desktop-spinner{display:block!important}}`}</style>
             <div style={{ minWidth:900, fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
               <div style={{ background:"white", borderBottom:"0.5px solid #e2e8f5", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10 }}>
                 <span style={{ fontSize:20, fontWeight:700, color:"#1a1a2e" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
