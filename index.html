@@ -76,6 +76,48 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
+  
+<style id="theme-style">
+  :root {
+    --bg: #f0f4fa;
+    --bg2: #ffffff;
+    --bg3: #f9fafb;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #111111;
+    --text2: #6b7280;
+    --text3: #9ca3af;
+    --hist-bg: #ffffff;
+    --hist-border: #f3f4f6;
+    --input-bg: #ffffff;
+    --input-border: #e2e8f5;
+    --step-bg: #f0f4f8;
+    --badge-bg: #eff4ff;
+    --badge-border: #93c5fd;
+    --badge-text: #1e3a8a;
+    --price-badge-bg: #eff4ff;
+  }
+  body.dark {
+    --bg: #161b27;
+    --bg2: #1e2330;
+    --bg3: #252d40;
+    --card: #1e2330;
+    --border: #2d3448;
+    --text: #f1f5f9;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --hist-bg: #1e2330;
+    --hist-border: #252d40;
+    --input-bg: #252d40;
+    --input-border: #2d3448;
+    --step-bg: #252d40;
+    --badge-bg: #1a2540;
+    --badge-border: #2d4a7a;
+    --badge-text: #93c5fd;
+    --price-badge-bg: #1a2540;
+  }
+</style>
+
   <div id="root"></div>
   <script type="text/babel">
     const { useState } = React;
@@ -93,6 +135,18 @@
     const db = firebase.firestore();
     const storage = firebase.storage();
     const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+    // Dark mode
+    function initTheme() {
+      const saved = localStorage.getItem('cotecars-theme');
+      if (saved === 'dark') document.body.classList.add('dark');
+    }
+    function toggleTheme() {
+      const isDark = document.body.classList.toggle('dark');
+      localStorage.setItem('cotecars-theme', isDark ? 'dark' : 'light');
+    }
+    initTheme();
+
 
     const EMERALD = "#1a3fdb";
 
@@ -150,9 +204,9 @@
       return (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:"20px" }}
           onClick={e => { if(e.target === e.currentTarget && onClose) onClose(); }}>
-          <div style={{ background:"white", borderRadius:20, padding:"28px 24px", width:"100%", maxWidth:360, boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}>
+          <div style={{ background:"var(--card)", borderRadius:20, padding:"28px 24px", width:"100%", maxWidth:360, boxShadow:"0 20px 60px rgba(0,0,0,0.2)", border:"0.5px solid var(--border)" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
-              <span style={{ fontWeight:800, fontSize:18, color:"#111" }}>
+              <span style={{ fontWeight:800, fontSize:18, color:"var(--text)" }}>
                 {mode === "login" ? "Connexion" : mode === "register" ? "Créer un compte" : "Mot de passe oublié"}
               </span>
               {onClose && <button onClick={onClose} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#9ca3af" }}>✕</button>}
@@ -172,14 +226,14 @@
 
             <form onSubmit={mode === "forgot" ? handleForgot : handleEmailAuth}>
               <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required
-                style={{ width:"100%", padding:"12px 14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }} />
+                style={{ width:"100%", padding:"12px 14px", border:"2px solid var(--border)", borderRadius:12, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box", background:"var(--input-bg)", color:"var(--text)" }} />
               {mode !== "forgot" && (
                 <input type="password" placeholder="Mot de passe" value={password} onChange={e => setPassword(e.target.value)} required
-                  style={{ width:"100%", padding:"12px 14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }} />
+                  style={{ width:"100%", padding:"12px 14px", border:"2px solid var(--border)", borderRadius:12, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box", background:"var(--input-bg)", color:"var(--text)" }} />
               )}
               {mode === "register" && (
                 <input type="password" placeholder="Confirmer le mot de passe" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required
-                  style={{ width:"100%", padding:"12px 14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box" }} />
+                  style={{ width:"100%", padding:"12px 14px", border:"2px solid var(--border)", borderRadius:12, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box", background:"var(--input-bg)", color:"var(--text)" }} />
               )}
               {error && <p style={{ color:"#ef4444", fontSize:12, margin:"0 0 10px", textAlign:"center" }}>{error}</p>}
               {success && <p style={{ color:EMERALD, fontSize:12, margin:"0 0 10px", textAlign:"center" }}>{success}</p>}
@@ -1017,6 +1071,22 @@
       return [];
     }
 
+
+    function DarkToggle() {
+      const [dark, setDark] = React.useState(document.body.classList.contains('dark'));
+      function handle() {
+        toggleTheme();
+        setDark(d => !d);
+      }
+      return (
+        <button onClick={handle} title={dark ? "Mode clair" : "Mode sombre"}
+          style={{ display:"flex", alignItems:"center", justifyContent:"center", width:36, height:20, borderRadius:999, background: dark ? "#3b5bf0" : "#e2e8f0", border:"none", cursor:"pointer", position:"relative", transition:"background 0.2s", padding:0, flexShrink:0 }}>
+          <div style={{ width:14, height:14, borderRadius:"50%", background:"white", position:"absolute", left: dark ? "calc(100% - 16px)" : 2, transition:"left 0.2s" }} />
+          <span style={{ fontSize:10, position:"absolute", left: dark ? 4 : "auto", right: dark ? "auto" : 3 }}>{dark ? "🌙" : "☀️"}</span>
+        </button>
+      );
+    }
+
     function LicensePlate({ value, onChange }) {
       return (
         <div style={{ display:"flex", alignItems:"stretch", borderRadius:12, overflow:"hidden", border:"2.5px solid #111", background:"white", height:56 }}>
@@ -1048,7 +1118,7 @@
       // Desktop : plein écran 2 colonnes avec skeleton
       // Mobile : centré avec spinner animé
       return (
-        <div style={{ minHeight:"100vh", background:"#f0f4fa", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+        <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
           <style>{`
             @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
             @keyframes floatorb { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
@@ -1073,7 +1143,7 @@
               </div>
               <span style={{ color:"rgba(255,255,255,0.75)", fontSize:12 }}>Analyse en cours…</span>
             </div>
-            <div style={{ padding:"14px", opacity:0.3, filter:"blur(1px)" }}>
+            <div style={{ padding:"14px", opacity:0.3, filter:"blur(1px)", background:"var(--bg)" }}>
               <div className="sk" style={{ height:12, width:"50%", marginBottom:10 }} />
               <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:10 }}>
                 <div className="sk" style={{ height:48, borderRadius:10 }} />
@@ -1096,7 +1166,7 @@
                 </svg>
                 <div style={{ position:"absolute", fontSize:18 }}>🚗</div>
               </div>
-              <div style={{ fontSize:13, fontWeight:700, color:"#1a1a2e" }}>Analyse en cours</div>
+              <div style={{ fontSize:13, fontWeight:700, color:"var(--text)" }}>Analyse en cours</div>
               <div style={{ display:"flex", flexDirection:"column", gap:8, width:190 }}>
                 {steps.map((s, i) => (
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:8, fontSize:11, color:"#6b80a0", opacity: i > step ? 0.4 : 1 }}>
@@ -1120,7 +1190,7 @@
           <div className="desktop-spinner">
             <style>{`.desktop-spinner{display:none} @media(min-width:900px){.desktop-spinner{display:block!important}}`}</style>
             <div style={{ minWidth:900, fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
-              <div style={{ background:"white", borderBottom:"0.5px solid #e2e8f5", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10 }}>
+              <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10 }}>
                 <span style={{ fontSize:20, fontWeight:700, color:"#1a1a2e" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
                 <div style={{ display:"flex", gap:20, alignItems:"center" }}>
                   <span style={{ fontSize:13, color:"#8fa0b8" }}>🏷️ Nos annonces</span>
@@ -1141,7 +1211,7 @@
                   <div className="sk" style={{ height:46, borderRadius:10, background:"rgba(255,255,255,0.15)" }} />
                   <div className="sk" style={{ height:48, borderRadius:12, background:"rgba(255,255,255,0.25)" }} />
                 </div>
-                <div style={{ padding:"32px 40px", display:"flex", flexDirection:"column", gap:20 }}>
+                <div style={{ padding:"32px 40px", display:"flex", flexDirection:"column", gap:20, background:"var(--bg)" }}>
                   <div className="sk" style={{ height:80, borderRadius:16 }} />
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
                     <div className="sk" style={{ height:80, borderRadius:14 }} />
@@ -1473,7 +1543,7 @@
         function Results({ result, plate, onReset, onElargi, user, setShowLoginModal, onCreateAnnonce, onPrepareLbc }) {
       const [copied, setCopied] = useState(false);
       const [showLogin, setShowLogin] = useState(false);
-      const [showCount, setShowCount] = useState(5);
+      const [showCount, setShowCount] = useState(6);
       const isConnected = !!user;
       const { veh, nom, ads, stats, finition, peuResultats } = result;
       const fmt = n => n ? n.toLocaleString("fr-FR") + " €" : "N/A";
@@ -1481,6 +1551,7 @@
       const medianAds = allAds.map(a => a.price?.[0]).sort((a,b)=>a-b)[Math.floor(allAds.length * 0.5)] || 0;
       const allCleanAds = allAds.filter(a => a.price?.[0] >= medianAds * 0.6).slice(0, 25);
       const cleanAds = allCleanAds.slice(0, showCount);
+      const isDark = document.body.classList.contains('dark');
 
       function handleCopy() {
         const lines = [
@@ -1508,27 +1579,29 @@
       }
 
       return (
-        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"#f9fafb" }}>
-          <div style={{ background:"white", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
-            <span style={{ fontWeight:800, fontSize:20, color:EMERALD }}>CoteCars</span>
-            {user ? (
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                {user?.photoURL && <img src={user.photoURL} width={26} height={26} style={{ borderRadius:"50%" }} alt="" />}
-                <button onClick={() => auth.signOut()} style={{ fontSize:11, color:"#9ca3af", background:"#f3f4f6", padding:"4px 10px", borderRadius:999, border:"none", cursor:"pointer" }}>Déconnexion</button>
-              </div>
-            ) : (
-              <button onClick={() => setShowLoginModal(true)}
-                style={{ fontSize:11, fontWeight:700, color:EMERALD, background:"#eff4ff", padding:"6px 12px", borderRadius:999, border:"1px solid #93c5fd", cursor:"pointer" }}>
-                Se connecter
-              </button>
-
-            )}
+        <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+          <div style={{ background:"var(--card)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
+            <span style={{ fontWeight:700, fontSize:18, color:EMERALD }}>Cote<span style={{color:"var(--text2)"}}>Cars</span></span>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <DarkToggle />
+              {user ? (
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  {user?.photoURL && <img src={user.photoURL} width={26} height={26} style={{ borderRadius:"50%" }} alt="" />}
+                  <button onClick={() => auth.signOut()} style={{ fontSize:11, color:"var(--text3)", background:"var(--bg3)", padding:"4px 10px", borderRadius:999, border:"none", cursor:"pointer" }}>Déconnexion</button>
+                </div>
+              ) : (
+                <button onClick={() => setShowLoginModal(true)}
+                  style={{ fontSize:11, fontWeight:700, color:EMERALD, background:"var(--badge-bg)", padding:"6px 12px", borderRadius:999, border:"1px solid var(--badge-border)", cursor:"pointer" }}>
+                  Se connecter
+                </button>
+              )}
+            </div>
           </div>
-          <div style={{ padding:"20px 20px 80px" }}>
-            <div style={{ background:"#eff4ff", border:"1px solid #93c5fd", borderRadius:16, padding:"12px 16px", marginBottom:16 }}>
-              <p style={{ margin:0, color:"#1e3a8a", fontWeight:600, fontSize:14 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
-              {nom && <p style={{ margin:"4px 0 0", color:"#0f28a8", fontWeight:700, fontSize:13 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
-              <p style={{ margin:"4px 0 0", color:"#1e3a8a", fontSize:12 }}>{veh.AWN_energie} · {veh.AWN_puissance_CH} ch · {veh.AWN_boite || ""} · {veh.AWN_date_mise_en_circulation}</p>
+          <div style={{ padding:"24px 28px 80px", maxWidth:1200, margin:"0 auto" }}>
+            <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:14, padding:"12px 16px", marginBottom:14 }}>
+              <p style={{ margin:0, color:"var(--badge-text)", fontWeight:600, fontSize:14 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
+              {nom && <p style={{ margin:"4px 0 0", color:"#1a3fdb", fontWeight:700, fontSize:13 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
+              <p style={{ margin:"4px 0 0", color:"var(--badge-text)", fontSize:12 }}>{veh.AWN_energie} · {veh.AWN_puissance_CH} ch · {veh.AWN_boite || ""} · {veh.AWN_date_mise_en_circulation}</p>
               {(veh.AWN_version||veh.AWN_nb_portes||veh.AWN_cylindres) && (
                 <p style={{ margin:"2px 0 0", color:"#1e3a8a", fontSize:12 }}>
                   {veh.AWN_version ? veh.AWN_version+" · " : ""}
@@ -1540,24 +1613,25 @@
             </div>
             {stats ? (
               <div style={{ position:"relative", marginBottom:16 }}>
-              <div style={{ background:"white", borderRadius:16, border:"1px solid #f3f4f6", boxShadow:"0 1px 3px rgba(0,0,0,0.06)", overflow:"hidden" }}>
-                <div style={{ padding:"12px 16px", borderBottom:"1px solid #f3f4f6", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                  <p style={{ margin:0, fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em" }}>📊 Analyse du marché</p>
+              <div style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", boxShadow:"0 1px 3px rgba(0,0,0,0.04)", overflow:"hidden" }}>
+                <div style={{ padding:"10px 16px", borderBottom:"0.5px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <p style={{ margin:0, fontSize:10, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>📊 Analyse du marché</p>
                   <span style={{ fontSize:12, color:EMERALD, fontWeight:700 }}>{stats.count} annonces</span>
                 </div>
-                {[
-                  { icon:"⚡️", label:"PRIX AGRESSIF", sub:"Vente rapide garantie", val:stats.pMin, color:"#F59E0B", bg:"#FFFBEB" },
-                  { icon:"🎯", label:"PRIX MARCHÉ", sub:"Le plus de contacts", val:stats.p25, color:EMERALD, bg:"#eff4ff" },
-                  { icon:"💎", label:"PRIX HAUT", sub:"Marge de négociation", val:stats.p50, color:"#6366F1", bg:"#EEF2FF" },
-                ].map((c, i) => (
-                  <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 16px", background:c.bg, borderBottom: i < 2 ? "1px solid #f3f4f6" : "none" }}>
-                    <div>
-                      <p style={{ margin:0, fontSize:11, fontWeight:800, color:c.color, textTransform:"uppercase", letterSpacing:"0.08em" }}>{c.icon} {c.label}</p>
-                      <p style={{ margin:"2px 0 0", fontSize:11, color:"#6b7280" }}>{c.sub}</p>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:0 }}>
+                  {[
+                    { icon:"⚡️", label:"AGRESSIF", sub:"Vente rapide", val:stats.pMin, color:"#F59E0B", bg:"#FFFBEB", bgDark:"#2a2010", borderColor:"#fde68a", borderDark:"#6b4c10" },
+                    { icon:"🎯", label:"MARCHÉ", sub:"Max de contacts", val:stats.p25, color:EMERALD, bg:"#eff4ff", bgDark:"#1a2540", borderColor:"#1a3fdb", borderDark:"#3b5bf0", recommended:true },
+                    { icon:"💎", label:"HAUT", sub:"Marge de négo", val:stats.p50, color:"#6366F1", bg:"#EEF2FF", bgDark:"#1e1a35", borderColor:"#c7d2fe", borderDark:"#4338ca" },
+                  ].map((c, i) => (
+                    <div key={i} style={{ padding:"14px 16px", background: document.body.classList.contains('dark') ? c.bgDark : c.bg, borderRight: i < 2 ? `0.5px solid var(--border)` : "none", position:"relative" }}>
+                      {c.recommended && <div style={{ position:"absolute", top:-8, left:"50%", transform:"translateX(-50%)", background:EMERALD, color:"white", fontSize:8, padding:"2px 8px", borderRadius:999, whiteSpace:"nowrap", fontWeight:700 }}>Recommandé</div>}
+                      <p style={{ margin:0, fontSize:9, fontWeight:700, color:c.color, textTransform:"uppercase", letterSpacing:"0.08em" }}>{c.icon} {c.label}</p>
+                      <p style={{ margin:"6px 0 2px", fontSize:24, fontWeight:700, color: document.body.classList.contains('dark') ? "#f1f5f9" : "#111", filter: isConnected ? "none" : "blur(6px)", userSelect: isConnected ? "auto" : "none", letterSpacing:"-0.5px" }}>{fmt(c.val)}</p>
+                      <p style={{ margin:0, fontSize:9, color:c.color }}>{c.sub}</p>
                     </div>
-                    <span style={{ fontSize:22, fontWeight:800, color:"#111", filter: isConnected ? "none" : "blur(6px)", userSelect: isConnected ? "auto" : "none" }}>{fmt(c.val)}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
               {!isConnected && (
                 <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:16, background:"rgba(255,255,255,0.7)" }}>
@@ -1577,31 +1651,27 @@
             )}
             {cleanAds.length > 0 && (
               <div style={{ position:"relative", marginBottom:16 }}>
-                <div style={{ background:"white", borderRadius:16, border:"1px solid #f3f4f6", boxShadow:"0 1px 3px rgba(0,0,0,0.06)", overflow:"hidden", filter: isConnected ? "none" : "blur(4px)", pointerEvents: isConnected ? "auto" : "none" }}>
-                  <div style={{ padding:"12px 16px", borderBottom:"1px solid #f3f4f6" }}>
-                    <p style={{ margin:0, fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em" }}>🔍 Annonces similaires</p>
+                <div style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", boxShadow:"0 1px 3px rgba(0,0,0,0.04)", overflow:"hidden", filter: isConnected ? "none" : "blur(4px)", pointerEvents: isConnected ? "auto" : "none" }}>
+                  <div style={{ padding:"10px 16px", borderBottom:"0.5px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <p style={{ margin:0, fontSize:10, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>🔍 Annonces similaires</p>
                   </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)" }}>
                   {cleanAds.map((ad, i) => (
                     <a key={i} href={ad.url} target="_blank" rel="noopener noreferrer"
-                      style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 16px", borderBottom: i < cleanAds.length-1 ? "1px solid #f9fafb" : "none", textDecoration:"none" }}>
-                      <div style={{ flex:1, minWidth:0, marginRight:12 }}>
-                        <p style={{ margin:0, fontSize:13, fontWeight:600, color:"#111", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ad.subject}</p>
-                        <p style={{ margin:"2px 0 0", fontSize:11, color:"#9ca3af" }}>
-                          {getAttr(ad,"regdate") ? getAttr(ad,"regdate")+" · " : ""}
-                          {getAttr(ad,"mileage") ? parseInt(getAttr(ad,"mileage")).toLocaleString("fr-FR")+" km · " : ""}
-                          {ad.location?.city}
-                        </p>
-                      </div>
-                      <div style={{ textAlign:"right", flexShrink:0 }}>
-                        <span style={{ fontSize:15, fontWeight:800, color:EMERALD }}>{ad.price?.[0]?.toLocaleString("fr-FR")} €</span>
-                        <p style={{ margin:"2px 0 0", fontSize:10, color:"#9ca3af" }}>Pro</p>
-                      </div>
+                      style={{ display:"flex", flexDirection:"column", padding:"10px 12px", borderRight: i % 3 < 2 ? "0.5px solid var(--border)" : "none", borderBottom: i < cleanAds.length - (cleanAds.length % 3 || 3) ? "0.5px solid var(--border)" : "none", textDecoration:"none" }}>
+                      <p style={{ margin:0, fontSize:11, fontWeight:600, color:"var(--text)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ad.subject}</p>
+                      <p style={{ margin:"2px 0 0", fontSize:10, color:"var(--text3)" }}>
+                        {getAttr(ad,"regdate") ? getAttr(ad,"regdate")+" · " : ""}
+                        {getAttr(ad,"mileage") ? parseInt(getAttr(ad,"mileage")).toLocaleString("fr-FR")+" km" : ""}
+                      </p>
+                      <p style={{ margin:"4px 0 0", fontSize:13, fontWeight:700, color:EMERALD }}>{ad.price?.[0]?.toLocaleString("fr-FR")} €</p>
                     </a>
                   ))}
+                  </div>
                 </div>
                 {isConnected && showCount < allCleanAds.length && (
-                  <button onClick={() => { setShowCount(c => Math.min(c + 10, allCleanAds.length)); if(window.posthog) posthog.capture('voir_plus_clique'); }}
-                    style={{ width:"100%", padding:"12px", background:"#f9fafb", border:"none", borderTop:"1px solid #f3f4f6", cursor:"pointer", fontSize:13, fontWeight:700, color:"#6b7280" }}>
+                  <button onClick={() => { setShowCount(c => Math.min(c + 9, allCleanAds.length)); if(window.posthog) posthog.capture('voir_plus_clique'); }}
+                    style={{ width:"100%", padding:"10px", background:"var(--bg)", border:"none", borderTop:"0.5px solid var(--border)", cursor:"pointer", fontSize:12, fontWeight:600, color:"var(--text2)" }}>
                     Voir plus ({allCleanAds.length - showCount} annonces restantes)
                   </button>
                 )}
@@ -1618,18 +1688,19 @@
               </div>
             )}
             {result.peuResultats && <FinitionSimilaireBlock result={result} onElargi={onElargi} />}
-            <div style={{ marginBottom:12 }}>
-              <button onClick={onPrepareLbc} style={{ width:"100%", background:"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:"pointer" }}>
+            <div style={{ marginBottom:10 }}>
+              <button onClick={onPrepareLbc} style={{ width:"100%", background:"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:700, fontSize:15, borderRadius:12, padding:"13px 0", border:"none", cursor:"pointer" }}>
                 🔗 Publier sur Leboncoin
               </button>
-              <p style={{ textAlign:"center", fontSize:12, color:"#9ca3af", margin:"6px 0 0" }}>Votre annonce sera aussi visible gratuitement sur CoteCars</p>
             </div>
-            <button onClick={onReset} style={{ width:"100%", background:`linear-gradient(135deg,${EMERALD},${EMERALD_DARK})`, color:"white", fontWeight:800, fontSize:17, borderRadius:16, padding:"16px 0", border:"none", cursor:"pointer", marginBottom:12 }}>
-              🔄 Nouvelle recherche
-            </button>
-            <button onClick={handleCopy} style={{ width:"100%", background: copied ? "#eff4ff" : "white", color: copied ? EMERALD : "#6b7280", fontWeight:700, fontSize:15, borderRadius:16, padding:"14px 0", border:`2px solid ${copied ? EMERALD : "#e5e7eb"}`, cursor:"pointer", transition:"all 0.2s" }}>
-              {copied ? "✅ Rapport copié !" : "📋 Copier le rapport"}
-            </button>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+              <button onClick={onReset} style={{ background:`linear-gradient(135deg,${EMERALD},${EMERALD_DARK})`, color:"white", fontWeight:700, fontSize:14, borderRadius:12, padding:"13px 0", border:"none", cursor:"pointer" }}>
+                🔄 Nouvelle recherche
+              </button>
+              <button onClick={handleCopy} style={{ background: copied ? "var(--badge-bg)" : "var(--card)", color: copied ? EMERALD : "var(--text2)", fontWeight:700, fontSize:14, borderRadius:12, padding:"13px 0", border:`1.5px solid ${copied ? EMERALD : "var(--border)"}`, cursor:"pointer", transition:"all 0.2s" }}>
+                {copied ? "✅ Rapport copié !" : "📋 Copier le rapport"}
+              </button>
+            </div>
           </div>
         </div>
       );
@@ -2381,19 +2452,22 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       if (selected) return <AnnonceDetail annonce={selected} onBack={()=>setSelected(null)} user={user} />;
 
       return (
-        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"#f9fafb" }}>
-          <div style={{ background:"white", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"var(--bg)" }}>
+          <div style={{ background:"var(--card)", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
             <div style={{ padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#6b7280" }}>←</button>
+              <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)" }}>←</button>
               <span style={{ fontWeight:800, fontSize:18, color:EMERALD }}>Annonces CoteCars</span>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <DarkToggle />
               <button onClick={()=>setShowFilters(!showFilters)} style={{ background: hasFilters ? EMERALD : "#f3f4f6", border:"none", borderRadius:20, padding:"6px 12px", fontSize:12, fontWeight:700, color: hasFilters ? "white" : "#374151", cursor:"pointer" }}>
                 {hasFilters ? "🔍 Filtres actifs" : "⚙️ Filtres"}
               </button>
+              </div>
             </div>
             {/* Barre de recherche */}
-            <div style={{ padding:"0 16px 12px" }}>
+            <div style={{ padding:"0 16px 12px", background:"var(--card)" }}>
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Rechercher une marque, modèle..."
-                style={{ width:"100%", padding:"10px 14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:14, boxSizing:"border-box", outline:"none" }} />
+                style={{ width:"100%", padding:"10px 14px", border:"2px solid var(--border)", borderRadius:12, fontSize:14, boxSizing:"border-box", outline:"none", background:"var(--input-bg)", color:"var(--text)" }} />
             </div>
             {/* Filtres dépliables */}
             {showFilters && (
@@ -2465,7 +2539,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               </div>
             )}
           </div>
-          <div style={{ padding:"16px 16px 80px" }}>
+          <div style={{ padding:"16px 16px 80px", background:"var(--bg)" }}>
             <p style={{ fontSize:13, color:"#6b7280", margin:"0 0 12px" }}>
               {filtered.length} annonce{filtered.length > 1 ? "s" : ""} {hasFilters ? "trouvée" + (filtered.length > 1 ? "s" : "") : ""}
             </p>
@@ -2479,17 +2553,17 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
               {filtered.map(a => (
                 <button key={a.id} onClick={()=>setSelected(a)}
-                  style={{ background:"white", borderRadius:16, border:"1px solid #f3f4f6", boxShadow:"0 1px 3px rgba(0,0,0,0.06)", overflow:"hidden", textAlign:"left", cursor:"pointer", padding:0 }}>
+                  style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", boxShadow:"0 1px 3px rgba(0,0,0,0.04)", overflow:"hidden", textAlign:"left", cursor:"pointer", padding:0 }}>
                   {a.photos?.[0] && <img src={a.photos[0]} alt="" style={{ width:"100%", height:180, objectFit:"cover" }} />}
                   <div style={{ padding:"12px 14px" }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
                       <div>
-                        <p style={{ margin:0, fontWeight:800, fontSize:14, color:"#111" }}>{a.nom}{a.finition ? ` · ${a.finition}` : ""}</p>
-                        <p style={{ margin:"2px 0 0", fontSize:12, color:"#9ca3af" }}>{a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km?.toLocaleString("fr-FR")} km` : ""}</p>
+                        <p style={{ margin:0, fontWeight:800, fontSize:14, color:"var(--text)" }}>{a.nom}{a.finition ? ` · ${a.finition}` : ""}</p>
+                        <p style={{ margin:"2px 0 0", fontSize:12, color:"var(--text3)" }}>{a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km?.toLocaleString("fr-FR")} km` : ""}</p>
                       </div>
                       <span style={{ fontWeight:800, fontSize:18, color:EMERALD, whiteSpace:"nowrap" }}>{a.prix?.toLocaleString("fr-FR")} €</span>
                     </div>
-                    <p style={{ margin:"6px 0 0", fontSize:12, color:"#6b7280" }}>📍 {a.localisation}</p>
+                    <p style={{ margin:"6px 0 0", fontSize:12, color:"var(--text2)" }}>📍 {a.localisation}</p>
                   </div>
                 </button>
               ))}
@@ -2512,7 +2586,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       }
 
       return (
-        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"#f9fafb" }}>
+        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"var(--bg)" }}>
           <div style={{ background:"white", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
             <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#6b7280" }}>←</button>
             <span style={{ fontWeight:800, fontSize:16, color:"#111", flex:1, textAlign:"center" }}>{a.nom}</span>
@@ -2653,7 +2727,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       }
 
       return (
-        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"#f9fafb", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px" }}>
+        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"var(--bg)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px" }}>
           <div style={{ position:"relative", marginBottom:16 }}>
             <div style={{ fontSize:64, animation:"bounce 1.5s infinite", display:"inline-block" }}>🚗</div>
             <div style={{ position:"absolute", top:-8, right:-8, fontSize:26, animation:"spin 2s linear infinite", display:"inline-block" }}>⚠️</div>
@@ -2664,14 +2738,14 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
           `}</style>
 
-          <h2 style={{ fontWeight:800, fontSize:22, color:"#111", margin:"0 0 6px", textAlign:"center" }}>Véhicule introuvable</h2>
+          <h2 style={{ fontWeight:800, fontSize:22, color:"var(--text)", margin:"0 0 6px", textAlign:"center" }}>Véhicule introuvable</h2>
           <p style={{ color:"#6b7280", fontSize:13, margin:"0 0 10px", textAlign:"center" }}>{apiErr}</p>
           <div style={{ background:"#fef3c7", border:"1px solid #fde68a", borderRadius:12, padding:"8px 16px", marginBottom:16, textAlign:"center" }}>
             <p style={{ margin:0, fontSize:13, color:"#92400e" }}>🔍 Plaque analysée : <strong>{plaque}</strong></p>
           </div>
 
           {!submitted ? (
-            <div style={{ width:"100%", background:"white", borderRadius:20, padding:"20px", boxShadow:"0 4px 16px rgba(0,0,0,0.08)", animation:"fadeIn 0.4s ease" }}>
+            <div style={{ width:"100%", background:"var(--card)", borderRadius:20, padding:"20px", boxShadow:"0 4px 16px rgba(0,0,0,0.08)", animation:"fadeIn 0.4s ease", border:"0.5px solid var(--border)" }}>
               <p style={{ fontWeight:800, fontSize:15, color:"#111", margin:"0 0 4px", textAlign:"center" }}>📬 On s&apos;occupe de vous !</p>
               <p style={{ color:"#6b7280", fontSize:12, margin:"0 0 14px", textAlign:"center" }}>Remplissez le formulaire et nous vous fournirons l&apos;estimation gratuitement.</p>
 
@@ -2731,9 +2805,9 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <p style={{ fontSize:11, color:"#9ca3af", textAlign:"center", margin:"10px 0 0" }}>* Champs obligatoires</p>
             </div>
           ) : (
-            <div style={{ width:"100%", background:"white", borderRadius:20, padding:"24px", boxShadow:"0 4px 16px rgba(0,0,0,0.08)", textAlign:"center", animation:"fadeIn 0.4s ease" }}>
+            <div style={{ width:"100%", background:"var(--card)", borderRadius:20, padding:"24px", boxShadow:"0 4px 16px rgba(0,0,0,0.08)", textAlign:"center", animation:"fadeIn 0.4s ease", border:"0.5px solid var(--border)" }}>
               <div style={{ fontSize:56, marginBottom:12 }}>✅</div>
-              <h3 style={{ fontWeight:800, fontSize:18, color:"#111", margin:"0 0 8px" }}>Demande envoyée !</h3>
+              <h3 style={{ fontWeight:800, fontSize:18, color:"var(--text)", margin:"0 0 8px" }}>Demande envoyée !</h3>
               <p style={{ color:"#6b7280", fontSize:14, margin:"0 0 20px" }}>Nous reviendrons vers vous rapidement avec votre estimation gratuite.</p>
               <button onClick={onReset} style={{ width:"100%", background:"linear-gradient(135deg,#1a3fdb,#0f28a8)", color:"white", fontWeight:800, fontSize:16, borderRadius:14, padding:"14px 0", border:"none", cursor:"pointer" }}>
                 🔄 Nouvelle recherche
@@ -2942,12 +3016,12 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       const BLUE_DARK = "#0f28a8";
 
       return (
-        <div style={{ fontFamily:"'DM Sans',-apple-system,sans-serif", background:"#f0f4fa", minHeight:"100vh" }}>
+        <div style={{ fontFamily:"'DM Sans',-apple-system,sans-serif", background:"var(--bg)", minHeight:"100vh", transition:"background 0.2s" }}>
           <style>{`
             @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
             @keyframes floatorb{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
             @keyframes pulseGreen{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
-            .cc-mobile{display:flex;flex-direction:column;}
+            .cc-mobile{display:flex;flex-direction:column;background:var(--bg);}
             .cc-desktop{display:none;}
             @media(min-width:900px){.cc-mobile{display:none!important;}.cc-desktop{display:block!important;}body{overflow-x:auto;}}
           `}</style>
@@ -3003,6 +3077,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                 <span style={{ fontWeight:700, fontSize:20, color:"white" }}>Cote<span style={{color:"#93c5fd"}}>Cars</span></span>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <button onClick={() => setShowAnnonces(true)} style={{ fontSize:10, fontWeight:700, color:"white", background:"rgba(255,255,255,0.15)", padding:"5px 10px", borderRadius:999, border:"1px solid rgba(255,255,255,0.25)", cursor:"pointer" }}>🏷️ Annonces</button>
+                  <DarkToggle />
                   {user ? (
                     <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                       {user?.photoURL && <img src={user.photoURL} width={26} height={26} style={{ borderRadius:"50%", border:"2px solid rgba(255,255,255,0.3)" }} alt="" />}
@@ -3020,18 +3095,18 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <h1 style={{ color:"white", fontWeight:700, fontSize:24, lineHeight:1.25, margin:"0 0 6px", position:"relative", zIndex:1 }}>Vendez votre voiture<br/><span style={{color:"#93c5fd"}}>au vrai prix.</span></h1>
               <p style={{ color:"rgba(255,255,255,0.65)", fontSize:13, margin:0, position:"relative", zIndex:1 }}>Basé sur Leboncoin, pas l&apos;Argus.</p>
             </div>
-            <div style={{ margin:"-14px 16px 0", background:"white", borderRadius:20, padding:"18px 16px", boxShadow:"0 4px 24px rgba(26,63,219,0.12)", border:"0.5px solid #e2e8f5" }}>
+            <div style={{ margin:"-14px 16px 0", background:"var(--card)", borderRadius:20, padding:"18px 16px", boxShadow:"0 4px 24px rgba(26,63,219,0.12)", border:"0.5px solid var(--border)" }}>
               <div style={{ marginBottom:14 }}>
                 <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>Plaque d&apos;immatriculation</label>
                 <LicensePlate value={plate} onChange={handlePlateChange} />
-                <p style={{ margin:"5px 0 0", fontSize:11, color:"#8fa0b8", textAlign:"center" }}>Format accepté : AB-123-CD ou AB123CD</p>
-                {plate.length >= 7 && loadingFin && <p style={{ margin:"4px 0 0", fontSize:11, color:"#8fa0b8", textAlign:"center" }}>Chargement des finitions...</p>}
+                <p style={{ margin:"5px 0 0", fontSize:11, color:"var(--text3)", textAlign:"center" }}>Format accepté : AB-123-CD ou AB123CD</p>
+                {plate.length >= 7 && loadingFin && <p style={{ margin:"4px 0 0", fontSize:11, color:"var(--text3)", textAlign:"center" }}>Chargement des finitions...</p>}
               </div>
               <div style={{ marginBottom:14 }}>
                 <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>Kilométrage</label>
-                <div style={{ display:"flex", alignItems:"center", border:"1.5px solid #e2e8f5", borderRadius:12, overflow:"hidden", height:50 }}>
+                <div style={{ display:"flex", alignItems:"center", border:"1.5px solid var(--input-border)", borderRadius:12, overflow:"hidden", height:50, background:"var(--input-bg)" }}>
                   <input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="85 000"
-                    style={{ flex:1, padding:"0 14px", fontSize:17, fontWeight:700, border:"none", outline:"none", background:"transparent", color:"#1a1a2e" }} inputMode="numeric" />
+                    style={{ flex:1, padding:"0 14px", fontSize:17, fontWeight:700, border:"none", outline:"none", background:"transparent", color:"var(--text)" }} inputMode="numeric" />
                   <span style={{ padding:"0 14px", color:"#8fa0b8", fontWeight:600, fontSize:13 }}>km</span>
                 </div>
               </div>
@@ -3063,11 +3138,11 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <button onClick={handleAnalyze} style={{ width:"100%", background:"linear-gradient(135deg,#1a3fdb,#0f28a8)", color:"white", fontWeight:700, fontSize:16, borderRadius:14, padding:"16px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 16px rgba(26,63,219,0.35)" }}>
                 Analyser le marché 🚀
               </button>
-              <p style={{ textAlign:"center", fontSize:11, color:"#8fa0b8", margin:"10px 0 0" }}>Résultat instantané · Aucune inscription</p>
+              <p style={{ textAlign:"center", fontSize:11, color:"var(--text3)", margin:"10px 0 0" }}>Résultat instantané · Aucune inscription</p>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, margin:"18px 16px 0" }}>
               {[{icon:"⚡️",label:"Instantané"},{icon:"🎯",label:"Prix précis"},{icon:"🔒",label:"100% privé"}].map((item,i) => (
-                <div key={i} style={{ background:"white", borderRadius:14, padding:12, textAlign:"center", boxShadow:"0 1px 4px rgba(26,63,219,0.06)", border:"0.5px solid #e2e8f5" }}>
+                <div key={i} style={{ background:"var(--card)", borderRadius:14, padding:12, textAlign:"center", boxShadow:"0 1px 4px rgba(26,63,219,0.06)", border:"0.5px solid var(--border)" }}>
                   <div style={{ fontSize:18, marginBottom:3 }}>{item.icon}</div>
                   <div style={{ fontSize:11, fontWeight:600, color:"#4b5563" }}>{item.label}</div>
                 </div>
@@ -3077,15 +3152,15 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <div style={{ margin:"20px 16px 0" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
                   <span style={{ fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em" }}>🕐 Recherches récentes</span>
-                  <button onClick={clearHistorique} style={{ fontSize:11, color:"#8fa0b8", background:"none", border:"none", cursor:"pointer", padding:0 }}>Effacer</button>
+                  <button onClick={clearHistorique} style={{ fontSize:11, color:"var(--text3)", background:"none", border:"none", cursor:"pointer", padding:0 }}>Effacer</button>
                 </div>
-                <div style={{ background:"white", borderRadius:14, border:"0.5px solid #e2e8f5", overflow:"hidden" }}>
+                <div style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", overflow:"hidden" }}>
                   {historique.map((h, i) => (
                     <button key={i} onClick={() => { setPlate(h.plate); setKm(h.km ? String(h.km) : ""); }}
-                      style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 14px", borderBottom: i < historique.length-1 ? "1px solid #f8faff" : "none", background:"white", border:"none", cursor:"pointer", textAlign:"left" }}>
+                      style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 14px", borderBottom: i < historique.length-1 ? "1px solid #f8faff" : "none", background:"var(--card)", border:"none", cursor:"pointer", textAlign:"left" }}>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#1a1a2e" }}>{h.plate}</p>
-                        <p style={{ margin:"2px 0 0", fontSize:11, color:"#8fa0b8", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nom}{h.finition ? " · " + h.finition : ""}</p>
+                        <p style={{ margin:0, fontSize:13, fontWeight:700, color:"var(--text)" }}>{h.plate}</p>
+                        <p style={{ margin:"2px 0 0", fontSize:11, color:"var(--text3)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nom}{h.finition ? " · " + h.finition : ""}</p>
                         {h.stats && (
                           <div style={{ display:"flex", gap:5, marginTop:5, flexWrap:"wrap" }}>
                             <span style={{ fontSize:10, fontWeight:700, color:"#f59e0b", background:"#fffbeb", padding:"2px 6px", borderRadius:999 }}>⚡️ {h.stats.pMin?.toLocaleString("fr-FR")}€</span>
@@ -3116,21 +3191,21 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   { num:"2", icon:"📊", title:"On analyse Leboncoin", desc:"On analyse en temps réel les annonces de professionnels sur Leboncoin similaires à votre véhicule.", color:"#6366f1" },
                   { num:"3", icon:"💰", title:"Vous obtenez 3 prix", desc:"Prix agressif pour vendre vite, prix marché pour le maximum de contacts, prix haut avec marge de négociation.", color:"#f59e0b" },
                 ].map((step, i) => (
-                  <div key={i} style={{ display:"flex", gap:14, alignItems:"flex-start", background:"white", borderRadius:14, padding:"14px", border:"0.5px solid #e2e8f5" }}>
+                  <div key={i} style={{ display:"flex", gap:14, alignItems:"flex-start", background:"var(--card)", borderRadius:14, padding:"14px", border:"0.5px solid var(--border)" }}>
                     <div style={{ width:36, height:36, minWidth:36, borderRadius:"50%", background:step.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>{step.icon}</div>
                     <div>
-                      <p style={{ margin:"0 0 3px", fontSize:13, fontWeight:700, color:"#1a1a2e" }}>{step.num}. {step.title}</p>
-                      <p style={{ margin:0, fontSize:12, color:"#8fa0b8", lineHeight:1.5 }}>{step.desc}</p>
+                      <p style={{ margin:"0 0 3px", fontSize:13, fontWeight:700, color:"var(--text)" }}>{step.num}. {step.title}</p>
+                      <p style={{ margin:0, fontSize:12, color:"var(--text3)", lineHeight:1.5 }}>{step.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop:14, background:"#eff4ff", border:"1px solid #93c5fd", borderRadius:14, padding:"14px" }}>
+              <div style={{ marginTop:14, background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:14, padding:"14px" }}>
                 <p style={{ margin:0, fontSize:12, color:"#1a3fdb", fontWeight:600, marginBottom:3 }}>🔒 Vos données restent privées</p>
                 <p style={{ margin:0, fontSize:11, color:"#3b5bdb", lineHeight:1.5 }}>On ne stocke ni votre plaque, ni vos informations personnelles.</p>
               </div>
               <div style={{ marginTop:24, textAlign:"center" }}>
-                <p style={{ fontSize:11, color:"#8fa0b8", margin:0 }}>© 2025 CoteCars ·
+                <p style={{ fontSize:11, color:"var(--text3)", margin:0 }}>© 2025 CoteCars ·
                   <a href="/mentions-legales.html" style={{ color:"#8fa0b8", marginLeft:6 }}>Mentions légales</a> ·
                   <a href="/cgu.html" style={{ color:"#8fa0b8", marginLeft:6 }}>CGU</a>
                 </p>
@@ -3140,11 +3215,12 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
           {/* ═══ DESKTOP ≥ 900px ═══ */}
           <div className="cc-desktop" style={{ minWidth:900 }}>
-            <div style={{ background:"white", borderBottom:"0.5px solid #e2e8f5", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
-              <span style={{ fontSize:20, fontWeight:700, color:"#1a1a2e", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
+            <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
+              <span style={{ fontSize:20, fontWeight:700, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
               <div style={{ display:"flex", gap:20, alignItems:"center" }}>
                 <button onClick={() => setShowAnnonces(true)} style={{ fontSize:13, color:"#8fa0b8", fontWeight:500, background:"none", border:"none", cursor:"pointer" }}>🏷️ Nos annonces</button>
                 <span style={{ fontSize:13, color:"#8fa0b8", fontWeight:500 }}>Comment ça marche</span>
+                <DarkToggle />
                 {user ? (
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                     {user?.photoURL && <img src={user.photoURL} width={28} height={28} style={{ borderRadius:"50%", border:"2px solid #e2e8f5" }} alt="" />}
@@ -3210,20 +3286,20 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   ))}
                 </div>
               </div>
-              <div style={{ padding:"32px 40px", overflowY:"auto", overflowX:"hidden", display:"flex", flexDirection:"column", gap:20, minWidth:0 }}>
+              <div style={{ padding:"32px 40px", overflowY:"auto", overflowX:"hidden", display:"flex", flexDirection:"column", gap:20, minWidth:0, background:"var(--bg)" }}>
                 {historique.length > 0 && (
                   <div>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
                       <span style={{ fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em" }}>🕐 Recherches récentes</span>
-                      <button onClick={clearHistorique} style={{ fontSize:11, color:"#8fa0b8", background:"none", border:"none", cursor:"pointer" }}>Effacer</button>
+                      <button onClick={clearHistorique} style={{ fontSize:11, color:"var(--text3)", background:"none", border:"none", cursor:"pointer" }}>Effacer</button>
                     </div>
-                    <div style={{ background:"white", borderRadius:14, border:"0.5px solid #e2e8f5", overflow:"hidden" }}>
+                    <div style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", overflow:"hidden" }}>
                       {historique.slice(0,5).map((h, i) => (
                         <button key={i} onClick={() => { setPlate(h.plate); setKm(h.km ? String(h.km) : ""); }}
-                          style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 16px", borderBottom: i < Math.min(historique.length,5)-1 ? "1px solid #f8faff" : "none", background:"white", border:"none", cursor:"pointer", textAlign:"left" }}>
+                          style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 16px", borderBottom: i < Math.min(historique.length,5)-1 ? "1px solid #f8faff" : "none", background:"var(--card)", border:"none", cursor:"pointer", textAlign:"left" }}>
                           <div style={{ flex:1, minWidth:0 }}>
-                            <p style={{ margin:0, fontSize:13, fontWeight:700, color:"#1a1a2e" }}>{h.plate}</p>
-                            <p style={{ margin:"2px 0 0", fontSize:11, color:"#8fa0b8", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nom}{h.finition ? " · " + h.finition : ""}</p>
+                            <p style={{ margin:0, fontSize:13, fontWeight:700, color:"var(--text)" }}>{h.plate}</p>
+                            <p style={{ margin:"2px 0 0", fontSize:11, color:"var(--text3)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nom}{h.finition ? " · " + h.finition : ""}</p>
                           </div>
                           {h.stats && (
                             <div style={{ display:"flex", gap:6, flexShrink:0, marginLeft:12 }}>
@@ -3246,15 +3322,15 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                       { num:"2", title:"On analyse Leboncoin", desc:"Annonces de pros filtrées en temps réel pour votre modèle." },
                       { num:"3", title:"3 prix précis", desc:"Agressif, marché ou haut — choisissez votre stratégie." },
                     ].map((s,i) => (
-                      <div key={i} style={{ background:"white", borderRadius:14, padding:16, border:"0.5px solid #e2e8f5" }}>
-                        <div style={{ width:28, height:28, borderRadius:8, background:"#eff4ff", color:"#1a3fdb", fontSize:13, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:8 }}>{s.num}</div>
-                        <div style={{ fontSize:13, fontWeight:700, color:"#1a1a2e", marginBottom:4 }}>{s.title}</div>
-                        <div style={{ fontSize:12, color:"#8fa0b8", lineHeight:1.5 }}>{s.desc}</div>
+                      <div key={i} style={{ background:"var(--card)", borderRadius:14, padding:16, border:"0.5px solid var(--border)" }}>
+                        <div style={{ width:28, height:28, borderRadius:8, background:"var(--badge-bg)", color:"#1a3fdb", fontSize:13, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:8 }}>{s.num}</div>
+                        <div style={{ fontSize:13, fontWeight:700, color:"var(--text)", marginBottom:4 }}>{s.title}</div>
+                        <div style={{ fontSize:12, color:"var(--text3)", lineHeight:1.5 }}>{s.desc}</div>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div style={{ background:"#eff4ff", border:"1px solid #93c5fd", borderRadius:14, padding:"14px 16px" }}>
+                <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:14, padding:"14px 16px" }}>
                   <p style={{ margin:"0 0 3px", fontSize:13, color:"#1a3fdb", fontWeight:700 }}>🔒 Vos données restent privées</p>
                   <p style={{ margin:0, fontSize:12, color:"#3b5bdb", lineHeight:1.5 }}>On ne stocke ni votre plaque, ni vos informations personnelles.</p>
                 </div>
