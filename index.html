@@ -2405,7 +2405,6 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       const [filterLoc, setFilterLoc] = React.useState("");
       const [showFilters, setShowFilters] = React.useState(false);
 
-      // Extraire marques et modèles uniques
       const marques = [...new Set(annonces.map(a => a.nom?.split(" ")[0]).filter(Boolean))].sort();
       const modeles = [...new Set(annonces.filter(a => !filterMarque || a.nom?.startsWith(filterMarque)).map(a => a.nom).filter(Boolean))].sort();
 
@@ -2434,122 +2433,157 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       if (selected) return <AnnonceDetail annonce={selected} onBack={()=>setSelected(null)} user={user} />;
 
       return (
-        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"var(--bg)" }}>
-          <div style={{ background:"var(--card)", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
-            <div style={{ padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)" }}>←</button>
-              <span style={{ fontWeight:800, fontSize:18, color:EMERALD }}>Annonces CoteCars</span>
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+        <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+          {/* Navbar */}
+          <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+              <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
+              <span style={{ fontWeight:700, fontSize:18, color:"#1a3fdb" }}>Cote<span style={{color:"var(--text2)"}}>Cars</span></span>
+              <span style={{ fontSize:13, color:"var(--text3)", fontWeight:500 }}>Annonces</span>
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
               <DarkToggle />
-              <button onClick={()=>setShowFilters(!showFilters)} style={{ background: hasFilters ? EMERALD : "#f3f4f6", border:"none", borderRadius:20, padding:"6px 12px", fontSize:12, fontWeight:700, color: hasFilters ? "white" : "#374151", cursor:"pointer" }}>
-                {hasFilters ? "🔍 Filtres actifs" : "⚙️ Filtres"}
+              <button onClick={()=>setShowFilters(!showFilters)}
+                style={{ background: hasFilters ? "#1a3fdb" : "var(--bg)", border:"1px solid var(--border)", borderRadius:8, padding:"6px 14px", fontSize:12, fontWeight:600, color: hasFilters ? "white" : "var(--text2)", cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
+                ⚙️ {hasFilters ? "Filtres actifs" : "Filtres"}
               </button>
-              </div>
             </div>
-            {/* Barre de recherche */}
-            <div style={{ padding:"0 16px 12px", background:"var(--card)" }}>
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Rechercher une marque, modèle..."
-                style={{ width:"100%", padding:"10px 14px", border:"2px solid var(--border)", borderRadius:12, fontSize:14, boxSizing:"border-box", outline:"none", background:"var(--input-bg)", color:"var(--text)" }} />
-            </div>
-            {/* Filtres dépliables */}
-            {showFilters && (
-              <div style={{ padding:"0 16px 16px", borderTop:"1px solid #f3f4f6" }}>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:12 }}>
-                  <div>
-                    <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:4 }}>Marque</label>
-                    <select value={filterMarque} onChange={e=>{ setFilterMarque(e.target.value); setFilterModele(""); }}
-                      style={{ width:"100%", padding:"8px 10px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, outline:"none", background:"white" }}>
-                      <option value="">Toutes</option>
-                      {marques.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:4 }}>Modèle</label>
-                    <select value={filterModele} onChange={e=>setFilterModele(e.target.value)}
-                      style={{ width:"100%", padding:"8px 10px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, outline:"none", background:"white" }}>
-                      <option value="">Tous</option>
-                      {modeles.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:4 }}>Énergie</label>
-                    <select value={filterEnergie} onChange={e=>setFilterEnergie(e.target.value)}
-                      style={{ width:"100%", padding:"8px 10px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, outline:"none", background:"white" }}>
-                      <option value="">Toutes</option>
-                      <option value="GAZOLE">Diesel</option>
-                      <option value="ESSENCE">Essence</option>
-                      <option value="ELECTRIQUE">Électrique</option>
-                      <option value="HYBRIDE">Hybride</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:4 }}>Prix max (€)</label>
-                    <select value={filterPrixMax} onChange={e=>setFilterPrixMax(e.target.value)}
-                      style={{ width:"100%", padding:"8px 10px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, outline:"none", background:"white" }}>
-                      <option value="">Tous</option>
-                      <option value="3000">3 000 €</option>
-                      <option value="5000">5 000 €</option>
-                      <option value="8000">8 000 €</option>
-                      <option value="12000">12 000 €</option>
-                      <option value="20000">20 000 €</option>
-                      <option value="30000">30 000 €</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:4 }}>Km max</label>
-                    <select value={filterKmMax} onChange={e=>setFilterKmMax(e.target.value)}
-                      style={{ width:"100%", padding:"8px 10px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, outline:"none", background:"white" }}>
-                      <option value="">Tous</option>
-                      <option value="50000">50 000 km</option>
-                      <option value="100000">100 000 km</option>
-                      <option value="150000">150 000 km</option>
-                      <option value="200000">200 000 km</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", display:"block", marginBottom:4 }}>Ville</label>
-                    <input value={filterLoc} onChange={e=>setFilterLoc(e.target.value)} placeholder="Ex: Paris, Lyon..."
-                      style={{ width:"100%", padding:"8px 10px", border:"2px solid #e5e7eb", borderRadius:10, fontSize:13, outline:"none", boxSizing:"border-box" }} />
-                  </div>
+          </div>
+
+          {/* Filters panel */}
+          {showFilters && (
+            <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding:"14px 32px" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:10, maxWidth:1200, margin:"0 auto" }}>
+                <div>
+                  <div style={{ fontSize:9, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:4 }}>Marque</div>
+                  <select value={filterMarque} onChange={e=>{ setFilterMarque(e.target.value); setFilterModele(""); }}
+                    style={{ width:"100%", padding:"7px 10px", border:"1px solid var(--border)", borderRadius:8, fontSize:12, outline:"none", background:"var(--input-bg)", color:"var(--text)", cursor:"pointer" }}>
+                    <option value="">Toutes</option>
+                    {marques.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
                 </div>
-                {hasFilters && (
+                <div>
+                  <div style={{ fontSize:9, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:4 }}>Modèle</div>
+                  <select value={filterModele} onChange={e=>setFilterModele(e.target.value)}
+                    style={{ width:"100%", padding:"7px 10px", border:"1px solid var(--border)", borderRadius:8, fontSize:12, outline:"none", background:"var(--input-bg)", color:"var(--text)", cursor:"pointer" }}>
+                    <option value="">Tous</option>
+                    {modeles.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div style={{ fontSize:9, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:4 }}>Énergie</div>
+                  <select value={filterEnergie} onChange={e=>setFilterEnergie(e.target.value)}
+                    style={{ width:"100%", padding:"7px 10px", border:"1px solid var(--border)", borderRadius:8, fontSize:12, outline:"none", background:"var(--input-bg)", color:"var(--text)", cursor:"pointer" }}>
+                    <option value="">Toutes</option>
+                    <option value="GAZOLE">Diesel</option>
+                    <option value="ESSENCE">Essence</option>
+                    <option value="ELECTRIQUE">Électrique</option>
+                    <option value="HYBRIDE">Hybride</option>
+                  </select>
+                </div>
+                <div>
+                  <div style={{ fontSize:9, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:4 }}>Prix max</div>
+                  <select value={filterPrixMax} onChange={e=>setFilterPrixMax(e.target.value)}
+                    style={{ width:"100%", padding:"7px 10px", border:"1px solid var(--border)", borderRadius:8, fontSize:12, outline:"none", background:"var(--input-bg)", color:"var(--text)", cursor:"pointer" }}>
+                    <option value="">Tous</option>
+                    <option value="5000">5 000 €</option>
+                    <option value="10000">10 000 €</option>
+                    <option value="20000">20 000 €</option>
+                    <option value="30000">30 000 €</option>
+                    <option value="50000">50 000 €</option>
+                  </select>
+                </div>
+                <div>
+                  <div style={{ fontSize:9, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:4 }}>Km max</div>
+                  <select value={filterKmMax} onChange={e=>setFilterKmMax(e.target.value)}
+                    style={{ width:"100%", padding:"7px 10px", border:"1px solid var(--border)", borderRadius:8, fontSize:12, outline:"none", background:"var(--input-bg)", color:"var(--text)", cursor:"pointer" }}>
+                    <option value="">Tous</option>
+                    <option value="50000">50 000 km</option>
+                    <option value="100000">100 000 km</option>
+                    <option value="150000">150 000 km</option>
+                    <option value="200000">200 000 km</option>
+                  </select>
+                </div>
+                <div>
+                  <div style={{ fontSize:9, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:4 }}>Ville</div>
+                  <input value={filterLoc} onChange={e=>setFilterLoc(e.target.value)} placeholder="Ex: Paris..."
+                    style={{ width:"100%", padding:"7px 10px", border:"1px solid var(--border)", borderRadius:8, fontSize:12, outline:"none", background:"var(--input-bg)", color:"var(--text)", boxSizing:"border-box" }} />
+                </div>
+              </div>
+              {hasFilters && (
+                <div style={{ maxWidth:1200, margin:"10px auto 0" }}>
                   <button onClick={()=>{ setSearch(""); setFilterMarque(""); setFilterModele(""); setFilterEnergie(""); setFilterPrixMax(""); setFilterKmMax(""); setFilterLoc(""); }}
-                    style={{ marginTop:10, width:"100%", padding:"8px", background:"#fee2e2", color:"#ef4444", border:"none", borderRadius:10, fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                    style={{ padding:"6px 14px", background:"#fee2e2", color:"#ef4444", border:"none", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer" }}>
                     ✕ Réinitialiser les filtres
                   </button>
-                )}
-              </div>
-            )}
-          </div>
-          <div style={{ padding:"16px 16px 80px", background:"var(--bg)" }}>
-            <p style={{ fontSize:13, color:"#6b7280", margin:"0 0 12px" }}>
-              {filtered.length} annonce{filtered.length > 1 ? "s" : ""} {hasFilters ? "trouvée" + (filtered.length > 1 ? "s" : "") : ""}
-            </p>
-            {loading && <p style={{ textAlign:"center", color:"#9ca3af" }}>Chargement...</p>}
-            {!loading && filtered.length === 0 && (
-              <div style={{ textAlign:"center", padding:"40px 0" }}>
-                <p style={{ fontSize:40 }}>🔍</p>
-                <p style={{ color:"#6b7280" }}>Aucune annonce ne correspond<br/>à vos critères.</p>
-              </div>
-            )}
-            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-              {filtered.map(a => (
-                <button key={a.id} onClick={()=>setSelected(a)}
-                  style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", boxShadow:"0 1px 3px rgba(0,0,0,0.04)", overflow:"hidden", textAlign:"left", cursor:"pointer", padding:0 }}>
-                  {a.photos?.[0] && <img src={a.photos[0]} alt="" style={{ width:"100%", height:180, objectFit:"cover" }} />}
-                  <div style={{ padding:"12px 14px" }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-                      <div>
-                        <p style={{ margin:0, fontWeight:800, fontSize:14, color:"var(--text)" }}>{a.nom}{a.finition ? ` · ${a.finition}` : ""}</p>
-                        <p style={{ margin:"2px 0 0", fontSize:12, color:"var(--text3)" }}>{a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km?.toLocaleString("fr-FR")} km` : ""}</p>
-                      </div>
-                      <span style={{ fontWeight:800, fontSize:18, color:EMERALD, whiteSpace:"nowrap" }}>{a.prix?.toLocaleString("fr-FR")} €</span>
-                    </div>
-                    <p style={{ margin:"6px 0 0", fontSize:12, color:"var(--text2)" }}>📍 {a.localisation}</p>
-                  </div>
-                </button>
-              ))}
+                </div>
+              )}
             </div>
+          )}
+
+          <div style={{ padding:"24px 32px", maxWidth:1200, margin:"0 auto" }}>
+            {/* Search bar */}
+            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Rechercher une marque, modèle, finition..."
+                style={{ flex:1, padding:"11px 16px", border:"1px solid var(--border)", borderRadius:10, fontSize:14, boxSizing:"border-box", outline:"none", background:"var(--card)", color:"var(--text)" }} />
+              <span style={{ fontSize:13, color:"var(--text3)", whiteSpace:"nowrap" }}>
+                {filtered.length} annonce{filtered.length > 1 ? "s" : ""}
+              </span>
+            </div>
+
+            {loading && (
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(240px, 1fr))", gap:16 }}>
+                {[1,2,3,4,5,6].map(i => (
+                  <div key={i} style={{ background:"var(--card)", borderRadius:12, border:"0.5px solid var(--border)", overflow:"hidden" }}>
+                    <div style={{ height:160, background:"var(--bg3)" }} />
+                    <div style={{ padding:"12px 14px", display:"flex", flexDirection:"column", gap:6 }}>
+                      <div style={{ height:12, width:"70%", background:"var(--border)", borderRadius:4 }} />
+                      <div style={{ height:10, width:"50%", background:"var(--border)", borderRadius:4 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!loading && filtered.length === 0 && (
+              <div style={{ textAlign:"center", padding:"80px 0" }}>
+                <div style={{ fontSize:48, marginBottom:12 }}>🔍</div>
+                <div style={{ fontSize:16, fontWeight:600, color:"var(--text)", marginBottom:6 }}>Aucune annonce trouvée</div>
+                <div style={{ fontSize:13, color:"var(--text3)" }}>Essayez de modifier vos critères de recherche</div>
+              </div>
+            )}
+
+            {!loading && filtered.length > 0 && (
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))", gap:16 }}>
+                {filtered.map(a => (
+                  <button key={a.id} onClick={()=>setSelected(a)}
+                    style={{ background:"var(--card)", borderRadius:12, border:"0.5px solid var(--border)", overflow:"hidden", textAlign:"left", cursor:"pointer", padding:0, transition:"transform 0.15s, box-shadow 0.15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 8px 24px rgba(0,0,0,0.1)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="none"; }}>
+                    {a.photos?.[0]
+                      ? <img src={a.photos[0]} alt="" style={{ width:"100%", height:170, objectFit:"cover" }} />
+                      : <div style={{ width:"100%", height:170, background:"var(--bg)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:40 }}>🚗</div>
+                    }
+                    <div style={{ padding:"12px 14px" }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:4 }}>
+                        <div style={{ flex:1, minWidth:0, marginRight:8 }}>
+                          <div style={{ fontWeight:700, fontSize:13, color:"var(--text)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                            {a.nom}{a.finition ? ` · ${a.finition}` : ""}
+                          </div>
+                          <div style={{ fontSize:11, color:"var(--text3)", marginTop:2 }}>
+                            {a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km?.toLocaleString("fr-FR")} km` : ""}
+                          </div>
+                        </div>
+                        <div style={{ fontSize:16, fontWeight:700, color:"#1a3fdb", whiteSpace:"nowrap", flexShrink:0 }}>
+                          {a.prix?.toLocaleString("fr-FR")} €
+                        </div>
+                      </div>
+                      <div style={{ fontSize:11, color:"var(--text2)" }}>📍 {a.localisation}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       );
@@ -2569,9 +2603,9 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
       return (
         <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"var(--bg)" }}>
-          <div style={{ background:"white", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
-            <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#6b7280" }}>←</button>
-            <span style={{ fontWeight:800, fontSize:16, color:"#111", flex:1, textAlign:"center" }}>{a.nom}</span>
+          <div style={{ background:"var(--card)", padding:"0 32px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)" }}>
+            <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)" }}>←</button>
+            <span style={{ fontWeight:700, fontSize:16, color:"var(--text)", flex:1, textAlign:"center" }}>{a.nom}</span>
             {isOwner && <button onClick={handleDelete} style={{ fontSize:11, color:"#ef4444", background:"#fef2f2", padding:"4px 10px", borderRadius:999, border:"none", cursor:"pointer" }}>Supprimer</button>}
           </div>
           {photoPlein && (
@@ -2580,7 +2614,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <button onClick={()=>setPhotoPlein(null)} style={{ position:"absolute", top:20, right:20, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:40, height:40, fontSize:20, color:"white", cursor:"pointer" }}>✕</button>
             </div>
           )}
-          <div style={{ paddingBottom:40 }}>
+          <div style={{ paddingBottom:40, maxWidth:900, margin:"0 auto" }}>
             {a.photos?.length > 0 && (
               <div style={{ overflowX:"auto", display:"flex", gap:8, padding:"12px 16px" }}>
                 {a.photos.map((p,i) => <img key={i} src={p} alt="" onClick={()=>setPhotoPlein(p)} style={{ height:220, width:"auto", borderRadius:12, flexShrink:0, cursor:"pointer" }} />)}
@@ -2590,11 +2624,11 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                 <div>
                   <h1 style={{ fontWeight:800, fontSize:20, color:"#111", margin:"0 0 4px" }}>{a.nom}{a.finition ? ` · ${a.finition}` : ""}</h1>
-                  <p style={{ margin:0, fontSize:13, color:"#6b7280" }}>{a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km?.toLocaleString("fr-FR")} km` : ""} · {a.gearbox==="1"?"Manuelle":"Automatique"}</p>
+                  <p style={{ margin:0, fontSize:13, color:"var(--text2)" }}>{a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km?.toLocaleString("fr-FR")} km` : ""} · {a.gearbox==="1"?"Manuelle":"Automatique"}</p>
                 </div>
                 <span style={{ fontWeight:800, fontSize:26, color:EMERALD }}>{a.prix?.toLocaleString("fr-FR")} €</span>
               </div>
-              <p style={{ fontSize:13, color:"#6b7280", margin:"0 0 16px" }}>📍 {a.localisation}</p>
+              <p style={{ fontSize:13, color:"var(--text2)", margin:"0 0 16px" }}>📍 {a.localisation}</p>
 
               {a.stats && (
                 <div style={{ background:"#eff4ff", border:"1px solid #93c5fd", borderRadius:14, padding:"12px 14px", marginBottom:16 }}>
@@ -2617,8 +2651,8 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               )}
 
               {/* Fiche technique complète */}
-              <div style={{ background:"white", border:"1px solid #f3f4f6", borderRadius:14, overflow:"hidden", marginBottom:16 }}>
-                <div style={{ padding:"10px 14px", borderBottom:"1px solid #f3f4f6", background:"#f9fafb" }}>
+              <div style={{ background:"var(--card)", border:"0.5px solid var(--border)", borderRadius:14, overflow:"hidden", marginBottom:16 }}>
+                <div style={{ padding:"10px 14px", borderBottom:"0.5px solid var(--border)", background:"var(--bg)" }}>
                   <p style={{ margin:0, fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.08em" }}>🔧 Fiche technique</p>
                 </div>
                 {[
@@ -2629,9 +2663,9 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   { label:"Kilométrage", val: a.km ? `${a.km?.toLocaleString("fr-FR")} km` : null },
                   { label:"Localisation", val: a.localisation },
                 ].filter(r => r.val).map((r, i, arr) => (
-                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"10px 14px", borderBottom: i < arr.length-1 ? "1px solid #f9fafb" : "none" }}>
-                    <span style={{ fontSize:13, color:"#6b7280" }}>{r.label}</span>
-                    <span style={{ fontSize:13, fontWeight:600, color:"#111" }}>{r.val}</span>
+                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"10px 14px", borderBottom: i < arr.length-1 ? `0.5px solid var(--border)` : "none" }}>
+                    <span style={{ fontSize:13, color:"var(--text2)" }}>{r.label}</span>
+                    <span style={{ fontSize:13, fontWeight:600, color:"var(--text)" }}>{r.val}</span>
                   </div>
                 ))}
               </div>
@@ -2639,7 +2673,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               {(a.descriptionIA || a.description) && (
                 <div style={{ marginBottom:14 }}>
                   <p style={{ fontWeight:700, fontSize:13, color:"#111", margin:"0 0 6px" }}>✨ Description</p>
-                  <p style={{ fontSize:13, color:"#374151", margin:0, whiteSpace:"pre-line", lineHeight:1.6 }}>{a.descriptionIA || a.description}</p>
+                  <p style={{ fontSize:13, color:"var(--text2)", margin:0, whiteSpace:"pre-line", lineHeight:1.6 }}>{a.descriptionIA || a.description}</p>
                 </div>
               )}
               {a.options && (
