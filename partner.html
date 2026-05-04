@@ -67,77 +67,25 @@
       "corentin.millet974@gmail.com",
     ];
 
-    // ── Fond AutoEasy (SVG base64) ────────────────────────────────
-    // On génère le fond AutoEasy via Canvas directement
+    // ── Fond AutoEasy — image réelle générée par IA ──────────────
+    const AE_BG_IMG = new Image();
+    AE_BG_IMG.src = "/autoeasy-bg.jpg";
+    let bgLoaded = false;
+    AE_BG_IMG.onload = () => { bgLoaded = true; };
+
     function drawBackground(canvas) {
       const ctx = canvas.getContext("2d");
       const w = canvas.width;
       const h = canvas.height;
 
-      // Fond sombre principal
-      const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-      bgGrad.addColorStop(0, "#1a1a2e");
-      bgGrad.addColorStop(0.6, "#1e2235");
-      bgGrad.addColorStop(1, "#1a1a28");
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, w, h);
-
-      // Mur végétal gauche (simulation haie)
-      const vegWidth = w * 0.18;
-      const vegHeight = h * 0.72;
-      for (let y = 0; y < vegHeight; y += 12) {
-        for (let x = 0; x < vegWidth; x += 12) {
-          const shade = (Math.sin(x * 0.5 + y * 0.3) + 1) * 0.5;
-          ctx.fillStyle = `rgb(${20 + shade*15},${50 + shade*20},${20 + shade*10})`;
-          ctx.fillRect(x, y, 11, 11);
-        }
+      if (bgLoaded) {
+        // Utiliser l'image réelle comme fond
+        ctx.drawImage(AE_BG_IMG, 0, 0, w, h);
+      } else {
+        // Fallback si image pas encore chargée
+        ctx.fillStyle = "#2a3142";
+        ctx.fillRect(0, 0, w, h);
       }
-      // Bordure verte sur le mur végétal
-      ctx.fillStyle = "#8dc63f";
-      ctx.fillRect(vegWidth, 0, 3, vegHeight);
-
-      // Panneau AutoEasy en fond (haut centre-droite)
-      const panelX = vegWidth + 10;
-      const panelY = 14;
-      const panelW = w - panelX - 10;
-      const panelH = 36;
-      ctx.fillStyle = "#1a1a2e";
-      ctx.fillRect(panelX, panelY, panelW, panelH);
-      // Bordure verte bas panneau
-      ctx.fillStyle = "#8dc63f";
-      ctx.fillRect(panelX, panelY + panelH - 2, panelW, 2);
-
-      // Texte AutoEasy dans le panneau
-      ctx.fillStyle = "white";
-      ctx.font = "bold 14px DM Sans, Arial";
-      ctx.fillText("AUTOEASY", panelX + 40, panelY + 23);
-      ctx.fillStyle = "#8dc63f";
-      ctx.font = "10px DM Sans, Arial";
-      ctx.fillText("ACHETEZ - VENDEZ - PROFITEZ", panelX + 130, panelY + 23);
-
-      // Cercle AE logo
-      ctx.strokeStyle = "#8dc63f";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(panelX + 20, panelY + panelH / 2, 12, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = "#8dc63f";
-      ctx.font = "bold 8px DM Sans, Arial";
-      ctx.fillText("AE", panelX + 14, panelY + panelH / 2 + 3);
-
-      // Sol damier noir/vert
-      const solY = h - Math.round(h * 0.18);
-      const tileSize = 22;
-      for (let x = 0; x < w; x += tileSize) {
-        for (let y = solY; y < h; y += tileSize) {
-          const isGreen = ((Math.floor(x / tileSize) + Math.floor((y - solY) / tileSize)) % 8 === 0);
-          ctx.fillStyle = isGreen ? "#3a5a1a" : (((Math.floor(x/tileSize)+Math.floor((y-solY)/tileSize))%2===0) ? "#1a1a1a" : "#242424");
-          ctx.fillRect(x, y, tileSize - 1, tileSize - 1);
-        }
-      }
-      // Ligne verte sol
-      ctx.fillStyle = "#8dc63f";
-      ctx.fillRect(0, solY, w, 3);
     }
 
     // ── Fonction principale de traitement image ───────────────────
@@ -221,6 +169,15 @@
 
           onProgress("Composition du fond AutoEasy...", 70);
 
+          // Attendre que l'image de fond soit chargée
+          if (!bgLoaded) {
+            await new Promise((res) => {
+              if (bgLoaded) { res(); return; }
+              AE_BG_IMG.onload = () => { bgLoaded = true; res(); };
+              setTimeout(res, 3000); // timeout 3s
+            });
+          }
+
           // 4. Canvas 1024x768
           const canvas = document.createElement("canvas");
           canvas.width = 1024;
@@ -231,11 +188,34 @@
           drawBackground(canvas);
 
           // 6. Poser la voiture découpée sur le fond
-          const solY = Math.round(768 * 0.82);
-          const carW = 1024 * 0.86;
+          // Sol du showroom visible ~68% de la hauteur de l'image
+          const solY = Math.round(768 * 0.68);
+          const carW = 1024 * 0.78;
           const carH = (carImg.height / carImg.width) * carW;
           const carX = (1024 - carW) / 2;
-          const carY = solY - carH + 10;
+          const carY = solY - carH + 20;
+
+          // Ombre portée réaliste
+          ctx.save();
+          ctx.globalAlpha = 0.5;
+          ctx.filter = "blur(20px)";
+          ctx.fillStyle = "#000000";
+          ctx.beginPath();
+          ctx.ellipse(carX + carW*0.5, solY+10, carW*0.36, 16, 0, 0, Math.PI*2);
+          ctx.fill();
+          ctx.restore();
+
+          // Reflet brillant sur le sol damier
+          ctx.save();
+          ctx.globalAlpha = 0.10;
+          ctx.filter = "blur(5px)";
+          ctx.translate(carX + carW/2, solY+10);
+          ctx.scale(1, -0.22);
+          ctx.translate(-(carX + carW/2), -(solY+10));
+          ctx.drawImage(carImg, carX, carY, carW, carH);
+          ctx.restore();
+
+          // Voiture découpée
           ctx.drawImage(carImg, carX, carY, carW, carH);
 
           onProgress("Cache de la plaque...", 85);
@@ -268,10 +248,10 @@
           } else {
             // Fallback plaque avant bas-centre
             drawPlateCache(
-              carX + carW * 0.38,
-              carY + carH * 0.80,
-              carW * 0.15,
-              carH * 0.05
+              carX + carW * 0.36,
+              carY + carH * 0.76,
+              carW * 0.14,
+              carH * 0.055
             );
           }
 
