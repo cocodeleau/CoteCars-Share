@@ -141,122 +141,150 @@
     }
 
     // ── Fonction principale de traitement image ───────────────────
+    // remove.bg appelé directement depuis le frontend (pas de limite 413)
+    const REMOVE_BG_KEY = "d4MqSKLfmAwY3zgsTiiEFVbe";
+
+    async function removeBgDirect(file) {
+      const fd = new FormData();
+      fd.append("image_file", file);
+      fd.append("size", "auto");
+      fd.append("type", "car");
+
+      const res = await fetch("https://api.remove.bg/v1.0/removebg", {
+        method: "POST",
+        headers: { "X-Api-Key": REMOVE_BG_KEY },
+        body: fd,
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error("remove.bg: " + err);
+      }
+
+      const blob = await res.blob();
+      return URL.createObjectURL(blob); // PNG transparent
+    }
+
+    async function detectPlateGemini(file) {
+      const base64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = e => res(e.target.result.split(",")[1]);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+
+      const apiRes = await fetch("/api/partner-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // On envoie seulement un extrait réduit pour la détection plaque
+        body: JSON.stringify({ imageBase64: base64.slice(0, 800000), mimeType: file.type || "image/jpeg" }),
+      });
+
+      if (!apiRes.ok) return null;
+      const data = await apiRes.json();
+      return data.plateBox || null;
+    }
+
     async function processPartnerImage(file, onProgress) {
       return new Promise(async (resolve, reject) => {
         try {
-          onProgress("Lecture de la photo...", 10);
+          onProgress("Suppression du fond...", 15);
 
-          // 1. Lire l'image en base64
-          const imgDataUrl = await new Promise((res, rej) => {
-            const reader = new FileReader();
-            reader.onload = e => res(e.target.result);
-            reader.onerror = rej;
-            reader.readAsDataURL(file);
+          // 1. remove.bg directement depuis le frontend
+          let carImgSrc;
+          try {
+            carImgSrc = await removeBgDirect(file);
+          } catch(e) {
+            console.warn("remove.bg échoué, utilisation original:", e);
+            carImgSrc = URL.createObjectURL(file);
+          }
+
+          onProgress("Chargement de la voiture découpée...", 40);
+
+          // 2. Charger le PNG transparent
+          const carImg = new Image();
+          await new Promise((res, rej) => {
+            carImg.onload = res;
+            carImg.onerror = rej;
+            carImg.src = carImgSrc;
           });
-          const base64 = imgDataUrl.split(",")[1];
 
-          onProgress("Suppression du fond via remove.bg...", 25);
+          onProgress("Détection de la plaque...", 55);
 
-          // 2. Appel API backend (remove.bg + Gemini)
-          const apiRes = await fetch("/api/partner-image", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageBase64: base64, mimeType: file.type || "image/jpeg" }),
-          });
+          // 3. Détecter la plaque (on envoie l'original pour analyse)
+          let plateBox = null;
+          try {
+            plateBox = await detectPlateGemini(file);
+          } catch(e) {
+            console.warn("Gemini plaque échoué:", e);
+          }
 
-          const apiData = apiRes.ok ? await apiRes.json() : {};
-          const { removedBgBase64, removeBgSuccess, plateBox } = apiData;
+          onProgress("Composition du fond AutoEasy...", 70);
 
-          onProgress("Composition du fond AutoEasy...", 65);
-
-          // 3. Canvas 1024x768
+          // 4. Canvas 1024x768
           const canvas = document.createElement("canvas");
           canvas.width = 1024;
           canvas.height = 768;
           const ctx = canvas.getContext("2d");
 
-          // 4. Dessiner fond AutoEasy
+          // 5. Fond AutoEasy
           drawBackground(canvas);
 
-          // 5. Charger l'image voiture (PNG transparent si remove.bg ok, sinon original)
-          const carSrc = removeBgSuccess && removedBgBase64
-            ? `data:image/png;base64,${removedBgBase64}`
-            : imgDataUrl;
-
-          const carImg = new Image();
-          await new Promise((res, rej) => {
-            carImg.onload = res;
-            carImg.onerror = rej;
-            carImg.src = carSrc;
-          });
-
-          // 6. Positionner la voiture sur le fond
-          // Sol à 82% de hauteur - voiture centrée et posée dessus
+          // 6. Poser la voiture découpée sur le fond
           const solY = Math.round(768 * 0.82);
-          const carW = 1024 * 0.85;
+          const carW = 1024 * 0.86;
           const carH = (carImg.height / carImg.width) * carW;
           const carX = (1024 - carW) / 2;
-          const carY = solY - carH;
-
+          const carY = solY - carH + 10;
           ctx.drawImage(carImg, carX, carY, carW, carH);
 
           onProgress("Cache de la plaque...", 85);
 
-          // 7. Cache plaque
+          // 7. Cache plaque AUTOEASY
+          const drawPlateCache = (px, py, pw, ph) => {
+            ctx.fillStyle = "#1a1a2e";
+            ctx.beginPath();
+            ctx.roundRect(px - 5, py - 3, pw + 10, ph + 8, 4);
+            ctx.fill();
+            ctx.fillStyle = "white";
+            const fs = Math.max(10, Math.min(ph * 0.6, 20));
+            ctx.font = `bold ${fs}px DM Sans, Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("AUTOEASY", px + pw / 2, py + ph / 2 + 2);
+            ctx.textAlign = "left";
+            ctx.textBaseline = "alphabetic";
+            ctx.fillStyle = "#8dc63f";
+            ctx.fillRect(px - 5, py + ph + 5, pw + 10, 2);
+          };
+
           if (plateBox) {
-            // Coordonnées réelles sur la zone voiture dans le canvas
-            const px = carX + plateBox.x * carW;
-            const py = carY + plateBox.y * carH;
-            const pw = plateBox.w * carW;
-            const ph = plateBox.h * carH;
-
-            // Fond noir arrondi
-            ctx.fillStyle = "#1a1a2e";
-            const pad = 5;
-            ctx.beginPath();
-            ctx.roundRect(px - pad, py - pad, pw + pad*2, ph + pad*2, 4);
-            ctx.fill();
-
-            // Texte AUTOEASY blanc centré
-            ctx.fillStyle = "white";
-            const fontSize = Math.max(10, Math.min(ph * 0.6, 22));
-            ctx.font = `bold ${fontSize}px DM Sans, Arial`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("AUTOEASY", px + pw / 2, py + ph / 2);
-            ctx.textAlign = "left";
-            ctx.textBaseline = "alphabetic";
-
-            // Ligne verte en bas
-            ctx.fillStyle = "#8dc63f";
-            ctx.fillRect(px - pad, py + ph + pad, pw + pad*2, 2);
+            drawPlateCache(
+              carX + plateBox.x * carW,
+              carY + plateBox.y * carH,
+              plateBox.w * carW,
+              plateBox.h * carH
+            );
           } else {
-            // Fallback position plaque avant bas-centre
-            const fbX = carX + carW * 0.38;
-            const fbY = carY + carH * 0.78;
-            const fbW = carW * 0.16;
-            const fbH = carH * 0.055;
-            ctx.fillStyle = "#1a1a2e";
-            ctx.beginPath();
-            ctx.roundRect(fbX - 4, fbY - 3, fbW + 8, fbH + 6, 3);
-            ctx.fill();
-            ctx.fillStyle = "white";
-            ctx.font = `bold ${Math.max(9, fbH * 0.55)}px DM Sans, Arial`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("AUTOEASY", fbX + fbW / 2, fbY + fbH / 2);
-            ctx.textAlign = "left";
-            ctx.textBaseline = "alphabetic";
-            ctx.fillStyle = "#8dc63f";
-            ctx.fillRect(fbX - 4, fbY + fbH + 3, fbW + 8, 2);
+            // Fallback plaque avant bas-centre
+            drawPlateCache(
+              carX + carW * 0.38,
+              carY + carH * 0.80,
+              carW * 0.15,
+              carH * 0.05
+            );
           }
 
-          onProgress("Export JPG...", 95);
+          onProgress("Export JPG 1024×768...", 95);
 
-          // 8. Export JPG
-          const outputDataUrl = canvas.toDataURL("image/jpeg", 0.93);
+          // 8. Export
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.93);
           onProgress("Terminé !", 100);
-          resolve({ dataUrl: outputDataUrl });
+
+          // Libérer object URL
+          URL.revokeObjectURL(carImgSrc);
+
+          resolve({ dataUrl });
 
         } catch (err) {
           reject(err);
