@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoEasy — Espace Partenaire</title>
+  <meta name="robots" content="noindex, nofollow" />
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', -apple-system, sans-serif; background: #f5f5f7; }
+    :root {
+      --ae-green: #8dc63f;
+      --ae-dark: #1a1a2e;
+      --ae-gray: #2d2d3a;
+      --ae-border: #2d3448;
+    }
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    .spinner { width: 20px; height: 20px; border: 2px solid rgba(141,198,63,0.3); border-top-color: #8dc63f; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    .step-done { background: #8dc63f !important; color: #1a1a2e !important; }
+    .step-active { border: 2px solid #8dc63f !important; color: #8dc63f !important; }
+    .photo-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+    .photo-card { transition: transform 0.15s, box-shadow 0.15s; }
+    .btn-ae { background: #8dc63f; color: #1a1a2e; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .btn-ae:hover { background: #7db535; }
+    .btn-ae:disabled { background: #4a5568; color: #718096; cursor: not-allowed; }
+    .btn-outline { background: transparent; border: 1.5px solid #2d3448; color: #94a3b8; border-radius: 8px; cursor: pointer; font-family: inherit; }
+    .btn-outline:hover { border-color: #8dc63f; color: #8dc63f; }
+    input, select { font-family: inherit; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ── Firebase ──────────────────────────────────────────────────
+    const firebaseConfig = {
+      apiKey: "AIzaSyCGVGeYrZ7JIgOTXN598V1O_0ez9QETyoA",
+      authDomain: "cotecars-8857f.firebaseapp.com",
+      projectId: "cotecars-8857f",
+      storageBucket: "cotecars-8857f.firebasestorage.app",
+      messagingSenderId: "727958687493",
+      appId: "1:727958687493:web:f1ca0c1cacb899e425316c"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+    const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+    // ── Emails autorisés ──────────────────────────────────────────
+    const ALLOWED_EMAILS = [
+      "corentin.millet974@gmail.com",
+    ];
+
+    // ── Fond AutoEasy (SVG base64) ────────────────────────────────
+    // On génère le fond AutoEasy via Canvas directement
+    function drawBackground(canvas) {
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+
+      // Fond sombre principal
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+      bgGrad.addColorStop(0, "#1a1a2e");
+      bgGrad.addColorStop(0.6, "#1e2235");
+      bgGrad.addColorStop(1, "#1a1a28");
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Mur végétal gauche (simulation haie)
+      const vegWidth = w * 0.18;
+      const vegHeight = h * 0.72;
+      for (let y = 0; y < vegHeight; y += 12) {
+        for (let x = 0; x < vegWidth; x += 12) {
+          const shade = (Math.sin(x * 0.5 + y * 0.3) + 1) * 0.5;
+          ctx.fillStyle = `rgb(${20 + shade*15},${50 + shade*20},${20 + shade*10})`;
+          ctx.fillRect(x, y, 11, 11);
+        }
+      }
+      // Bordure verte sur le mur végétal
+      ctx.fillStyle = "#8dc63f";
+      ctx.fillRect(vegWidth, 0, 3, vegHeight);
+
+      // Panneau AutoEasy en fond (haut centre-droite)
+      const panelX = vegWidth + 10;
+      const panelY = 14;
+      const panelW = w - panelX - 10;
+      const panelH = 36;
+      ctx.fillStyle = "#1a1a2e";
+      ctx.fillRect(panelX, panelY, panelW, panelH);
+      // Bordure verte bas panneau
+      ctx.fillStyle = "#8dc63f";
+      ctx.fillRect(panelX, panelY + panelH - 2, panelW, 2);
+
+      // Texte AutoEasy dans le panneau
+      ctx.fillStyle = "white";
+      ctx.font = "bold 14px DM Sans, Arial";
+      ctx.fillText("AUTOEASY", panelX + 40, panelY + 23);
+      ctx.fillStyle = "#8dc63f";
+      ctx.font = "10px DM Sans, Arial";
+      ctx.fillText("ACHETEZ - VENDEZ - PROFITEZ", panelX + 130, panelY + 23);
+
+      // Cercle AE logo
+      ctx.strokeStyle = "#8dc63f";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(panelX + 20, panelY + panelH / 2, 12, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = "#8dc63f";
+      ctx.font = "bold 8px DM Sans, Arial";
+      ctx.fillText("AE", panelX + 14, panelY + panelH / 2 + 3);
+
+      // Sol damier noir/vert
+      const solY = h - Math.round(h * 0.18);
+      const tileSize = 22;
+      for (let x = 0; x < w; x += tileSize) {
+        for (let y = solY; y < h; y += tileSize) {
+          const isGreen = ((Math.floor(x / tileSize) + Math.floor((y - solY) / tileSize)) % 8 === 0);
+          ctx.fillStyle = isGreen ? "#3a5a1a" : (((Math.floor(x/tileSize)+Math.floor((y-solY)/tileSize))%2===0) ? "#1a1a1a" : "#242424");
+          ctx.fillRect(x, y, tileSize - 1, tileSize - 1);
+        }
+      }
+      // Ligne verte sol
+      ctx.fillStyle = "#8dc63f";
+      ctx.fillRect(0, solY, w, 3);
+    }
+
+    // ── Fonction principale de traitement image ───────────────────
+    async function processPartnerImage(file, onProgress) {
+      return new Promise(async (resolve, reject) => {
+        try {
+          onProgress("Lecture de la photo...", 10);
+
+          // 1. Lire l'image
+          const imgDataUrl = await new Promise((res, rej) => {
+            const reader = new FileReader();
+            reader.onload = e => res(e.target.result);
+            reader.onerror = rej;
+            reader.readAsDataURL(file);
+          });
+
+          // 2. Charger l'image
+          const img = new Image();
+          await new Promise((res, rej) => {
+            img.onload = res;
+            img.onerror = rej;
+            img.src = imgDataUrl;
+          });
+
+          onProgress("Détection de la plaque via Gemini...", 30);
+
+          // 3. Appel Gemini Vision pour détecter la plaque
+          const base64 = imgDataUrl.split(",")[1];
+          const geminiRes = await fetch("/api/partner-image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageBase64: base64, mimeType: file.type || "image/jpeg" })
+          });
+
+          let plateBox = null;
+          if (geminiRes.ok) {
+            const geminiData = await geminiRes.json();
+            plateBox = geminiData.plateBox; // { x, y, w, h } en pourcentage
+          }
+
+          onProgress("Composition du fond AutoEasy...", 60);
+
+          // 4. Canvas final 1024x768
+          const canvas = document.createElement("canvas");
+          canvas.width = 1024;
+          canvas.height = 768;
+          const ctx = canvas.getContext("2d");
+
+          // Dessiner le fond AutoEasy
+          drawBackground(canvas);
+
+          // 5. Dessiner la voiture par-dessus
+          // La voiture occupe 80% de la largeur, centrée, posée sur le sol
+          const solY = 768 - Math.round(768 * 0.18);
+          const carW = 1024 * 0.82;
+          const carH = (img.height / img.width) * carW;
+          const carX = (1024 - carW) / 2;
+          const carY = solY - carH + 20;
+
+          ctx.drawImage(img, carX, carY, carW, carH);
+
+          onProgress("Cache de la plaque en cours...", 80);
+
+          // 6. Cache plaque avec bannière AUTOEASY
+          if (plateBox) {
+            // Coordonnées réelles sur le canvas
+            const px = carX + plateBox.x * carW;
+            const py = carY + plateBox.y * carH;
+            const pw = plateBox.w * carW;
+            const ph = plateBox.h * carH;
+
+            // Rectangle noir
+            ctx.fillStyle = "#1a1a2e";
+            ctx.fillRect(px - 4, py - 4, pw + 8, ph + 8);
+
+            // Texte AUTOEASY
+            ctx.fillStyle = "white";
+            ctx.font = `bold ${Math.max(10, ph * 0.55)}px DM Sans, Arial`;
+            ctx.textAlign = "center";
+            ctx.fillText("AUTOEASY", px + pw / 2, py + ph * 0.68);
+            ctx.textAlign = "left";
+
+            // Ligne verte en bas
+            ctx.fillStyle = "#8dc63f";
+            ctx.fillRect(px - 4, py + ph + 4, pw + 8, 3);
+          } else {
+            // Fallback : cache la zone basse-gauche de la voiture (position approximative)
+            const fallbackX = carX + carW * 0.08;
+            const fallbackY = carY + carH * 0.72;
+            const fallbackW = carW * 0.18;
+            const fallbackH = carH * 0.07;
+
+            ctx.fillStyle = "#1a1a2e";
+            ctx.fillRect(fallbackX - 4, fallbackY - 2, fallbackW + 8, fallbackH + 6);
+            ctx.fillStyle = "white";
+            ctx.font = `bold ${Math.max(9, fallbackH * 0.5)}px DM Sans, Arial`;
+            ctx.textAlign = "center";
+            ctx.fillText("AUTOEASY", fallbackX + fallbackW / 2, fallbackY + fallbackH * 0.65);
+            ctx.textAlign = "left";
+            ctx.fillStyle = "#8dc63f";
+            ctx.fillRect(fallbackX - 4, fallbackY + fallbackH + 4, fallbackW + 8, 2);
+          }
+
+          onProgress("Export JPG final...", 95);
+
+          // 7. Export en JPG
+          const outputDataUrl = canvas.toDataURL("image/jpeg", 0.92);
+
+          onProgress("Terminé !", 100);
+          resolve({ dataUrl: outputDataUrl, canvas });
+
+        } catch (err) {
+          reject(err);
+        }
+      });
+    }
+
+    // ── Page Connexion ────────────────────────────────────────────
+    function LoginPage({ onLogin }) {
+      const [email, setEmail] = useState("");
+      const [password, setPassword] = useState("");
+      const [error, setError] = useState("");
+      const [loading, setLoading] = useState(false);
+
+      async function handleLogin(e) {
+        e.preventDefault();
+        setError("");
+        if (!ALLOWED_EMAILS.includes(email.trim().toLowerCase())) {
+          setError("Accès réservé aux partenaires AutoEasy.");
+          return;
+        }
+        setLoading(true);
+        try {
+          await auth.signInWithEmailAndPassword(email, password);
+        } catch(err) {
+          const msgs = {
+            "auth/user-not-found": "Email introuvable.",
+            "auth/wrong-password": "Mot de passe incorrect.",
+            "auth/invalid-email": "Email invalide.",
+            "auth/too-many-requests": "Trop de tentatives, réessayez plus tard.",
+          };
+          setError(msgs[err.code] || "Erreur de connexion.");
+        }
+        setLoading(false);
+      }
+
+      async function handleGoogle() {
+        setError("");
+        setLoading(true);
+        try {
+          const result = await auth.signInWithPopup(googleProvider);
+          const userEmail = result.user.email?.toLowerCase();
+          if (!ALLOWED_EMAILS.includes(userEmail)) {
+            await auth.signOut();
+            setError("Accès réservé aux partenaires AutoEasy.");
+          }
+        } catch(err) {
+          setError("Erreur Google : " + err.message);
+        }
+        setLoading(false);
+      }
+
+      return (
+        <div style={{ minHeight:"100vh", display:"grid", gridTemplateColumns:"1fr 1fr" }}>
+          {/* Panneau gauche AutoEasy */}
+          <div style={{ background:"#1a1a2e", padding:"48px 40px", display:"flex", flexDirection:"column", justifyContent:"center", gap:20, position:"relative", overflow:"hidden" }}>
+            <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:"#8dc63f" }} />
+            <div style={{ position:"absolute", bottom:-60, right:-60, width:200, height:200, borderRadius:"50%", background:"rgba(141,198,63,0.05)" }} />
+
+            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
+              <div style={{ width:44, height:44, borderRadius:10, background:"#8dc63f", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <span style={{ fontSize:16, fontWeight:900, color:"#1a1a2e" }}>AE</span>
+              </div>
+              <div>
+                <div style={{ fontSize:18, fontWeight:700, color:"white" }}>AutoEasy</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>Espace Partenaire</div>
+              </div>
+            </div>
+
+            <div style={{ fontSize:26, fontWeight:700, color:"white", lineHeight:1.3 }}>
+              Studio Photo<br/><span style={{color:"#8dc63f"}}>Professionnel</span>
+            </div>
+
+            <div style={{ fontSize:13, color:"rgba(255,255,255,0.5)", lineHeight:1.7 }}>
+              Traitement automatique des photos véhicule. Détection plaque, suppression fond, export Leboncoin ready.
+            </div>
+
+            <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:8 }}>
+              {[
+                "Détection automatique des plaques via IA",
+                "Fond AutoEasy standardisé",
+                "Export JPG 1024×768 Leboncoin",
+                "Historique par commercial",
+              ].map((item, i) => (
+                <div key={i} style={{ display:"flex", alignItems:"center", gap:10, fontSize:13, color:"rgba(255,255,255,0.65)" }}>
+                  <div style={{ width:7, height:7, borderRadius:"50%", background:"#8dc63f", flexShrink:0 }} />
+                  {item}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop:16 }}>
+              <a href="/" style={{ fontSize:12, color:"rgba(255,255,255,0.3)", textDecoration:"none" }}>← Retour à CoteCars</a>
+            </div>
+          </div>
+
+          {/* Panneau droit connexion */}
+          <div style={{ background:"white", padding:"48px 40px", display:"flex", flexDirection:"column", justifyContent:"center" }}>
+            <div style={{ maxWidth:340, width:"100%" }}>
+              <h1 style={{ fontSize:22, fontWeight:700, color:"#111", marginBottom:6 }}>Connexion</h1>
+              <p style={{ fontSize:13, color:"#6b7280", marginBottom:28 }}>Accès réservé aux commerciaux AutoEasy.</p>
+
+              <form onSubmit={handleLogin} style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                <div>
+                  <label style={{ fontSize:11, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Email</label>
+                  <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="votre@email.com" required
+                    style={{ width:"100%", padding:"12px 14px", border:"1.5px solid #e2e8f0", borderRadius:10, fontSize:14, outline:"none", color:"#111" }} />
+                </div>
+                <div>
+                  <label style={{ fontSize:11, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Mot de passe</label>
+                  <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" required
+                    style={{ width:"100%", padding:"12px 14px", border:"1.5px solid #e2e8f0", borderRadius:10, fontSize:14, outline:"none", color:"#111" }} />
+                </div>
+                {error && <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:8, padding:"10px 14px", fontSize:13, color:"#ef4444" }}>{error}</div>}
+                <button type="submit" disabled={loading} className="btn-ae" style={{ padding:"13px", fontSize:15, borderRadius:10, marginTop:4 }}>
+                  {loading ? "Connexion..." : "Se connecter"}
+                </button>
+              </form>
+
+              <div style={{ display:"flex", alignItems:"center", gap:10, margin:"16px 0" }}>
+                <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
+                <span style={{ fontSize:12, color:"#9ca3af" }}>ou</span>
+                <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
+              </div>
+
+              <button onClick={handleGoogle} disabled={loading}
+                style={{ width:"100%", padding:"12px", border:"1.5px solid #e2e8f0", borderRadius:10, background:"white", display:"flex", alignItems:"center", justifyContent:"center", gap:10, cursor:"pointer", fontSize:14, fontWeight:600, color:"#374151" }}>
+                <img src="https://www.google.com/favicon.ico" width={16} height={16} alt="" />
+                Continuer avec Google
+              </button>
+
+              <p style={{ fontSize:11, color:"#9ca3af", textAlign:"center", marginTop:16 }}>
+                Accès réservé aux partenaires AutoEasy.<br/>
+                Problème ? Contactez CoteCars.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Dashboard ─────────────────────────────────────────────────
+    function Dashboard({ user, onNewSession }) {
+      const [sessions, setSessions] = useState([]);
+      const [loading, setLoading] = useState(true);
+
+      useEffect(() => {
+        db.collection("partner_sessions")
+          .where("uid", "==", user.uid)
+          .orderBy("createdAt", "desc")
+          .limit(20)
+          .get()
+          .then(snap => {
+            setSessions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            setLoading(false);
+          })
+          .catch(() => setLoading(false));
+      }, []);
+
+      const totalPhotos = sessions.reduce((s, sess) => s + (sess.photoCount || 0), 0);
+
+      async function downloadSession(sess) {
+        if (!sess.photos?.length) return;
+        // Télécharger chaque photo
+        for (let i = 0; i < sess.photos.length; i++) {
+          const url = sess.photos[i];
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${sess.vehicleName?.replace(/\s/g,"_") || "vehicule"}_photo_${i+1}.jpg`;
+          a.target = "_blank";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          await new Promise(r => setTimeout(r, 400));
+        }
+      }
+
+      return (
+        <div style={{ minHeight:"100vh", background:"#f5f5f7", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+          {/* Navbar */}
+          <div style={{ background:"#1a1a2e", borderBottom:"2px solid #8dc63f", padding:"0 28px", height:52, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+              <div style={{ width:28, height:28, borderRadius:7, background:"#8dc63f", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <span style={{ fontSize:11, fontWeight:900, color:"#1a1a2e" }}>AE</span>
+              </div>
+              <span style={{ fontSize:14, fontWeight:700, color:"white" }}>AutoEasy Studio</span>
+              <span style={{ fontSize:11, color:"rgba(255,255,255,0.35)" }}>/ Dashboard</span>
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <button onClick={onNewSession} className="btn-ae" style={{ padding:"7px 16px", fontSize:12 }}>
+                + Nouveau traitement
+              </button>
+              <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:"rgba(255,255,255,0.6)" }}>
+                <div style={{ width:28, height:28, borderRadius:"50%", background:"#2d2d3a", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, color:"#8dc63f", fontWeight:700 }}>
+                  {user.email?.[0]?.toUpperCase()}
+                </div>
+                {user.email?.split("@")[0]}
+              </div>
+              <button onClick={() => auth.signOut()} className="btn-outline" style={{ padding:"5px 12px", fontSize:11 }}>
+                Déconnexion
+              </button>
+            </div>
+          </div>
+
+          <div style={{ padding:"24px 28px", maxWidth:1200, margin:"0 auto" }}>
+            {/* Stats */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:20 }}>
+              {[
+                { label:"Véhicules traités", value: sessions.length, sub:"Total" },
+                { label:"Photos traitées", value: totalPhotos, sub:"~" + (sessions.length ? Math.round(totalPhotos/sessions.length*10)/10 : 0) + " par véhicule" },
+                { label:"Dernier traitement", value: sessions[0] ? new Date(sessions[0].createdAt).toLocaleDateString("fr-FR") : "—", sub: sessions[0]?.vehicleName || "Aucun" },
+              ].map((s, i) => (
+                <div key={i} style={{ background:"white", borderRadius:12, padding:"16px 18px", border:"0.5px solid #e2e8f0" }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>{s.label}</div>
+                  <div style={{ fontSize:26, fontWeight:700, color:"#111", marginBottom:2 }}>{s.value}</div>
+                  <div style={{ fontSize:11, color:"#8dc63f" }}>{s.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Historique */}
+            <div style={{ background:"white", borderRadius:14, border:"0.5px solid #e2e8f0", overflow:"hidden" }}>
+              <div style={{ padding:"14px 18px", borderBottom:"0.5px solid #e2e8f0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <span style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em" }}>Historique des sessions</span>
+                <span style={{ fontSize:12, color:"#9ca3af" }}>{sessions.length} session{sessions.length > 1 ? "s" : ""}</span>
+              </div>
+
+              {loading && (
+                <div style={{ padding:40, textAlign:"center" }}>
+                  <div className="spinner" style={{ margin:"0 auto" }} />
+                </div>
+              )}
+
+              {!loading && sessions.length === 0 && (
+                <div style={{ padding:"60px 20px", textAlign:"center" }}>
+                  <div style={{ fontSize:40, marginBottom:12 }}>📷</div>
+                  <div style={{ fontSize:15, fontWeight:600, color:"#374151", marginBottom:6 }}>Aucune session</div>
+                  <div style={{ fontSize:13, color:"#9ca3af", marginBottom:20 }}>Commencez votre premier traitement photo.</div>
+                  <button onClick={onNewSession} className="btn-ae" style={{ padding:"10px 20px", fontSize:13 }}>
+                    + Nouveau traitement
+                  </button>
+                </div>
+              )}
+
+              {!loading && sessions.length > 0 && (
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:12, padding:16 }}>
+                  {sessions.map(sess => (
+                    <div key={sess.id} className="photo-card" style={{ border:"0.5px solid #e2e8f0", borderRadius:10, overflow:"hidden", background:"#fafafa" }}>
+                      <div style={{ height:120, background:"#1a1a2e", overflow:"hidden", position:"relative" }}>
+                        {sess.photos?.[0] ? (
+                          <img src={sess.photos[0]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                        ) : (
+                          <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:30 }}>🚗</div>
+                        )}
+                        <div style={{ position:"absolute", bottom:0, left:0, right:0, height:18, background:"#1a1a2e", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <span style={{ fontSize:9, fontWeight:800, color:"white", letterSpacing:"0.08em" }}>AUTOEASY</span>
+                        </div>
+                      </div>
+                      <div style={{ padding:"10px 12px" }}>
+                        <div style={{ fontSize:12, fontWeight:700, color:"#111", marginBottom:2 }}>{sess.vehicleName || "Véhicule"}</div>
+                        <div style={{ fontSize:10, color:"#9ca3af", marginBottom:8 }}>
+                          {sess.photoCount} photo{sess.photoCount>1?"s":""} · {new Date(sess.createdAt).toLocaleDateString("fr-FR")}
+                        </div>
+                        <button onClick={() => downloadSession(sess)} className="btn-ae" style={{ width:"100%", padding:"6px", fontSize:10 }}>
+                          Télécharger ({sess.photoCount} JPG)
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Studio Photo ──────────────────────────────────────────────
+    function Studio({ user, onBack }) {
+      const [step, setStep] = useState(1); // 1=upload, 2=processing, 3=export
+      const [files, setFiles] = useState([]);
+      const [vehicleName, setVehicleName] = useState("");
+      const [processed, setProcessed] = useState([]); // [{dataUrl, file}]
+      const [progress, setProgress] = useState({ msg:"", pct:0 });
+      const [currentIdx, setCurrentIdx] = useState(0);
+      const [saving, setSaving] = useState(false);
+      const [saved, setSaved] = useState(false);
+      const fileInputRef = useRef();
+
+      function handleFiles(e) {
+        const newFiles = Array.from(e.target.files).slice(0, 5 - files.length);
+        setFiles(prev => [...prev, ...newFiles].slice(0, 5));
+      }
+
+      function removeFile(i) {
+        setFiles(prev => prev.filter((_, idx) => idx !== i));
+      }
+
+      async function handleProcess() {
+        if (!files.length) return;
+        setStep(2);
+        const results = [];
+
+        for (let i = 0; i < files.length; i++) {
+          setCurrentIdx(i);
+          setProgress({ msg: `Photo ${i+1}/${files.length} — démarrage...`, pct: 0 });
+
+          try {
+            const result = await processPartnerImage(
+              files[i],
+              (msg, pct) => setProgress({ msg: `Photo ${i+1}/${files.length} — ${msg}`, pct })
+            );
+            results.push({ dataUrl: result.dataUrl, file: files[i] });
+          } catch(err) {
+            console.error("Erreur photo", i, err);
+            results.push(null);
+          }
+        }
+
+        setProcessed(results.filter(Boolean));
+        setStep(3);
+      }
+
+      async function handleSave() {
+        setSaving(true);
+        try {
+          const photoUrls = await Promise.all(processed.map(async (p, i) => {
+            // Convertir dataUrl en blob
+            const res = await fetch(p.dataUrl);
+            const blob = await res.blob();
+            const ref = storage.ref(`partner_photos/${user.uid}/${Date.now()}_${i}.jpg`);
+            await ref.put(blob, { contentType: "image/jpeg" });
+            return ref.getDownloadURL();
+          }));
+
+          await db.collection("partner_sessions").add({
+            uid: user.uid,
+            userEmail: user.email,
+            vehicleName: vehicleName || "Véhicule",
+            photoCount: photoUrls.length,
+            photos: photoUrls,
+            createdAt: new Date().toISOString(),
+          });
+
+          setSaved(true);
+        } catch(err) {
+          alert("Erreur sauvegarde : " + err.message);
+        }
+        setSaving(false);
+      }
+
+      function downloadAll() {
+        processed.forEach((p, i) => {
+          const a = document.createElement("a");
+          a.href = p.dataUrl;
+          a.download = `${vehicleName?.replace(/\s/g,"_") || "vehicule"}_photo_${i+1}.jpg`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        });
+      }
+
+      return (
+        <div style={{ minHeight:"100vh", background:"#f5f5f7", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+          {/* Navbar */}
+          <div style={{ background:"#1a1a2e", borderBottom:"2px solid #8dc63f", padding:"0 28px", height:52, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+              <div style={{ width:28, height:28, borderRadius:7, background:"#8dc63f", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <span style={{ fontSize:11, fontWeight:900, color:"#1a1a2e" }}>AE</span>
+              </div>
+              <span style={{ fontSize:14, fontWeight:700, color:"white" }}>AutoEasy Studio</span>
+              <span style={{ fontSize:11, color:"rgba(255,255,255,0.35)" }}>/ Nouveau traitement</span>
+            </div>
+            <button onClick={onBack} className="btn-outline" style={{ padding:"5px 14px", fontSize:12 }}>
+              ← Dashboard
+            </button>
+          </div>
+
+          <div style={{ padding:"24px 28px", maxWidth:1000, margin:"0 auto" }}>
+
+            {/* Steps */}
+            <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:"14px 20px", marginBottom:20, display:"flex", alignItems:"center", gap:0 }}>
+              {[
+                { n:1, label:"Upload photos" },
+                { n:2, label:"Traitement IA" },
+                { n:3, label:"Export" },
+              ].map((s, i) => (
+                <React.Fragment key={s.n}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <div style={{ width:26, height:26, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, flexShrink:0,
+                      background: step > s.n ? "#8dc63f" : "transparent",
+                      border: step === s.n ? "2px solid #8dc63f" : step > s.n ? "none" : "2px solid #e2e8f0",
+                      color: step > s.n ? "#1a1a2e" : step === s.n ? "#8dc63f" : "#9ca3af"
+                    }}>
+                      {step > s.n ? "✓" : s.n}
+                    </div>
+                    <span style={{ fontSize:12, fontWeight: step === s.n ? 700 : 400, color: step === s.n ? "#111" : "#9ca3af" }}>{s.label}</span>
+                  </div>
+                  {i < 2 && <div style={{ flex:1, height:1, background: step > s.n ? "#8dc63f" : "#e2e8f0", margin:"0 12px" }} />}
+                </React.Fragment>
+              ))}
+            </div>
+
+            {/* ─── ÉTAPE 1 : Upload ─── */}
+            {step === 1 && (
+              <div className="fade-in" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+                <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:18 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:14 }}>
+                    Informations véhicule
+                  </div>
+                  <label style={{ fontSize:11, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Nom du véhicule</label>
+                  <input type="text" value={vehicleName} onChange={e=>setVehicleName(e.target.value)} placeholder="Ex: Renault Clio 2018"
+                    style={{ width:"100%", padding:"11px 14px", border:"1.5px solid #e2e8f0", borderRadius:8, fontSize:14, outline:"none", marginBottom:16, color:"#111" }} />
+
+                  <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:10 }}>
+                    Photos ({files.length}/5)
+                  </div>
+
+                  <label style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:"2px dashed #e2e8f0", borderRadius:12, padding:"24px 16px", cursor:"pointer", background:"#fafafa", marginBottom:12 }}
+                    onDragOver={e => { e.preventDefault(); }}
+                    onDrop={e => { e.preventDefault(); const f = Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith("image/")); setFiles(prev=>[...prev,...f].slice(0,5)); }}>
+                    <span style={{ fontSize:28, marginBottom:8 }}>📸</span>
+                    <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Glissez ou cliquez pour ajouter</span>
+                    <span style={{ fontSize:11, color:"#9ca3af", marginTop:4 }}>JPG, PNG · Max 5 photos</span>
+                    <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFiles} style={{ display:"none" }} />
+                  </label>
+
+                  {files.length > 0 && (
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:14 }}>
+                      {files.map((f, i) => (
+                        <div key={i} style={{ position:"relative" }}>
+                          <img src={URL.createObjectURL(f)} alt="" style={{ width:"100%", aspectRatio:"4/3", objectFit:"cover", borderRadius:8, border:"0.5px solid #e2e8f0" }} />
+                          <button onClick={() => removeFile(i)}
+                            style={{ position:"absolute", top:3, right:3, width:18, height:18, borderRadius:"50%", background:"rgba(0,0,0,0.6)", color:"white", border:"none", cursor:"pointer", fontSize:10, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+                          <div style={{ position:"absolute", bottom:3, left:3, background:"rgba(0,0,0,0.5)", color:"white", fontSize:8, padding:"1px 5px", borderRadius:3 }}>Photo {i+1}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <button onClick={handleProcess} disabled={files.length === 0} className="btn-ae"
+                    style={{ width:"100%", padding:"13px", fontSize:14 }}>
+                    Traiter avec Gemini AI ({files.length} photo{files.length>1?"s":""})
+                  </button>
+                </div>
+
+                <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:18 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:14 }}>
+                    Ce qui sera fait
+                  </div>
+                  {[
+                    { icon:"🔍", title:"Détection plaque", desc:"Gemini Vision localise la plaque d'immatriculation sur chaque photo." },
+                    { icon:"⬛", title:"Cache AUTOEASY", desc:"Canvas HTML5 recouvre la plaque avec une bannière noire AUTOEASY." },
+                    { icon:"🏙️", title:"Fond AutoEasy", desc:"Fond standardisé : sol damier noir/vert + panneau AutoEasy." },
+                    { icon:"📤", title:"Export JPG 1024×768", desc:"Format optimisé pour Leboncoin et le site AutoEasy." },
+                  ].map((item, i) => (
+                    <div key={i} style={{ display:"flex", gap:12, marginBottom:16, alignItems:"flex-start" }}>
+                      <div style={{ width:36, height:36, borderRadius:8, background:"#f5f5f7", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{item.icon}</div>
+                      <div>
+                        <div style={{ fontSize:13, fontWeight:600, color:"#111", marginBottom:2 }}>{item.title}</div>
+                        <div style={{ fontSize:12, color:"#6b7280", lineHeight:1.5 }}>{item.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ─── ÉTAPE 2 : Processing ─── */}
+            {step === 2 && (
+              <div className="fade-in" style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:"48px 32px", textAlign:"center" }}>
+                <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:20 }}>
+                  <div className="spinner" style={{ width:52, height:52, borderWidth:4 }} />
+                  <div style={{ fontSize:18, fontWeight:700, color:"#111" }}>Traitement en cours</div>
+                  <div style={{ fontSize:13, color:"#6b7280" }}>{progress.msg}</div>
+
+                  <div style={{ width:320 }}>
+                    <div style={{ background:"#f3f4f6", borderRadius:99, overflow:"hidden", height:8, marginBottom:8 }}>
+                      <div style={{ height:"100%", background:"#8dc63f", borderRadius:99, width:`${progress.pct}%`, transition:"width 0.3s" }} />
+                    </div>
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#9ca3af" }}>
+                      <span>Photo {currentIdx+1}/{files.length}</span>
+                      <span>{progress.pct}%</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display:"grid", gridTemplateColumns:`repeat(${files.length},1fr)`, gap:8, marginTop:8 }}>
+                    {files.map((f, i) => (
+                      <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+                        <div style={{ width:60, height:44, borderRadius:6, overflow:"hidden", border: i < currentIdx ? "2px solid #8dc63f" : i === currentIdx ? "2px solid #f59e0b" : "1px solid #e2e8f0", opacity: i > currentIdx ? 0.4 : 1 }}>
+                          <img src={URL.createObjectURL(f)} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                        </div>
+                        <div style={{ fontSize:9, color: i < currentIdx ? "#8dc63f" : i === currentIdx ? "#f59e0b" : "#9ca3af", fontWeight:600 }}>
+                          {i < currentIdx ? "✓ OK" : i === currentIdx ? "⏳ En cours" : "En attente"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ─── ÉTAPE 3 : Export ─── */}
+            {step === 3 && (
+              <div className="fade-in">
+                <div style={{ background:"#f0fdf4", border:"1px solid #86efac", borderRadius:12, padding:"16px 20px", marginBottom:16, display:"flex", alignItems:"center", gap:12 }}>
+                  <span style={{ fontSize:24 }}>✅</span>
+                  <div>
+                    <div style={{ fontSize:14, fontWeight:700, color:"#166534" }}>{processed.length} photo{processed.length>1?"s":""} traitée{processed.length>1?"s":""} avec succès !</div>
+                    <div style={{ fontSize:12, color:"#15803d" }}>Format JPG 1024×768 — prêt pour Leboncoin</div>
+                  </div>
+                  <div style={{ marginLeft:"auto", display:"flex", gap:10 }}>
+                    <button onClick={downloadAll} className="btn-ae" style={{ padding:"9px 18px", fontSize:13 }}>
+                      Télécharger tout ({processed.length} JPG)
+                    </button>
+                    {!saved && (
+                      <button onClick={handleSave} disabled={saving} className="btn-outline" style={{ padding:"9px 18px", fontSize:13 }}>
+                        {saving ? "Sauvegarde..." : "💾 Sauvegarder dans l'historique"}
+                      </button>
+                    )}
+                    {saved && <div style={{ padding:"9px 14px", fontSize:12, color:"#8dc63f", fontWeight:600 }}>✓ Sauvegardé</div>}
+                  </div>
+                </div>
+
+                <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", overflow:"hidden" }}>
+                  <div style={{ padding:"12px 18px", borderBottom:"0.5px solid #e2e8f0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <span style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em" }}>Photos traitées — 1024×768 JPG</span>
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:`repeat(${Math.min(processed.length, 3)},1fr)`, gap:12, padding:16 }}>
+                    {processed.map((p, i) => (
+                      <div key={i} style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                        <img src={p.dataUrl} alt="" style={{ width:"100%", borderRadius:8, border:"0.5px solid #e2e8f0" }} />
+                        <button onClick={() => {
+                          const a = document.createElement("a");
+                          a.href = p.dataUrl;
+                          a.download = `${vehicleName?.replace(/\s/g,"_")||"vehicule"}_photo_${i+1}.jpg`;
+                          a.click();
+                        }} className="btn-outline" style={{ width:"100%", padding:"7px", fontSize:11 }}>
+                          📥 photo_{i+1}.jpg
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ── App principale ────────────────────────────────────────────
+    function App() {
+      const [user, setUser] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [view, setView] = useState("dashboard"); // dashboard | studio
+
+      useEffect(() => {
+        const unsub = auth.onAuthStateChanged(u => {
+          if (u && ALLOWED_EMAILS.includes(u.email?.toLowerCase())) {
+            setUser(u);
+          } else if (u) {
+            auth.signOut();
+            setUser(null);
+          } else {
+            setUser(null);
+          }
+          setLoading(false);
+        });
+        return unsub;
+      }, []);
+
+      if (loading) return (
+        <div style={{ minHeight:"100vh", background:"#1a1a2e", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:16 }}>
+          <div style={{ width:44, height:44, borderRadius:10, background:"#8dc63f", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <span style={{ fontSize:18, fontWeight:900, color:"#1a1a2e" }}>AE</span>
+          </div>
+          <div className="spinner" />
+        </div>
+      );
+
+      if (!user) return <LoginPage />;
+
+      if (view === "studio") return <Studio user={user} onBack={() => setView("dashboard")} />;
+
+      return <Dashboard user={user} onNewSession={() => setView("studio")} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
