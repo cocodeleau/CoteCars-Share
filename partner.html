@@ -146,108 +146,117 @@
         try {
           onProgress("Lecture de la photo...", 10);
 
-          // 1. Lire l'image
+          // 1. Lire l'image en base64
           const imgDataUrl = await new Promise((res, rej) => {
             const reader = new FileReader();
             reader.onload = e => res(e.target.result);
             reader.onerror = rej;
             reader.readAsDataURL(file);
           });
-
-          // 2. Charger l'image
-          const img = new Image();
-          await new Promise((res, rej) => {
-            img.onload = res;
-            img.onerror = rej;
-            img.src = imgDataUrl;
-          });
-
-          onProgress("Détection de la plaque via Gemini...", 30);
-
-          // 3. Appel Gemini Vision pour détecter la plaque
           const base64 = imgDataUrl.split(",")[1];
-          const geminiRes = await fetch("/api/partner-image", {
+
+          onProgress("Suppression du fond via remove.bg...", 25);
+
+          // 2. Appel API backend (remove.bg + Gemini)
+          const apiRes = await fetch("/api/partner-image", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageBase64: base64, mimeType: file.type || "image/jpeg" })
+            body: JSON.stringify({ imageBase64: base64, mimeType: file.type || "image/jpeg" }),
           });
 
-          let plateBox = null;
-          if (geminiRes.ok) {
-            const geminiData = await geminiRes.json();
-            plateBox = geminiData.plateBox; // { x, y, w, h } en pourcentage
-          }
+          const apiData = apiRes.ok ? await apiRes.json() : {};
+          const { removedBgBase64, removeBgSuccess, plateBox } = apiData;
 
-          onProgress("Composition du fond AutoEasy...", 60);
+          onProgress("Composition du fond AutoEasy...", 65);
 
-          // 4. Canvas final 1024x768
+          // 3. Canvas 1024x768
           const canvas = document.createElement("canvas");
           canvas.width = 1024;
           canvas.height = 768;
           const ctx = canvas.getContext("2d");
 
-          // Dessiner le fond AutoEasy
+          // 4. Dessiner fond AutoEasy
           drawBackground(canvas);
 
-          // 5. Dessiner la voiture par-dessus
-          // La voiture occupe 80% de la largeur, centrée, posée sur le sol
-          const solY = 768 - Math.round(768 * 0.18);
-          const carW = 1024 * 0.82;
-          const carH = (img.height / img.width) * carW;
+          // 5. Charger l'image voiture (PNG transparent si remove.bg ok, sinon original)
+          const carSrc = removeBgSuccess && removedBgBase64
+            ? `data:image/png;base64,${removedBgBase64}`
+            : imgDataUrl;
+
+          const carImg = new Image();
+          await new Promise((res, rej) => {
+            carImg.onload = res;
+            carImg.onerror = rej;
+            carImg.src = carSrc;
+          });
+
+          // 6. Positionner la voiture sur le fond
+          // Sol à 82% de hauteur - voiture centrée et posée dessus
+          const solY = Math.round(768 * 0.82);
+          const carW = 1024 * 0.85;
+          const carH = (carImg.height / carImg.width) * carW;
           const carX = (1024 - carW) / 2;
-          const carY = solY - carH + 20;
+          const carY = solY - carH;
 
-          ctx.drawImage(img, carX, carY, carW, carH);
+          ctx.drawImage(carImg, carX, carY, carW, carH);
 
-          onProgress("Cache de la plaque en cours...", 80);
+          onProgress("Cache de la plaque...", 85);
 
-          // 6. Cache plaque avec bannière AUTOEASY
+          // 7. Cache plaque
           if (plateBox) {
-            // Coordonnées réelles sur le canvas
+            // Coordonnées réelles sur la zone voiture dans le canvas
             const px = carX + plateBox.x * carW;
             const py = carY + plateBox.y * carH;
             const pw = plateBox.w * carW;
             const ph = plateBox.h * carH;
 
-            // Rectangle noir
+            // Fond noir arrondi
             ctx.fillStyle = "#1a1a2e";
-            ctx.fillRect(px - 4, py - 4, pw + 8, ph + 8);
+            const pad = 5;
+            ctx.beginPath();
+            ctx.roundRect(px - pad, py - pad, pw + pad*2, ph + pad*2, 4);
+            ctx.fill();
 
-            // Texte AUTOEASY
+            // Texte AUTOEASY blanc centré
             ctx.fillStyle = "white";
-            ctx.font = `bold ${Math.max(10, ph * 0.55)}px DM Sans, Arial`;
+            const fontSize = Math.max(10, Math.min(ph * 0.6, 22));
+            ctx.font = `bold ${fontSize}px DM Sans, Arial`;
             ctx.textAlign = "center";
-            ctx.fillText("AUTOEASY", px + pw / 2, py + ph * 0.68);
+            ctx.textBaseline = "middle";
+            ctx.fillText("AUTOEASY", px + pw / 2, py + ph / 2);
             ctx.textAlign = "left";
+            ctx.textBaseline = "alphabetic";
 
             // Ligne verte en bas
             ctx.fillStyle = "#8dc63f";
-            ctx.fillRect(px - 4, py + ph + 4, pw + 8, 3);
+            ctx.fillRect(px - pad, py + ph + pad, pw + pad*2, 2);
           } else {
-            // Fallback : cache la zone basse-gauche de la voiture (position approximative)
-            const fallbackX = carX + carW * 0.08;
-            const fallbackY = carY + carH * 0.72;
-            const fallbackW = carW * 0.18;
-            const fallbackH = carH * 0.07;
-
+            // Fallback position plaque avant bas-centre
+            const fbX = carX + carW * 0.38;
+            const fbY = carY + carH * 0.78;
+            const fbW = carW * 0.16;
+            const fbH = carH * 0.055;
             ctx.fillStyle = "#1a1a2e";
-            ctx.fillRect(fallbackX - 4, fallbackY - 2, fallbackW + 8, fallbackH + 6);
+            ctx.beginPath();
+            ctx.roundRect(fbX - 4, fbY - 3, fbW + 8, fbH + 6, 3);
+            ctx.fill();
             ctx.fillStyle = "white";
-            ctx.font = `bold ${Math.max(9, fallbackH * 0.5)}px DM Sans, Arial`;
+            ctx.font = `bold ${Math.max(9, fbH * 0.55)}px DM Sans, Arial`;
             ctx.textAlign = "center";
-            ctx.fillText("AUTOEASY", fallbackX + fallbackW / 2, fallbackY + fallbackH * 0.65);
+            ctx.textBaseline = "middle";
+            ctx.fillText("AUTOEASY", fbX + fbW / 2, fbY + fbH / 2);
             ctx.textAlign = "left";
+            ctx.textBaseline = "alphabetic";
             ctx.fillStyle = "#8dc63f";
-            ctx.fillRect(fallbackX - 4, fallbackY + fallbackH + 4, fallbackW + 8, 2);
+            ctx.fillRect(fbX - 4, fbY + fbH + 3, fbW + 8, 2);
           }
 
-          onProgress("Export JPG final...", 95);
+          onProgress("Export JPG...", 95);
 
-          // 7. Export en JPG
-          const outputDataUrl = canvas.toDataURL("image/jpeg", 0.92);
-
+          // 8. Export JPG
+          const outputDataUrl = canvas.toDataURL("image/jpeg", 0.93);
           onProgress("Terminé !", 100);
-          resolve({ dataUrl: outputDataUrl, canvas });
+          resolve({ dataUrl: outputDataUrl });
 
         } catch (err) {
           reject(err);
@@ -255,7 +264,7 @@
       });
     }
 
-    // ── Page Connexion ────────────────────────────────────────────
+        // ── Page Connexion ────────────────────────────────────────────
     function LoginPage({ onLogin }) {
       const [email, setEmail] = useState("");
       const [password, setPassword] = useState("");
