@@ -142,9 +142,9 @@
       };
     }
 
-    // ── Gemini 2.0 Flash - composition image ─────────────────────
-    async function composeWithGemini2(file, onProgress) {
-      onProgress("Envoi à Gemini 2.0...", 20);
+    // ── Pipeline simplifié : Gemini 2.0 uniquement ──────────────
+    async function processPartnerImage(file, onProgress) {
+      onProgress("Lecture de la photo...", 10);
 
       const base64 = await new Promise((res, rej) => {
         const reader = new FileReader();
@@ -153,231 +153,30 @@
         reader.readAsDataURL(file);
       });
 
+      onProgress("Envoi à Gemini 2.0...", 25);
+
       const apiRes = await fetch("/api/partner-gemini-compose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageBase64: base64.slice(0, 900000),
-          mimeType: file.type || "image/jpeg"
+          imageBase64: base64,
+          mimeType: file.type || "image/jpeg",
         }),
       });
 
-      if (!apiRes.ok) throw new Error("API error " + apiRes.status);
+      if (!apiRes.ok) throw new Error("Erreur API " + apiRes.status);
+
+      onProgress("Génération de l'image composite...", 60);
+
       const data = await apiRes.json();
 
       if (!data.success || !data.imageBase64) {
-        throw new Error(data.error || "Gemini 2.0 n'a pas généré d'image");
+        throw new Error(data.error || "Gemini n'a pas généré d'image");
       }
 
-      onProgress("Image générée par Gemini 2.0 !", 90);
+      onProgress("Terminé !", 100);
 
-      // Convertir en dataUrl
-      const dataUrl = `data:${data.mimeType};base64,${data.imageBase64}`;
-      return { dataUrl, gemini2: true };
-    }
-
-        async function processPartnerImage(file, onProgress) {
-      return new Promise(async (resolve, reject) => {
-        try {
-          onProgress("Tentative Gemini 2.0 Flash...", 10);
-
-          // 1. Essayer Gemini 2.0 image generation en premier
-          try {
-            const geminiResult = await composeWithGemini2(file, onProgress);
-            onProgress("Terminé !", 100);
-            return geminiResult;
-          } catch(e) {
-            console.warn("Gemini 2.0 échoué, fallback Canvas:", e.message);
-          }
-
-          onProgress("Suppression du fond (fallback)...", 15);
-
-          // Fallback : remove.bg + Canvas
-          let carImgSrc;
-          try {
-            carImgSrc = await removeBgDirect(file);
-          } catch(e) {
-            console.warn("remove.bg échoué, utilisation original:", e);
-            carImgSrc = URL.createObjectURL(file);
-          }
-
-          onProgress("Chargement de la voiture découpée...", 40);
-
-          // 2. Charger le PNG transparent
-          const carImg = new Image();
-          await new Promise((res, rej) => {
-            carImg.onload = res;
-            carImg.onerror = rej;
-            carImg.src = carImgSrc;
-          });
-
-          onProgress("Analyse Gemini (plaque + positionnement)...", 55);
-
-          // 3. Gemini analyse les 2 images : fond + véhicule
-          let plateBox = null;
-          let carPlacement = null;
-          let carSourceBox = null;
-          let lighting = null;
-          try {
-            const result = await analyzeWithGemini(file);
-            plateBox = result.plateBox;
-            carPlacement = result.carPlacement;
-            carSourceBox = result.carSourceBox;
-            lighting = result.lighting;
-          } catch(e) {
-            console.warn("Gemini analyse échoué:", e);
-          }
-
-          onProgress("Composition du fond AutoEasy...", 70);
-
-          // Attendre que l'image de fond soit chargée
-          if (!bgLoaded) {
-            await new Promise((res) => {
-              if (bgLoaded) { res(); return; }
-              AE_BG_IMG.onload = () => { bgLoaded = true; res(); };
-              setTimeout(res, 3000); // timeout 3s
-            });
-          }
-
-          // 4. Canvas 1024x768
-          const canvas = document.createElement("canvas");
-          canvas.width = 1024;
-          canvas.height = 768;
-          const ctx = canvas.getContext("2d");
-
-          // 5. Fond AutoEasy
-          drawBackground(canvas);
-
-          // 6. Positionner la voiture sur le fond showroom
-          // Sol fixé à 490px (mesuré sur autoeasy-bg.jpg)
-          const SOL_PX = 490;
-
-          // Utiliser carPlacement de Gemini ou valeurs par défaut
-          const scRatio = carPlacement?.scaleRatio || 0.75;
-          const offsetX = carPlacement?.offsetXRatio || 0.02;
-          const carW = Math.round(1024 * scRatio);
-
-          // Scanner le PNG transparent pour trouver les vraies roues
-          const tmpCanvas = document.createElement("canvas");
-          tmpCanvas.width = carImg.width;
-          tmpCanvas.height = carImg.height;
-          const tmpCtx = tmpCanvas.getContext("2d");
-          tmpCtx.drawImage(carImg, 0, 0);
-          const imgData = tmpCtx.getImageData(0, 0, carImg.width, carImg.height);
-          const pixels = imgData.data;
-
-          // Dernière ligne visible (bas des roues)
-          let lastVisibleRow = carImg.height - 1;
-          for (let y = carImg.height - 1; y >= 0; y--) {
-            for (let x = 0; x < carImg.width; x++) {
-              if (pixels[(y * carImg.width + x) * 4 + 3] > 20) {
-                lastVisibleRow = y; break;
-              }
-            }
-            if (pixels[(lastVisibleRow * carImg.width + Math.floor(carImg.width/2)) * 4 + 3] > 20) break;
-          }
-
-          // Première ligne visible (haut de la voiture)
-          let firstVisibleRow = 0;
-          outer: for (let y = 0; y < carImg.height; y++) {
-            for (let x = 0; x < carImg.width; x++) {
-              if (pixels[(y * carImg.width + x) * 4 + 3] > 20) {
-                firstVisibleRow = y; break outer;
-              }
-            }
-          }
-
-          const pixelScale = carW / carImg.width;
-          const visibleCarH = (lastVisibleRow - firstVisibleRow) * pixelScale;
-          const topPadding = firstVisibleRow * pixelScale;
-          const carH = carImg.height * pixelScale; // hauteur totale PNG
-          const carX = (1024 - carW) / 2 + Math.round(1024 * offsetX);
-          // Positionner : bas des roues = SOL_PX
-          const carY = SOL_PX - visibleCarH - topPadding;
-
-          // Ombre portée basée sur lighting.shadowIntensity de Gemini
-          const shadowAlpha = lighting?.shadowIntensity || 0.55;
-          ctx.save();
-          ctx.globalAlpha = Math.min(0.75, shadowAlpha * 0.9);
-          ctx.filter = "blur(22px)";
-          ctx.fillStyle = "#000000";
-          ctx.beginPath();
-          ctx.ellipse(
-            carX + carW * 0.48,
-            SOL_PX + 5,
-            carW * 0.35,
-            13,
-            0, 0, Math.PI * 2
-          );
-          ctx.fill();
-          ctx.restore();
-
-          // Reflet sur sol brillant
-          ctx.save();
-          ctx.globalAlpha = 0.11;
-          ctx.filter = "blur(5px)";
-          ctx.translate(carX + carW / 2, SOL_PX);
-          ctx.scale(1, -0.14);
-          ctx.translate(-(carX + carW / 2), -SOL_PX);
-          ctx.drawImage(carImg, carX, carY, carW, carH);
-          ctx.restore();
-
-          // Voiture découpée
-          ctx.drawImage(carImg, carX, carY, carW, carH);
-
-          onProgress("Cache de la plaque...", 85);
-
-          // 7. Cache plaque AUTOEASY
-          const drawPlateCache = (px, py, pw, ph) => {
-            ctx.fillStyle = "#1a1a2e";
-            ctx.beginPath();
-            ctx.roundRect(px - 5, py - 3, pw + 10, ph + 8, 4);
-            ctx.fill();
-            ctx.fillStyle = "white";
-            const fs = Math.max(10, Math.min(ph * 0.6, 20));
-            ctx.font = `bold ${fs}px DM Sans, Arial`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("AUTOEASY", px + pw / 2, py + ph / 2 + 2);
-            ctx.textAlign = "left";
-            ctx.textBaseline = "alphabetic";
-            ctx.fillStyle = "#8dc63f";
-            ctx.fillRect(px - 5, py + ph + 5, pw + 10, 2);
-          };
-
-          if (plateBox) {
-            // Coordonnées Gemini relatives à l'image originale
-            // On les mappe sur la zone voiture dans le canvas
-            const px = carX + plateBox.x * carW;
-            const py = carY + plateBox.y * carH;
-            const pw = Math.max(plateBox.w * carW, 55);
-            const ph = Math.max(plateBox.h * carH, 16);
-            drawPlateCache(px, py, pw, ph);
-          } else {
-            // Fallback : plaque avant bas-centre de la voiture
-            drawPlateCache(
-              carX + carW * 0.30,
-              carY + carH * 0.83,
-              carW * 0.14,
-              carH * 0.05
-            );
-          }
-
-          onProgress("Export JPG 1024×768...", 95);
-
-          // 8. Export
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.93);
-          onProgress("Terminé !", 100);
-
-          // Libérer object URL
-          URL.revokeObjectURL(carImgSrc);
-
-          resolve({ dataUrl });
-
-        } catch (err) {
-          reject(err);
-        }
-      });
+      return { dataUrl: `data:${data.mimeType};base64,${data.imageBase64}` };
     }
 
         // ── Page Connexion ────────────────────────────────────────────
