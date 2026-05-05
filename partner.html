@@ -195,21 +195,16 @@
           // 5. Fond AutoEasy
           drawBackground(canvas);
 
-          // 6. Poser la voiture découpée sur le fond
-          // Gemini nous dit où est le sol dans le fond showroom
-          // carPlacement.solRatio = position Y du sol en % (0-1)
-          // carPlacement.scaleRatio = taille relative de la voiture (0-1)
-          const solRatio = carPlacement?.solRatio || 0.58;
-          const scaleRatio = carPlacement?.scaleRatio || 0.70;
-          const offsetXRatio = carPlacement?.offsetXRatio || 0.02;
-
-          const solY = Math.round(768 * solRatio);
-          const carW = 1024 * scaleRatio;
+          // 6. Positionner la voiture sur le fond showroom
+          // Sol du showroom AutoEasy fixé à 495px (64.5% de 768)
+          // Valeur mesurée précisément sur l'image autoeasy-bg.jpg
+          const SOL_PX = 495; // pixels Y où commence le sol damier
+          const carW = 820;   // largeur fixe pour une belle proportion
           const carH = (carImg.height / carImg.width) * carW;
-          const carX = (1024 - carW) / 2 + (1024 * offsetXRatio);
-          const carY = solY - carH; // posée pile sur le sol
+          const carX = (1024 - carW) / 2 + 20; // centré légèrement à droite
+          const carY = SOL_PX - carH;           // roues posées sur le sol
 
-          // Ombre portée elliptique sous la voiture
+          // Ombre portée elliptique sous les roues
           ctx.save();
           ctx.globalAlpha = 0.55;
           ctx.filter = "blur(22px)";
@@ -217,7 +212,7 @@
           ctx.beginPath();
           ctx.ellipse(
             carX + carW * 0.48,
-            solY + 6,
+            SOL_PX + 8,
             carW * 0.34,
             14,
             0, 0, Math.PI * 2
@@ -229,9 +224,9 @@
           ctx.save();
           ctx.globalAlpha = 0.13;
           ctx.filter = "blur(4px)";
-          ctx.translate(carX + carW / 2, solY);
+          ctx.translate(carX + carW / 2, SOL_PX);
           ctx.scale(1, -0.18);
-          ctx.translate(-(carX + carW / 2), -solY);
+          ctx.translate(-(carX + carW / 2), -SOL_PX);
           ctx.drawImage(carImg, carX, carY, carW, carH);
           ctx.restore();
 
@@ -259,21 +254,20 @@
           };
 
           if (plateBox) {
-            // Les coords Gemini sont relatives à l'image originale
+            // Coordonnées Gemini relatives à l'image originale
             // On les mappe sur la zone voiture dans le canvas
-            drawPlateCache(
-              carX + plateBox.x * carW,
-              carY + plateBox.y * carH,
-              Math.max(plateBox.w * carW, 60),
-              Math.max(plateBox.h * carH, 18)
-            );
+            const px = carX + plateBox.x * carW;
+            const py = carY + plateBox.y * carH;
+            const pw = Math.max(plateBox.w * carW, 55);
+            const ph = Math.max(plateBox.h * carH, 16);
+            drawPlateCache(px, py, pw, ph);
           } else {
-            // Fallback plaque avant bas-gauche (Clio vue 3/4)
+            // Fallback : plaque avant bas-centre de la voiture
             drawPlateCache(
-              carX + carW * 0.28,
-              carY + carH * 0.82,
-              carW * 0.13,
-              carH * 0.048
+              carX + carW * 0.30,
+              carY + carH * 0.83,
+              carW * 0.14,
+              carH * 0.05
             );
           }
 
