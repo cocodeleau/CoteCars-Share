@@ -142,7 +142,17 @@
       };
     }
 
-    // ── Charger le fond showroom en base64 (une seule fois) ─────
+    // ── Appel Gemini 2.0 directement depuis le frontend ──────────
+    const GEMINI_KEY = "AIzaSyCGVGeYrZ7JIgOTXN598V1O_0ez9QETyoA";
+    const GEMINI_PROMPT = `Tu reçois deux images en entrée.
+Image 1 : Le fond (un showroom AutoEasy avec un sol damier).
+Image 2 : La photo d un véhicule à détourer.
+Ta tâche est de générer une image finale composite en respectant STRICTEMENT les consignes suivantes :
+1. Intégration : Place le véhicule de l image 2 sur le sol damier du showroom de l image 1.
+2. Conservation absolue : Le véhicule de l image 2 (couleur, carrosserie, reflets, style) et le fond de l image 1 doivent rester EXACTEMENT tels quels. N applique aucun filtre, aucune modification de texture ou de couleur.
+3. Anonymisation de la plaque : Masque intégralement la plaque d immatriculation du véhicule avec un rectangle noir opaque. Sur ce rectangle noir, inscris le texte AUTOEASY en majuscules blanches, centré et aligné avec la perspective de la plaque.
+4. Ombrage : Ajoute uniquement une ombre portée naturelle de contact sous les pneus et le châssis du véhicule pour l ancrer de façon réaliste sur le sol damier.`;
+
     let BG_BASE64 = null;
     async function loadBgBase64() {
       if (BG_BASE64) return BG_BASE64;
@@ -156,11 +166,9 @@
       return BG_BASE64;
     }
 
-    // ── Pipeline simplifié : Gemini 2.0 uniquement ──────────────
     async function processPartnerImage(file, onProgress) {
       onProgress("Lecture de la photo...", 10);
 
-      // Lire photo véhicule en base64
       const imageBase64 = await new Promise((res, rej) => {
         const reader = new FileReader();
         reader.onload = e => res(e.target.result.split(",")[1]);
@@ -169,35 +177,51 @@
       });
 
       onProgress("Chargement du fond showroom...", 20);
-
-      // Charger le fond showroom
       const bgBase64 = await loadBgBase64();
 
       onProgress("Envoi à Gemini 2.0...", 35);
 
-      const apiRes = await fetch("/api/partner-gemini-compose", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageBase64,
-          bgBase64,
-          mimeType: file.type || "image/jpeg",
-        }),
-      });
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { inline_data: { mime_type: "image/jpeg", data: bgBase64 } },
+                { text: "Image 1 : Le fond showroom AutoEasy." },
+                { inline_data: { mime_type: file.type || "image/jpeg", data: imageBase64 } },
+                { text: "Image 2 : Le véhicule à intégrer." },
+                { text: GEMINI_PROMPT },
+              ]
+            }],
+            generationConfig: {
+              responseModalities: ["image", "text"],
+              temperature: 0.1,
+            },
+          }),
+        }
+      );
 
-      if (!apiRes.ok) throw new Error("Erreur API " + apiRes.status);
+      if (!geminiRes.ok) {
+        const err = await geminiRes.text();
+        throw new Error("Gemini error: " + err);
+      }
 
-      onProgress("Gemini compose l'image...", 65);
+      onProgress("Gemini compose l image...", 70);
 
-      const data = await apiRes.json();
+      const data = await geminiRes.json();
+      const parts = data?.candidates?.[0]?.content?.parts || [];
+      const imagePart = parts.find(p => p.inline_data?.mime_type?.startsWith("image/"));
 
-      if (!data.success || !data.imageBase64) {
-        throw new Error(data.error || "Gemini n'a pas généré d'image");
+      if (!imagePart) {
+        const textPart = parts.find(p => p.text);
+        throw new Error("Pas d image générée: " + (textPart?.text || "réponse vide"));
       }
 
       onProgress("Terminé !", 100);
-
-      return { dataUrl: `data:${data.mimeType};base64,${data.imageBase64}` };
+      return { dataUrl: `data:${imagePart.inline_data.mime_type};base64,${imagePart.inline_data.data}` };
     }
 
         // ── Page Connexion ────────────────────────────────────────────
