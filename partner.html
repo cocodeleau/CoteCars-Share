@@ -142,30 +142,7 @@
       };
     }
 
-    // ── Appel Gemini 2.0 directement depuis le frontend ──────────
-    const GEMINI_KEY = "AIzaSyB5Pxg02pE3-ZeBpjKQdjErta0q4jbmkBk";
-    const GEMINI_PROMPT = `Tu reçois deux images en entrée.
-Image 1 : Le fond (un showroom AutoEasy avec un sol damier).
-Image 2 : La photo d un véhicule à détourer.
-Ta tâche est de générer une image finale composite en respectant STRICTEMENT les consignes suivantes :
-1. Intégration : Place le véhicule de l image 2 sur le sol damier du showroom de l image 1.
-2. Conservation absolue : Le véhicule de l image 2 (couleur, carrosserie, reflets, style) et le fond de l image 1 doivent rester EXACTEMENT tels quels. N applique aucun filtre, aucune modification de texture ou de couleur.
-3. Anonymisation de la plaque : Masque intégralement la plaque d immatriculation du véhicule avec un rectangle noir opaque. Sur ce rectangle noir, inscris le texte AUTOEASY en majuscules blanches, centré et aligné avec la perspective de la plaque.
-4. Ombrage : Ajoute uniquement une ombre portée naturelle de contact sous les pneus et le châssis du véhicule pour l ancrer de façon réaliste sur le sol damier.`;
-
-    let BG_BASE64 = null;
-    async function loadBgBase64() {
-      if (BG_BASE64) return BG_BASE64;
-      const res = await fetch("/autoeasy-bg.jpg");
-      const blob = await res.blob();
-      BG_BASE64 = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = e => resolve(e.target.result.split(",")[1]);
-        reader.readAsDataURL(blob);
-      });
-      return BG_BASE64;
-    }
-
+    // ── Pipeline Cloudinary ───────────────────────────────────────
     async function processPartnerImage(file, onProgress) {
       onProgress("Lecture de la photo...", 10);
 
@@ -176,63 +153,47 @@ Ta tâche est de générer une image finale composite en respectant STRICTEMENT 
         reader.readAsDataURL(file);
       });
 
-      onProgress("Chargement du fond showroom...", 20);
-      const bgBase64 = await loadBgBase64();
+      onProgress("Upload vers Cloudinary...", 25);
 
-      onProgress("Envoi à Gemini 2.0...", 35);
-
-      // Essayer les modèles Gemini disponibles pour la génération d image
-      const MODELS = [
-        "gemini-2.0-flash-preview-image-generation",
-        "gemini-2.0-flash-exp-image-generation",
-        "gemini-2.0-flash-exp",
-        "gemini-2.0-flash",
-      ];
-
-      const makeBody = () => JSON.stringify({
-        contents: [{
-          parts: [
-            { inline_data: { mime_type: "image/jpeg", data: bgBase64 } },
-            { text: "Image 1 : Le fond showroom AutoEasy." },
-            { inline_data: { mime_type: file.type || "image/jpeg", data: imageBase64 } },
-            { text: "Image 2 : Le vehicule a integrer." },
-            { text: GEMINI_PROMPT },
-          ]
-        }],
-        generationConfig: {
-          responseModalities: ["IMAGE", "TEXT"],
-          temperature: 0.1,
-        },
+      const apiRes = await fetch("/api/partner-cloudinary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageBase64,
+          mimeType: file.type || "image/jpeg",
+        }),
       });
 
-      let foundImage = null;
-      for (const modelName of MODELS) {
-        try {
-          console.log("Trying model:", modelName);
-          const r = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_KEY}`,
-            { method: "POST", headers: { "Content-Type": "application/json" }, body: makeBody() }
-          );
-          const d = await r.json();
-          const imgPart = (d?.candidates?.[0]?.content?.parts || []).find(p => p.inline_data?.mime_type?.startsWith("image/"));
-          if (imgPart) {
-            console.log("✅ Image generated with:", modelName);
-            foundImage = `data:${imgPart.inline_data.mime_type};base64,${imgPart.inline_data.data}`;
-            break;
-          }
-          console.warn(modelName, "no image:", JSON.stringify(d).slice(0, 300));
-        } catch(e) {
-          console.warn(modelName, "error:", e.message);
-        }
+      if (!apiRes.ok) throw new Error("Erreur API " + apiRes.status);
+
+      onProgress("Suppression du fond + composition showroom...", 55);
+
+      const data = await apiRes.json();
+
+      if (!data.success) throw new Error(data.error || "Cloudinary failed");
+
+      onProgress("Finalisation de l image...", 85);
+
+      // Si on a le base64 directement
+      if (data.imageBase64) {
+        onProgress("Terminé !", 100);
+        return { dataUrl: `data:${data.mimeType};base64,${data.imageBase64}` };
       }
 
-      if (!foundImage) throw new Error("Aucun modele Gemini disponible pour la generation d image");
-      
-      onProgress("Image composite générée !", 90);
-      return { dataUrl: foundImage };
+      // Sinon charger depuis l URL
+      if (data.url) {
+        const imgRes = await fetch(data.url);
+        const blob = await imgRes.blob();
+        const dataUrl = await new Promise(r => {
+          const reader = new FileReader();
+          reader.onload = e => r(e.target.result);
+          reader.readAsDataURL(blob);
+        });
+        onProgress("Terminé !", 100);
+        return { dataUrl };
+      }
 
-      onProgress("Terminé !", 100);
-      return { dataUrl: `data:${imagePart.inline_data.mime_type};base64,${imagePart.inline_data.data}` };
+      throw new Error("Pas d image retournée");
     }
 
         // ── Page Connexion ────────────────────────────────────────────
