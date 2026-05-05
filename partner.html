@@ -125,16 +125,20 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageBase64: base64.slice(0, 800000),
+          imageBase64: base64.slice(0, 900000),
           mimeType: file.type || "image/jpeg"
         }),
       });
 
-      if (!apiRes.ok) return { plateBox: null, carPlacement: null };
+      if (!apiRes.ok) return { plateBox: null, carPlacement: null, carSourceBox: null };
       const data = await apiRes.json();
+      console.log("Gemini analysis:", data);
       return {
         plateBox: data.plateBox || null,
         carPlacement: data.carPlacement || null,
+        carSourceBox: data.carSourceBox || null,
+        lighting: data.lighting || null,
+        carAngle: data.carAngle || null,
       };
     }
 
@@ -164,13 +168,17 @@
 
           onProgress("Analyse Gemini (plaque + positionnement)...", 55);
 
-          // 3. Gemini analyse la photo : plaque + position optimale dans le fond
+          // 3. Gemini analyse les 2 images : fond + véhicule
           let plateBox = null;
           let carPlacement = null;
+          let carSourceBox = null;
+          let lighting = null;
           try {
             const result = await analyzeWithGemini(file);
             plateBox = result.plateBox;
             carPlacement = result.carPlacement;
+            carSourceBox = result.carSourceBox;
+            lighting = result.lighting;
           } catch(e) {
             console.warn("Gemini analyse échoué:", e);
           }
@@ -196,12 +204,15 @@
           drawBackground(canvas);
 
           // 6. Positionner la voiture sur le fond showroom
-          // Sol mesuré précisément sur autoeasy-bg.jpg : y=490px sur canvas 768px
+          // Sol fixé à 490px (mesuré sur autoeasy-bg.jpg)
           const SOL_PX = 490;
-          const carW = 800;
 
-          // Détecter le bas réel des roues dans le PNG transparent
-          // remove.bg laisse souvent du padding transparent en bas
+          // Utiliser carPlacement de Gemini ou valeurs par défaut
+          const scRatio = carPlacement?.scaleRatio || 0.75;
+          const offsetX = carPlacement?.offsetXRatio || 0.02;
+          const carW = Math.round(1024 * scRatio);
+
+          // Scanner le PNG transparent pour trouver les vraies roues
           const tmpCanvas = document.createElement("canvas");
           tmpCanvas.width = carImg.width;
           tmpCanvas.height = carImg.height;
@@ -210,47 +221,47 @@
           const imgData = tmpCtx.getImageData(0, 0, carImg.width, carImg.height);
           const pixels = imgData.data;
 
-          // Trouver la dernière ligne avec des pixels non-transparents
-          let lastVisibleRow = 0;
+          // Dernière ligne visible (bas des roues)
+          let lastVisibleRow = carImg.height - 1;
           for (let y = carImg.height - 1; y >= 0; y--) {
-            let hasPixel = false;
             for (let x = 0; x < carImg.width; x++) {
-              const alpha = pixels[(y * carImg.width + x) * 4 + 3];
-              if (alpha > 30) { hasPixel = true; break; }
+              if (pixels[(y * carImg.width + x) * 4 + 3] > 20) {
+                lastVisibleRow = y; break;
+              }
             }
-            if (hasPixel) { lastVisibleRow = y; break; }
+            if (pixels[(lastVisibleRow * carImg.width + Math.floor(carImg.width/2)) * 4 + 3] > 20) break;
           }
 
-          // Trouver la première ligne avec des pixels non-transparents (haut)
+          // Première ligne visible (haut de la voiture)
           let firstVisibleRow = 0;
-          for (let y = 0; y < carImg.height; y++) {
-            let hasPixel = false;
+          outer: for (let y = 0; y < carImg.height; y++) {
             for (let x = 0; x < carImg.width; x++) {
-              const alpha = pixels[(y * carImg.width + x) * 4 + 3];
-              if (alpha > 30) { hasPixel = true; break; }
+              if (pixels[(y * carImg.width + x) * 4 + 3] > 20) {
+                firstVisibleRow = y; break outer;
+              }
             }
-            if (hasPixel) { firstVisibleRow = y; break; }
           }
 
-          // Hauteur réelle de la voiture (sans padding transparent)
-          const visibleHeight = lastVisibleRow - firstVisibleRow;
-          const scaleRatio = carW / carImg.width;
-          const carH = visibleHeight * scaleRatio;
-          const carX = (1024 - carW) / 2 + 20;
-          // On positionne en tenant compte du padding haut
-          const carY = SOL_PX - carH - (firstVisibleRow * scaleRatio);
+          const pixelScale = carW / carImg.width;
+          const visibleCarH = (lastVisibleRow - firstVisibleRow) * pixelScale;
+          const topPadding = firstVisibleRow * pixelScale;
+          const carH = carImg.height * pixelScale; // hauteur totale PNG
+          const carX = (1024 - carW) / 2 + Math.round(1024 * offsetX);
+          // Positionner : bas des roues = SOL_PX
+          const carY = SOL_PX - visibleCarH - topPadding;
 
-          // Ombre portée elliptique juste sous les roues
+          // Ombre portée basée sur lighting.shadowIntensity de Gemini
+          const shadowAlpha = lighting?.shadowIntensity || 0.55;
           ctx.save();
-          ctx.globalAlpha = 0.60;
-          ctx.filter = "blur(20px)";
+          ctx.globalAlpha = Math.min(0.75, shadowAlpha * 0.9);
+          ctx.filter = "blur(22px)";
           ctx.fillStyle = "#000000";
           ctx.beginPath();
           ctx.ellipse(
             carX + carW * 0.48,
-            SOL_PX + 4,
-            carW * 0.36,
-            12,
+            SOL_PX + 5,
+            carW * 0.35,
+            13,
             0, 0, Math.PI * 2
           );
           ctx.fill();
@@ -258,12 +269,12 @@
 
           // Reflet sur sol brillant
           ctx.save();
-          ctx.globalAlpha = 0.12;
+          ctx.globalAlpha = 0.11;
           ctx.filter = "blur(5px)";
           ctx.translate(carX + carW / 2, SOL_PX);
-          ctx.scale(1, -0.15);
+          ctx.scale(1, -0.14);
           ctx.translate(-(carX + carW / 2), -SOL_PX);
-          ctx.drawImage(carImg, carX, carY, carW, carImg.height * (carW / carImg.width));
+          ctx.drawImage(carImg, carX, carY, carW, carH);
           ctx.restore();
 
           // Voiture découpée
