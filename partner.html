@@ -142,12 +142,57 @@
       };
     }
 
-    async function processPartnerImage(file, onProgress) {
+    // ── Gemini 2.0 Flash - composition image ─────────────────────
+    async function composeWithGemini2(file, onProgress) {
+      onProgress("Envoi à Gemini 2.0...", 20);
+
+      const base64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = e => res(e.target.result.split(",")[1]);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+
+      const apiRes = await fetch("/api/partner-gemini-compose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageBase64: base64.slice(0, 900000),
+          mimeType: file.type || "image/jpeg"
+        }),
+      });
+
+      if (!apiRes.ok) throw new Error("API error " + apiRes.status);
+      const data = await apiRes.json();
+
+      if (!data.success || !data.imageBase64) {
+        throw new Error(data.error || "Gemini 2.0 n'a pas généré d'image");
+      }
+
+      onProgress("Image générée par Gemini 2.0 !", 90);
+
+      // Convertir en dataUrl
+      const dataUrl = `data:${data.mimeType};base64,${data.imageBase64}`;
+      return { dataUrl, gemini2: true };
+    }
+
+        async function processPartnerImage(file, onProgress) {
       return new Promise(async (resolve, reject) => {
         try {
-          onProgress("Suppression du fond...", 15);
+          onProgress("Tentative Gemini 2.0 Flash...", 10);
 
-          // 1. remove.bg directement depuis le frontend
+          // 1. Essayer Gemini 2.0 image generation en premier
+          try {
+            const geminiResult = await composeWithGemini2(file, onProgress);
+            onProgress("Terminé !", 100);
+            return geminiResult;
+          } catch(e) {
+            console.warn("Gemini 2.0 échoué, fallback Canvas:", e.message);
+          }
+
+          onProgress("Suppression du fond (fallback)...", 15);
+
+          // Fallback : remove.bg + Canvas
           let carImgSrc;
           try {
             carImgSrc = await removeBgDirect(file);
