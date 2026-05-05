@@ -182,15 +182,17 @@
       // Attendre que le background removal soit prêt (Cloudinary le fait en async)
       onProgress("Composition sur le fond AutoEasy...", 65);
 
+      // Public ID original (avec slash, pas deux-points)
+      const rawPublicId = publicId; // ex: autoeasy_studio/znxjs...
+
       const transformUrl =
         `https://res.cloudinary.com/${CLD_CLOUD}/image/upload/` +
         `e_background_removal/` +
         `c_fit,w_820,h_520/` +
         `e_shadow:40,x_4,y_12/` +
-        `u_autoeasy-bg,w_1024,h_768,c_fill,fl_layer_apply/` +
-        `fl_layer_apply,g_south,y_30/` +
+        `u_autoeasy-bg/fl_layer_apply,g_south,y_50,w_1024,h_768/` +
         `c_fill,w_1024,h_768,f_jpg,q_92/` +
-        `${encodedPublicId}`;
+        `${rawPublicId}`;
 
       console.log("Transform URL:", transformUrl);
 
