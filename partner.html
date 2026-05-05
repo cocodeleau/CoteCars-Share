@@ -142,31 +142,52 @@
       };
     }
 
+    // ── Charger le fond showroom en base64 (une seule fois) ─────
+    let BG_BASE64 = null;
+    async function loadBgBase64() {
+      if (BG_BASE64) return BG_BASE64;
+      const res = await fetch("/autoeasy-bg.jpg");
+      const blob = await res.blob();
+      BG_BASE64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result.split(",")[1]);
+        reader.readAsDataURL(blob);
+      });
+      return BG_BASE64;
+    }
+
     // ── Pipeline simplifié : Gemini 2.0 uniquement ──────────────
     async function processPartnerImage(file, onProgress) {
       onProgress("Lecture de la photo...", 10);
 
-      const base64 = await new Promise((res, rej) => {
+      // Lire photo véhicule en base64
+      const imageBase64 = await new Promise((res, rej) => {
         const reader = new FileReader();
         reader.onload = e => res(e.target.result.split(",")[1]);
         reader.onerror = rej;
         reader.readAsDataURL(file);
       });
 
-      onProgress("Envoi à Gemini 2.0...", 25);
+      onProgress("Chargement du fond showroom...", 20);
+
+      // Charger le fond showroom
+      const bgBase64 = await loadBgBase64();
+
+      onProgress("Envoi à Gemini 2.0...", 35);
 
       const apiRes = await fetch("/api/partner-gemini-compose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageBase64: base64,
+          imageBase64,
+          bgBase64,
           mimeType: file.type || "image/jpeg",
         }),
       });
 
       if (!apiRes.ok) throw new Error("Erreur API " + apiRes.status);
 
-      onProgress("Génération de l'image composite...", 60);
+      onProgress("Gemini compose l'image...", 65);
 
       const data = await apiRes.json();
 
