@@ -113,7 +113,7 @@
       return URL.createObjectURL(blob); // PNG transparent
     }
 
-    async function detectPlateGemini(file) {
+    async function analyzeWithGemini(file) {
       const base64 = await new Promise((res, rej) => {
         const reader = new FileReader();
         reader.onload = e => res(e.target.result.split(",")[1]);
@@ -124,13 +124,18 @@
       const apiRes = await fetch("/api/partner-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // On envoie seulement un extrait réduit pour la détection plaque
-        body: JSON.stringify({ imageBase64: base64.slice(0, 800000), mimeType: file.type || "image/jpeg" }),
+        body: JSON.stringify({
+          imageBase64: base64.slice(0, 800000),
+          mimeType: file.type || "image/jpeg"
+        }),
       });
 
-      if (!apiRes.ok) return null;
+      if (!apiRes.ok) return { plateBox: null, carPlacement: null };
       const data = await apiRes.json();
-      return data.plateBox || null;
+      return {
+        plateBox: data.plateBox || null,
+        carPlacement: data.carPlacement || null,
+      };
     }
 
     async function processPartnerImage(file, onProgress) {
@@ -157,14 +162,17 @@
             carImg.src = carImgSrc;
           });
 
-          onProgress("Détection de la plaque...", 55);
+          onProgress("Analyse Gemini (plaque + positionnement)...", 55);
 
-          // 3. Détecter la plaque (on envoie l'original pour analyse)
+          // 3. Gemini analyse la photo : plaque + position optimale dans le fond
           let plateBox = null;
+          let carPlacement = null;
           try {
-            plateBox = await detectPlateGemini(file);
+            const result = await analyzeWithGemini(file);
+            plateBox = result.plateBox;
+            carPlacement = result.carPlacement;
           } catch(e) {
-            console.warn("Gemini plaque échoué:", e);
+            console.warn("Gemini analyse échoué:", e);
           }
 
           onProgress("Composition du fond AutoEasy...", 70);
@@ -188,12 +196,17 @@
           drawBackground(canvas);
 
           // 6. Poser la voiture découpée sur le fond
-          // Le sol du showroom commence à ~62% de la hauteur du canvas
-          // On positionne la voiture centrée horizontalement, posée sur le sol
-          const solY = Math.round(768 * 0.62);
-          const carW = 1024 * 0.72;
+          // Gemini nous dit où est le sol dans le fond showroom
+          // carPlacement.solRatio = position Y du sol en % (0-1)
+          // carPlacement.scaleRatio = taille relative de la voiture (0-1)
+          const solRatio = carPlacement?.solRatio || 0.58;
+          const scaleRatio = carPlacement?.scaleRatio || 0.70;
+          const offsetXRatio = carPlacement?.offsetXRatio || 0.02;
+
+          const solY = Math.round(768 * solRatio);
+          const carW = 1024 * scaleRatio;
           const carH = (carImg.height / carImg.width) * carW;
-          const carX = (1024 - carW) / 2 + 40; // légèrement décalé droite pour perspective
+          const carX = (1024 - carW) / 2 + (1024 * offsetXRatio);
           const carY = solY - carH; // posée pile sur le sol
 
           // Ombre portée elliptique sous la voiture
