@@ -142,58 +142,87 @@
       };
     }
 
-    // ── Pipeline Cloudinary ───────────────────────────────────────
+    // ── Pipeline Cloudinary direct depuis le frontend ────────────
+    const CLD_CLOUD = "di3xa7ldg";
+    const CLD_UPLOAD_PRESET = "autoeasy_unsigned"; // preset non-signé à créer
+
     async function processPartnerImage(file, onProgress) {
-      onProgress("Lecture de la photo...", 10);
+      onProgress("Upload vers Cloudinary...", 15);
 
-      const imageBase64 = await new Promise((res, rej) => {
+      // 1. Upload direct depuis le frontend (unsigned upload preset)
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", CLD_UPLOAD_PRESET);
+      formData.append("folder", "autoeasy_studio");
+
+      const uploadRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLD_CLOUD}/image/upload`,
+        { method: "POST", body: formData }
+      );
+
+      if (!uploadRes.ok) {
+        const err = await uploadRes.text();
+        throw new Error("Upload Cloudinary échoué: " + err);
+      }
+
+      const uploadData = await uploadRes.json();
+      console.log("Uploaded:", uploadData.public_id);
+      const publicId = uploadData.public_id;
+
+      onProgress("Suppression du fond...", 40);
+
+      // 2. Construire l URL de transformation Cloudinary
+      // On utilise l URL delivery avec transformations chaînées :
+      // - e_background_removal : supprime le fond de la voiture
+      // - u_autoeasy-bg : underlay = fond showroom
+      // - positionnement sur le sol du showroom
+      // - ombre portée
+      const encodedPublicId = publicId.replace(/\//g, ":");
+
+      // Attendre que le background removal soit prêt (Cloudinary le fait en async)
+      onProgress("Composition sur le fond AutoEasy...", 65);
+
+      const transformUrl =
+        `https://res.cloudinary.com/${CLD_CLOUD}/image/upload/` +
+        `e_background_removal/` +
+        `c_fit,w_820,h_520/` +
+        `e_shadow:40,x_4,y_12/` +
+        `u_autoeasy-bg,w_1024,h_768,c_fill,fl_layer_apply/` +
+        `fl_layer_apply,g_south,y_30/` +
+        `c_fill,w_1024,h_768,f_jpg,q_92/` +
+        `${encodedPublicId}`;
+
+      console.log("Transform URL:", transformUrl);
+
+      onProgress("Récupération de l image finale...", 80);
+
+      // 3. Fetch avec retry (background removal peut prendre quelques secondes)
+      let imgBlob = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        if (attempt > 0) {
+          await new Promise(r => setTimeout(r, 3000)); // attendre 3s entre les tentatives
+          onProgress(`Traitement IA en cours... (${attempt+1}/5)`, 80 + attempt * 3);
+        }
+        const imgRes = await fetch(transformUrl);
+        if (imgRes.ok && imgRes.headers.get("content-type")?.includes("image")) {
+          imgBlob = await imgRes.blob();
+          break;
+        }
+        console.log("Attempt", attempt + 1, "status:", imgRes.status);
+      }
+
+      if (!imgBlob) throw new Error("Image non disponible après plusieurs tentatives");
+
+      onProgress("Export JPG final...", 95);
+
+      const dataUrl = await new Promise(r => {
         const reader = new FileReader();
-        reader.onload = e => res(e.target.result.split(",")[1]);
-        reader.onerror = rej;
-        reader.readAsDataURL(file);
+        reader.onload = e => r(e.target.result);
+        reader.readAsDataURL(imgBlob);
       });
 
-      onProgress("Upload vers Cloudinary...", 25);
-
-      const apiRes = await fetch("/api/partner-cloudinary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageBase64,
-          mimeType: file.type || "image/jpeg",
-        }),
-      });
-
-      if (!apiRes.ok) throw new Error("Erreur API " + apiRes.status);
-
-      onProgress("Suppression du fond + composition showroom...", 55);
-
-      const data = await apiRes.json();
-
-      if (!data.success) throw new Error(data.error || "Cloudinary failed");
-
-      onProgress("Finalisation de l image...", 85);
-
-      // Si on a le base64 directement
-      if (data.imageBase64) {
-        onProgress("Terminé !", 100);
-        return { dataUrl: `data:${data.mimeType};base64,${data.imageBase64}` };
-      }
-
-      // Sinon charger depuis l URL
-      if (data.url) {
-        const imgRes = await fetch(data.url);
-        const blob = await imgRes.blob();
-        const dataUrl = await new Promise(r => {
-          const reader = new FileReader();
-          reader.onload = e => r(e.target.result);
-          reader.readAsDataURL(blob);
-        });
-        onProgress("Terminé !", 100);
-        return { dataUrl };
-      }
-
-      throw new Error("Pas d image retournée");
+      onProgress("Terminé !", 100);
+      return { dataUrl };
     }
 
         // ── Page Connexion ────────────────────────────────────────────
