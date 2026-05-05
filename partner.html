@@ -196,38 +196,74 @@
           drawBackground(canvas);
 
           // 6. Positionner la voiture sur le fond showroom
-          // Sol du showroom AutoEasy fixé à 495px (64.5% de 768)
-          // Valeur mesurée précisément sur l'image autoeasy-bg.jpg
-          const SOL_PX = 495; // pixels Y où commence le sol damier
-          const carW = 820;   // largeur fixe pour une belle proportion
-          const carH = (carImg.height / carImg.width) * carW;
-          const carX = (1024 - carW) / 2 + 20; // centré légèrement à droite
-          const carY = SOL_PX - carH;           // roues posées sur le sol
+          // Sol mesuré précisément sur autoeasy-bg.jpg : y=490px sur canvas 768px
+          const SOL_PX = 490;
+          const carW = 800;
 
-          // Ombre portée elliptique sous les roues
+          // Détecter le bas réel des roues dans le PNG transparent
+          // remove.bg laisse souvent du padding transparent en bas
+          const tmpCanvas = document.createElement("canvas");
+          tmpCanvas.width = carImg.width;
+          tmpCanvas.height = carImg.height;
+          const tmpCtx = tmpCanvas.getContext("2d");
+          tmpCtx.drawImage(carImg, 0, 0);
+          const imgData = tmpCtx.getImageData(0, 0, carImg.width, carImg.height);
+          const pixels = imgData.data;
+
+          // Trouver la dernière ligne avec des pixels non-transparents
+          let lastVisibleRow = 0;
+          for (let y = carImg.height - 1; y >= 0; y--) {
+            let hasPixel = false;
+            for (let x = 0; x < carImg.width; x++) {
+              const alpha = pixels[(y * carImg.width + x) * 4 + 3];
+              if (alpha > 30) { hasPixel = true; break; }
+            }
+            if (hasPixel) { lastVisibleRow = y; break; }
+          }
+
+          // Trouver la première ligne avec des pixels non-transparents (haut)
+          let firstVisibleRow = 0;
+          for (let y = 0; y < carImg.height; y++) {
+            let hasPixel = false;
+            for (let x = 0; x < carImg.width; x++) {
+              const alpha = pixels[(y * carImg.width + x) * 4 + 3];
+              if (alpha > 30) { hasPixel = true; break; }
+            }
+            if (hasPixel) { firstVisibleRow = y; break; }
+          }
+
+          // Hauteur réelle de la voiture (sans padding transparent)
+          const visibleHeight = lastVisibleRow - firstVisibleRow;
+          const scaleRatio = carW / carImg.width;
+          const carH = visibleHeight * scaleRatio;
+          const carX = (1024 - carW) / 2 + 20;
+          // On positionne en tenant compte du padding haut
+          const carY = SOL_PX - carH - (firstVisibleRow * scaleRatio);
+
+          // Ombre portée elliptique juste sous les roues
           ctx.save();
-          ctx.globalAlpha = 0.55;
-          ctx.filter = "blur(22px)";
+          ctx.globalAlpha = 0.60;
+          ctx.filter = "blur(20px)";
           ctx.fillStyle = "#000000";
           ctx.beginPath();
           ctx.ellipse(
             carX + carW * 0.48,
-            SOL_PX + 8,
-            carW * 0.34,
-            14,
+            SOL_PX + 4,
+            carW * 0.36,
+            12,
             0, 0, Math.PI * 2
           );
           ctx.fill();
           ctx.restore();
 
-          // Reflet brillant sur le sol damier
+          // Reflet sur sol brillant
           ctx.save();
-          ctx.globalAlpha = 0.13;
-          ctx.filter = "blur(4px)";
+          ctx.globalAlpha = 0.12;
+          ctx.filter = "blur(5px)";
           ctx.translate(carX + carW / 2, SOL_PX);
-          ctx.scale(1, -0.18);
+          ctx.scale(1, -0.15);
           ctx.translate(-(carX + carW / 2), -SOL_PX);
-          ctx.drawImage(carImg, carX, carY, carW, carH);
+          ctx.drawImage(carImg, carX, carY, carW, carImg.height * (carW / carImg.width));
           ctx.restore();
 
           // Voiture découpée
