@@ -266,33 +266,34 @@
       const carLayer = `l_${cid},e_background_removal,c_fit,w_${targetW}`;
       const carApply = `fl_layer_apply,g_south,y_20`;
 
-      // Cache plaque précis via coordonnées Gemini
-      // Gemini retourne des coords normalisées (0-1) sur l'IMAGE ORIGINALE entière
-      // On mappe ces coords sur le canvas en tenant compte du redimensionnement et du placement
+      // Cache plaque via g_south comme ancre (cohérent avec le placement de la voiture)
+      // Gemini donne des coords normalisées (0-1) sur l'IMAGE ORIGINALE
+      // La voiture est placée g_south,y_20 → on utilise g_south pour la plaque aussi
       let plateLayer = "";
       if (plateBox) {
-        const scaleRatio = targetW / imgW;          // ratio largeur
-        const scaledH    = imgH * scaleRatio;       // hauteur image après scale
-        const carLeft    = (CANVAS_W - targetW) / 2; // x du bord gauche voiture dans canvas
-        const carTop     = CANVAS_H - 20 - scaledH;  // y du bord haut voiture dans canvas (g_south,y_20)
+        const scaleRatio = targetW / imgW;     // ratio de redimensionnement
+        const scaledH    = imgH * scaleRatio;  // hauteur finale de la voiture
 
-        // Centre de la plaque dans le canvas
-        const plateCX = carLeft + plateBox.x_center * targetW;
-        const plateCY = carTop  + plateBox.y_center * scaledH;
+        // Taille de la plaque
+        const plateW = Math.max(60, Math.round(plateBox.width  * targetW));
+        const plateH = Math.max(16, Math.round(plateBox.height * scaledH));
+        const fs     = Math.max(10, Math.round(plateH * 0.55));
 
-        // Taille de la plaque (sans padding excessif — juste +6px)
-        const plateW = Math.max(60, plateBox.width  * targetW + 6);
-        const plateH = Math.max(16, plateBox.height * scaledH + 4);
+        // Offset X : depuis le centre du canvas (g_south est centré par défaut)
+        const offsetX = Math.round((plateBox.x_center - 0.5) * targetW);
 
-        // Coin haut-gauche pour Cloudinary g_north_west
-        const pX = Math.max(0, Math.round(plateCX - plateW / 2));
-        const pY = Math.max(0, Math.round(plateCY - plateH / 2));
+        // Offset Y depuis le bas du canvas (g_south) :
+        // distance entre le bas de l'image et le centre de la plaque
+        const distFromBottom = (1.0 - plateBox.y_center) * scaledH;
+        // Y = y_anchor + distFromBottom - demi-hauteur plaque
+        const offsetY = Math.round(20 + distFromBottom - plateH / 2);
 
-        // Taille de police proportionnelle à la hauteur de la plaque
-        const fs = Math.max(10, Math.round(plateH * 0.55));
+        console.log("Plate g_south:", { plateW, plateH, offsetX, offsetY, scaleRatio: scaleRatio.toFixed(3), scaledH: Math.round(scaledH) });
 
-        console.log("Plate:", { plateCX: Math.round(plateCX), plateCY: Math.round(plateCY), plateW: Math.round(plateW), plateH: Math.round(plateH), pX, pY, fs });
-        plateLayer = `l_text:Arial_${fs}_bold:AUTOEASY,co_white,b_rgb:1a1a2e,w_${Math.round(plateW)},h_${Math.round(plateH)},c_fit/fl_layer_apply,g_north_west,x_${pX},y_${pY}/`;
+        plateLayer =
+          `l_text:Arial_${fs}_bold:AUTOEASY,co_white,b_rgb:1a1a2e,` +
+          `w_${plateW},h_${plateH},c_fit/` +
+          `fl_layer_apply,g_south,x_${offsetX},y_${offsetY}/`;
       }
 
       // 4. URL finale
