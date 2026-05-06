@@ -212,11 +212,12 @@
       const data = await apiRes.json();
       console.log("Gemini analysis:", data);
       if (!data.success) {
-        console.error("=== GEMINI RAW RESPONSE ===");
+        console.error("=== GEMINI ANALYSE ÉCHOUÉE ===");
+        console.error("error:", data.error);
         console.error("rawText:", data.rawText || "(vide)");
-        console.error("=== OBJET GOOGLE COMPLET ===");
-        console.log("=== OBJET GOOGLE COMPLET ===", data.googleData);
-        console.error("=== END GEMINI RESPONSE ===");
+        console.error("finishReason:", data.finishReason || "(absent)");
+        console.log("googleData COMPLET:", JSON.parse(JSON.stringify(data.googleData || {})));
+        console.error("=== FIN DEBUG GEMINI ===");
         throw new Error(data.error || "Analyse échouée");
       }
       return data;

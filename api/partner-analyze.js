@@ -60,21 +60,34 @@ async function callGemini(imageBase64, mimeType, apiKey) {
             console.error(`[${model}] JSON parse error:`, rawText.slice(0, 500));
             break;
           }
+
+          // LOG MASSIF — visible dans les logs Vercel
+          console.log("=== RAW GOOGLE DATA ===");
+          console.log(JSON.stringify(data, null, 2));
+          console.log("=== END RAW GOOGLE DATA ===");
+
           const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
           const finishReason = data.candidates?.[0]?.finishReason || "unknown";
-          console.log(`[${model}] SUCCESS attempt ${attempt + 1}. raw.length=${raw.length}, finishReason=${finishReason}`);
-          if (!raw) {
-            console.error(`[${model}] EMPTY RESPONSE — FULL API RESPONSE:`);
-            console.error(JSON.stringify(data, null, 2));
-          }
+          const safetyRatings = JSON.stringify(data.candidates?.[0]?.safetyRatings || []);
+          console.log(`[${model}] raw.length=${raw.length}, finishReason=${finishReason}`);
+          console.log(`[${model}] safetyRatings=${safetyRatings}`);
+
           // Nettoyage : retirer balises markdown éventuelles
           const cleaned = raw.replace(/```json|```/gi, "").trim();
           const s = cleaned.indexOf("{"), e = cleaned.lastIndexOf("}");
           if (s !== -1 && e !== -1) {
             return { success: true, parsed: JSON.parse(cleaned.slice(s, e + 1)), model };
           }
-          console.error(`[${model}] No JSON found. raw="${raw}". Returning full googleData.`);
-          return { success: false, error: "No JSON in response", rawText: raw, googleData: data };
+
+          console.error(`[${model}] No JSON found. raw="${raw}"`);
+          // Retourner l'objet complet Google pour debug frontend
+          return {
+            success: false,
+            error: "No JSON in response",
+            rawText: raw,
+            finishReason,
+            googleData: data,
+          };
         }
 
         // ===== ERREUR BRUTE COMPLÈTE =====
