@@ -234,7 +234,13 @@
 
       // Layer voiture : crop + background removal + resize
       const carLayer = `l_${cid}/${cropStep}e_background_removal,c_fit,w_${targetW},h_${carH}`;
-      const carApply = `fl_layer_apply,g_north_west,x_${Math.round((CANVAS_W-targetW)/2)},y_${carTopY}`;
+      // Positionnement :
+      // - Gemini OK → placement précis nord-ouest avec coordonnées calculées
+      // - Fallback → centré horizontalement, ancré au sol (g_south, y=30 = juste sur le damier)
+      const carX = Math.round((CANVAS_W - targetW) / 2);
+      const carApply = carBox
+        ? `fl_layer_apply,g_north_west,x_${carX},y_${carTopY}`
+        : `fl_layer_apply,g_south,x_0,y_30`;
 
       // Cache plaque
       let plateLayer = "";
