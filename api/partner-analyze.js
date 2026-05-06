@@ -39,6 +39,12 @@ async function callGemini(imageBase64, mimeType, apiKey) {
               maxOutputTokens: 512,
               responseMimeType: "application/json",
             },
+            safetySettings: [
+              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_HATE_SPEECH",       threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+            ],
           }),
         });
 
@@ -53,6 +59,8 @@ async function callGemini(imageBase64, mimeType, apiKey) {
           }
           const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
           console.log(`[${model}] SUCCESS (attempt ${attempt + 1}). Response:`, raw.slice(0, 300));
+          // Log complet pour debug
+          console.log(`[${model}] FULL RESPONSE:`, JSON.stringify(data).slice(0, 800));
           // Nettoyage : retirer balises markdown éventuelles
           const cleaned = raw.replace(/```json|```/gi, "").trim();
           const s = cleaned.indexOf("{"), e = cleaned.lastIndexOf("}");
@@ -60,7 +68,7 @@ async function callGemini(imageBase64, mimeType, apiKey) {
             return { success: true, parsed: JSON.parse(cleaned.slice(s, e + 1)), model };
           }
           console.error(`[${model}] No JSON found in response:`, raw);
-          return { success: false, error: "No JSON in response" };
+          return { success: false, error: "No JSON in response", rawText: raw };
         }
 
         // ===== ERREUR BRUTE COMPLÈTE =====
