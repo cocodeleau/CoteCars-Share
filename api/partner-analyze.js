@@ -127,7 +127,8 @@ module.exports = async function handler(req, res) {
   try {
     const result = await callGemini(imageBase64, mimeType, GEMINI_KEY);
     if (!result.success) {
-      return res.status(200).json({ success: false, error: result.error });
+      // Envoyer TOUT le result (incluant googleData, finishReason, etc.)
+      return res.status(200).json(result);
     }
     return res.status(200).json({ success: true, ...result.parsed, model: result.model });
   } catch (err) {
