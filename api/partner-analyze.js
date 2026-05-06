@@ -7,6 +7,9 @@ const BASE_DELAY_MS = 2000;
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function callGemini(imageBase64, mimeType, apiKey) {
+  // Nettoyer le préfixe base64 si présent (canvas.toDataURL inclut "data:image/...;base64,")
+  const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+
   const prompt = `Analyse cette photo de voiture et retourne UNIQUEMENT un JSON valide. Ne génère aucun texte avant ou après, pas de balises markdown. Je veux les coordonnées en pourcentages (de 0.0 à 1.0) par rapport à la taille de l'image. Structure attendue : { "car_box": { "x_center": float, "y_center": float, "width": float, "height": float }, "license_plate": { "x_center": float, "y_center": float, "width": float, "height": float } }`;
 
   const MODELS = [
@@ -31,7 +34,7 @@ async function callGemini(imageBase64, mimeType, apiKey) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [
-              { inline_data: { mime_type: mimeType || "image/jpeg", data: imageBase64 } },
+              { inline_data: { mime_type: "image/jpeg", data: cleanBase64 } },
               { text: prompt }
             ]}],
             generationConfig: {
@@ -58,9 +61,12 @@ async function callGemini(imageBase64, mimeType, apiKey) {
             break;
           }
           const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          console.log(`[${model}] SUCCESS (attempt ${attempt + 1}). Response:`, raw.slice(0, 300));
-          // Log complet pour debug
-          console.log(`[${model}] FULL RESPONSE:`, JSON.stringify(data).slice(0, 800));
+          const finishReason = data.candidates?.[0]?.finishReason || "unknown";
+          console.log(`[${model}] SUCCESS attempt ${attempt + 1}. raw.length=${raw.length}, finishReason=${finishReason}`);
+          if (!raw) {
+            console.error(`[${model}] EMPTY RESPONSE — FULL API RESPONSE:`);
+            console.error(JSON.stringify(data, null, 2));
+          }
           // Nettoyage : retirer balises markdown éventuelles
           const cleaned = raw.replace(/```json|```/gi, "").trim();
           const s = cleaned.indexOf("{"), e = cleaned.lastIndexOf("}");
