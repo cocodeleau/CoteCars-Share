@@ -142,88 +142,148 @@
       };
     }
 
-    // ── Pipeline Cloudinary direct depuis le frontend ────────────
+    // ── Pipeline Gemini Vision + Cloudinary ──────────────────────
     const CLD_CLOUD = "di3xa7ldg";
-    const CLD_UPLOAD_PRESET = "autoeasy_unsigned"; // preset non-signé à créer
+    const CLD_UPLOAD_PRESET = "autoeasy_unsigned";
+    const CLD_BG_ID = "autoeasy-bg_tdjz2c";
+    const GEMINI_KEY_VISION = "AIzaSyB5Pxg02pE3-ZeBpjKQdjErta0q4jbmkBk";
+    const SHOWROOM_FLOOR_Y = 476; // sol du showroom à 62% de 768px
+    const CANVAS_W = 1024;
+    const CANVAS_H = 768;
+
+    async function analyzeCarWithGemini(file) {
+      const base64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = e => res(e.target.result.split(",")[1]);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+
+      const prompt = `Analyse cette photo de voiture et retourne UNIQUEMENT un JSON valide. Ne génère aucun texte avant ou après, pas de balises markdown. Je veux les coordonnées en pourcentages (de 0.0 à 1.0) par rapport à la taille de l'image. Structure attendue : { "car_box": { "x_center": float, "y_center": float, "width": float, "height": float }, "license_plate": { "x_center": float, "y_center": float, "width": float, "height": float } }`;
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY_VISION}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [
+              { inline_data: { mime_type: file.type || "image/jpeg", data: base64 } },
+              { text: prompt }
+            ]}],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 512 },
+          }),
+        }
+      );
+      const data = await res.json();
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      console.log("Gemini raw:", raw);
+      const s = raw.indexOf("{"), e = raw.lastIndexOf("}");
+      if (s === -1 || e === -1) throw new Error("Gemini: pas de JSON valide");
+      return JSON.parse(raw.slice(s, e + 1));
+    }
 
     async function processPartnerImage(file, onProgress) {
-      onProgress("Upload vers Cloudinary...", 15);
+      onProgress("Upload vers Cloudinary...", 10);
 
-      // 1. Upload direct depuis le frontend (unsigned upload preset)
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", CLD_UPLOAD_PRESET);
-      formData.append("folder", "autoeasy_studio");
+      // 1. Upload photo originale
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("upload_preset", CLD_UPLOAD_PRESET);
+      fd.append("folder", "autoeasy_studio");
 
-      const uploadRes = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLD_CLOUD}/image/upload`,
-        { method: "POST", body: formData }
-      );
+      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${CLD_CLOUD}/image/upload`, { method: "POST", body: fd });
+      if (!uploadRes.ok) throw new Error("Upload échoué: " + await uploadRes.text());
 
-      if (!uploadRes.ok) {
-        const err = await uploadRes.text();
-        throw new Error("Upload Cloudinary échoué: " + err);
+      const up = await uploadRes.json();
+      const publicId = up.public_id;
+      const imgW = up.width;
+      const imgH = up.height;
+      console.log("Uploaded:", publicId, imgW+"x"+imgH);
+
+      onProgress("Analyse Gemini Vision...", 30);
+
+      // 2. Analyse Gemini
+      let carBox = null, plateBox = null;
+      try {
+        const analysis = await analyzeCarWithGemini(file);
+        carBox = analysis.car_box;
+        plateBox = analysis.license_plate;
+        console.log("Analysis:", JSON.stringify(analysis));
+      } catch(e) { console.warn("Gemini échoué:", e.message); }
+
+      onProgress("Construction URL Cloudinary...", 55);
+
+      // 3. Calcul des transformations
+      const cid = publicId.replace(/\//g, ":");
+      const targetW = Math.round(CANVAS_W * 0.80); // 820px
+
+      let cropStep = "";
+      let carH = 520;
+      let carTopY = SHOWROOM_FLOOR_Y - carH;
+
+      if (carBox) {
+        const cx = Math.round((carBox.x_center - carBox.width/2) * imgW);
+        const cy = Math.round((carBox.y_center - carBox.height/2) * imgH);
+        const cw = Math.round(carBox.width * imgW);
+        const ch = Math.round(carBox.height * imgH);
+        carH = Math.round(targetW * ch / cw);
+        carTopY = SHOWROOM_FLOOR_Y - carH;
+        cropStep = `x_${cx},y_${cy},w_${cw},h_${ch},c_crop/`;
       }
 
-      const uploadData = await uploadRes.json();
-      console.log("Uploaded:", uploadData.public_id);
-      const publicId = uploadData.public_id;
+      // Layer voiture : crop + background removal + resize
+      const carLayer = `l_${cid}/${cropStep}e_background_removal,c_fit,w_${targetW},h_${carH}`;
+      const carApply = `fl_layer_apply,g_north_west,x_${Math.round((CANVAS_W-targetW)/2)},y_${carTopY}`;
 
-      onProgress("Suppression du fond...", 40);
+      // Cache plaque
+      let plateLayer = "";
+      if (plateBox && carBox) {
+        const relPX = (plateBox.x_center - (carBox.x_center - carBox.width/2)) / carBox.width;
+        const relPY = (plateBox.y_center - (carBox.y_center - carBox.height/2)) / carBox.height;
+        const carX = Math.round((CANVAS_W - targetW) / 2);
+        const plateCX = Math.round(carX + relPX * targetW);
+        const plateCY = Math.round(carTopY + relPY * carH);
+        const plateW = Math.max(80, Math.round((plateBox.width / carBox.width) * targetW) + 20);
+        const plateH = Math.max(22, Math.round((plateBox.height / carBox.height) * carH) + 8);
+        const pX = Math.round(plateCX - plateW/2);
+        const pY = Math.round(plateCY - plateH/2);
+        const fs = Math.round(plateH * 0.5);
+        plateLayer = `l_text:Arial_${fs}_bold:AUTOEASY,co_white,b_rgb:1a1a2e,w_${plateW},h_${plateH},c_fit/fl_layer_apply,g_north_west,x_${pX},y_${pY}/`;
+      }
 
-      // 2. Construire l URL de transformation Cloudinary
-      // On utilise l URL delivery avec transformations chaînées :
-      // - e_background_removal : supprime le fond de la voiture
-      // - u_autoeasy-bg : underlay = fond showroom
-      // - positionnement sur le sol du showroom
-      // - ombre portée
-      const encodedPublicId = publicId.replace(/\//g, ":");
-
-      // Attendre que le background removal soit prêt (Cloudinary le fait en async)
-      onProgress("Composition sur le fond AutoEasy...", 65);
-
-      // Syntaxe Cloudinary correcte :
-      // Base = fond showroom (autoeasy-bg)
-      // Overlay = voiture avec background removal
-      const carPublicIdEncoded = publicId.replace(/\//g, ":");
-
-      const transformUrl =
+      // 4. URL finale
+      const url =
         `https://res.cloudinary.com/${CLD_CLOUD}/image/upload/` +
-        `w_1024,h_768,c_fill/` +
-        `l_${carPublicIdEncoded},e_background_removal,c_fit,w_820,h_520,g_south,y_20/` +
-        `fl_layer_apply/` +
+        `w_${CANVAS_W},h_${CANVAS_H},c_fill/` +
+        `${carLayer}/` +
+        `${carApply}/` +
+        `${plateLayer}` +
         `f_jpg,q_92/` +
-        `autoeasy-bg_tdjz2c`;
+        `${CLD_BG_ID}`;
 
-      console.log("Transform URL:", transformUrl);
+      console.log("URL:", url);
+      onProgress("Récupération image finale...", 75);
 
-      onProgress("Récupération de l image finale...", 80);
-
-      // 3. Fetch avec retry (background removal peut prendre quelques secondes)
-      let imgBlob = null;
-      for (let attempt = 0; attempt < 5; attempt++) {
-        if (attempt > 0) {
-          await new Promise(r => setTimeout(r, 3000)); // attendre 3s entre les tentatives
-          onProgress(`Traitement IA en cours... (${attempt+1}/5)`, 80 + attempt * 3);
+      // 5. Fetch avec retry
+      let blob = null;
+      for (let i = 0; i < 6; i++) {
+        if (i > 0) {
+          await new Promise(r => setTimeout(r, 3000));
+          onProgress(`Traitement IA... (${i+1}/6)`, 75 + i*3);
         }
-        const imgRes = await fetch(transformUrl);
-        if (imgRes.ok && imgRes.headers.get("content-type")?.includes("image")) {
-          imgBlob = await imgRes.blob();
-          break;
-        }
-        console.log("Attempt", attempt + 1, "status:", imgRes.status);
+        const r = await fetch(url);
+        if (r.ok && r.headers.get("content-type")?.includes("image")) { blob = await r.blob(); break; }
+        console.log("Attempt", i+1, r.status);
       }
+      if (!blob) throw new Error("Image non disponible après 6 tentatives");
 
-      if (!imgBlob) throw new Error("Image non disponible après plusieurs tentatives");
-
-      onProgress("Export JPG final...", 95);
-
+      onProgress("Export JPG...", 96);
       const dataUrl = await new Promise(r => {
         const reader = new FileReader();
         reader.onload = e => r(e.target.result);
-        reader.readAsDataURL(imgBlob);
+        reader.readAsDataURL(blob);
       });
-
       onProgress("Terminé !", 100);
       return { dataUrl };
     }
