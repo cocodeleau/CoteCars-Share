@@ -39,7 +39,7 @@ async function callGemini(imageBase64, mimeType, apiKey) {
             ]}],
             generationConfig: {
               temperature: 0.1,
-              maxOutputTokens: 512,
+              maxOutputTokens: 4096,
               responseMimeType: "application/json",
             },
             safetySettings: [
