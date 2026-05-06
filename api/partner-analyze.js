@@ -73,8 +73,8 @@ async function callGemini(imageBase64, mimeType, apiKey) {
           if (s !== -1 && e !== -1) {
             return { success: true, parsed: JSON.parse(cleaned.slice(s, e + 1)), model };
           }
-          console.error(`[${model}] No JSON found in response:`, raw);
-          return { success: false, error: "No JSON in response", rawText: raw };
+          console.error(`[${model}] No JSON found. raw="${raw}". Returning full googleData.`);
+          return { success: false, error: "No JSON in response", rawText: raw, googleData: data };
         }
 
         // ===== ERREUR BRUTE COMPLÈTE =====

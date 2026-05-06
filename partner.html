@@ -213,7 +213,9 @@
       console.log("Gemini analysis:", data);
       if (!data.success) {
         console.error("=== GEMINI RAW RESPONSE ===");
-        console.error(data.rawText || "(vide)");
+        console.error("rawText:", data.rawText || "(vide)");
+        console.error("=== OBJET GOOGLE COMPLET ===");
+        console.log("=== OBJET GOOGLE COMPLET ===", data.googleData);
         console.error("=== END GEMINI RESPONSE ===");
         throw new Error(data.error || "Analyse échouée");
       }
