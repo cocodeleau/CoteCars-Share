@@ -258,47 +258,42 @@
       onProgress("Construction URL Cloudinary...", 55);
 
       // 3. Calcul des transformations
+      // Logique simple et robuste : pas de crop, background removal sur image entière
       const cid = publicId.replace(/\//g, ":");
-      const targetW = Math.round(CANVAS_W * 0.80); // 820px
+      const targetW = 850; // largeur fixe voiture dans le canvas
 
-      let cropStep = "";
-      let carH = 520;
-      let carTopY = SHOWROOM_FLOOR_Y - carH;
+      // Layer voiture : background removal + resize, ancré au sol en bas au centre
+      const carLayer = `l_${cid},e_background_removal,c_fit,w_${targetW}`;
+      const carApply = `fl_layer_apply,g_south,y_20`;
 
-      if (carBox) {
-        const cx = Math.round((carBox.x_center - carBox.width/2) * imgW);
-        const cy = Math.round((carBox.y_center - carBox.height/2) * imgH);
-        const cw = Math.round(carBox.width * imgW);
-        const ch = Math.round(carBox.height * imgH);
-        carH = Math.round(targetW * ch / cw);
-        carTopY = SHOWROOM_FLOOR_Y - carH;
-        cropStep = `x_${cx},y_${cy},w_${cw},h_${ch},c_crop/`;
-      }
-
-      // Layer voiture : crop + background removal + resize
-      const carLayer = `l_${cid}/${cropStep}e_background_removal,c_fit,w_${targetW},h_${carH}`;
-      // Positionnement :
-      // - Gemini OK → placement précis nord-ouest avec coordonnées calculées
-      // - Fallback → centré horizontalement, ancré au sol (g_south, y=30 = juste sur le damier)
-      const carX = Math.round((CANVAS_W - targetW) / 2);
-      const carApply = carBox
-        ? `fl_layer_apply,g_north_west,x_${carX},y_${carTopY}`
-        : `fl_layer_apply,g_south,x_0,y_30`;
-
-      // Cache plaque
+      // Cache plaque via coordonnées Gemini
+      // La voiture est placée g_south,y_20 donc son bas est à CANVAS_H - 20 = 748px
+      // La hauteur rendue de la voiture = targetW * (imgH / imgW) mais on ne la connaît pas
+      // On utilise les coordonnées Gemini normalisées sur l'IMAGE ORIGINALE
+      // et on mappe sur le canvas en supposant que la voiture occupe toute la largeur (targetW)
+      // et que son bas est à y = CANVAS_H - 20 = 748
       let plateLayer = "";
-      if (plateBox && carBox) {
-        const relPX = (plateBox.x_center - (carBox.x_center - carBox.width/2)) / carBox.width;
-        const relPY = (plateBox.y_center - (carBox.y_center - carBox.height/2)) / carBox.height;
-        const carX = Math.round((CANVAS_W - targetW) / 2);
-        const plateCX = Math.round(carX + relPX * targetW);
-        const plateCY = Math.round(carTopY + relPY * carH);
-        const plateW = Math.max(80, Math.round((plateBox.width / carBox.width) * targetW) + 20);
-        const plateH = Math.max(22, Math.round((plateBox.height / carBox.height) * carH) + 8);
-        const pX = Math.round(plateCX - plateW/2);
-        const pY = Math.round(plateCY - plateH/2);
-        const fs = Math.round(plateH * 0.5);
-        plateLayer = `l_text:Arial_${fs}_bold:AUTOEASY,co_white,b_rgb:1a1a2e,w_${plateW},h_${plateH},c_fit/fl_layer_apply,g_north_west,x_${pX},y_${pY}/`;
+      if (plateBox) {
+        // Ratio de redimensionnement : image originale → targetW
+        const scaleRatio = targetW / imgW;
+        // Hauteur rendue de l'image entière après scale
+        const scaledH = Math.round(imgH * scaleRatio);
+        // Position Y du haut de la voiture dans le canvas (g_south, y_20)
+        const carTopInCanvas = CANVAS_H - 20 - scaledH;
+        // Décalage X (voiture centrée)
+        const carLeftInCanvas = Math.round((CANVAS_W - targetW) / 2);
+
+        // Coordonnées absolues de la plaque dans le canvas final
+        const plateCX = Math.round(carLeftInCanvas + plateBox.x_center * targetW);
+        const plateCY = Math.round(carTopInCanvas + plateBox.y_center * scaledH);
+        const plateW  = Math.max(80, Math.round(plateBox.width  * targetW) + 16);
+        const plateH  = Math.max(20, Math.round(plateBox.height * scaledH) + 8);
+        const pX = Math.round(plateCX - plateW / 2);
+        const pY = Math.round(plateCY - plateH / 2);
+        const fs = Math.max(12, Math.round(plateH * 0.5));
+
+        console.log("Plate pos:", {plateCX, plateCY, plateW, plateH, pX, pY, scaleRatio, scaledH, carTopInCanvas});
+        plateLayer = `l_text:Arial_${fs}_bold:AUTOEASY,co_white,b_rgb:1a1a2e,w_${plateW},h_${plateH},c_fit/fl_layer_apply,g_north_west,x_${Math.max(0,pX)},y_${Math.max(0,pY)}/`;
       }
 
       // 4. URL finale
