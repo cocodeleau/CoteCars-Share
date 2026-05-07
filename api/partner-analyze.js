@@ -1,138 +1,140 @@
 // api/partner-analyze.js
-// Analyse Gemini Vision : détection car_box + license_plate
-// Retry avec Exponential Backoff sur 503/429
+// Reçoit : POST JSON { image: "data:image/jpeg;base64,..." }
+// Renvoie : JSON { result: "data:image/jpeg;base64,..." , plateDetected: bool }
 
-const MAX_RETRIES = 3;
-const BASE_DELAY_MS = 2000;
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+import FormData from 'form-data';
+import fetch from 'node-fetch';
+import sharp from 'sharp';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-async function callGemini(imageBase64, mimeType, apiKey) {
-  // Nettoyer le préfixe base64 si présent (canvas.toDataURL inclut "data:image/...;base64,")
-  const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-
-  const prompt = `Analyse cette photo de voiture et retourne UNIQUEMENT un JSON valide. Ne génère aucun texte avant ou après, pas de balises markdown. Je veux les coordonnées en pourcentages (de 0.0 à 1.0) par rapport à la taille de l'image. Structure attendue : { "car_box": { "x_center": float, "y_center": float, "width": float, "height": float }, "license_plate": { "x_center": float, "y_center": float, "width": float, "height": float } }`;
-
-  const MODELS = [
-    "gemini-2.5-flash",
-    "gemini-flash-latest",
-  ];
-
-  for (const model of MODELS) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    console.log(`\n========== TRYING MODEL: ${model} ==========`);
-
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      if (attempt > 0) {
-        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
-        console.log(`[${model}] Retry ${attempt}/${MAX_RETRIES - 1} — waiting ${delay}ms...`);
-        await sleep(delay);
-      }
-
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [
-              { inline_data: { mime_type: "image/jpeg", data: cleanBase64 } },
-              { text: prompt }
-            ]}],
-            generationConfig: {
-              temperature: 0.1,
-              maxOutputTokens: 4096,
-              responseMimeType: "application/json",
-            },
-            safetySettings: [
-              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-              { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_NONE" },
-              { category: "HARM_CATEGORY_HATE_SPEECH",       threshold: "BLOCK_NONE" },
-              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-            ],
-          }),
-        });
-
-        // Lire le body UNE seule fois
-        const rawText = await res.text();
-
-        if (res.ok) {
-          let data;
-          try { data = JSON.parse(rawText); } catch(e) {
-            console.error(`[${model}] JSON parse error:`, rawText.slice(0, 500));
-            break;
-          }
-
-          // LOG MASSIF — visible dans les logs Vercel
-          console.log("=== RAW GOOGLE DATA ===");
-          console.log(JSON.stringify(data, null, 2));
-          console.log("=== END RAW GOOGLE DATA ===");
-
-          const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          const finishReason = data.candidates?.[0]?.finishReason || "unknown";
-          const safetyRatings = JSON.stringify(data.candidates?.[0]?.safetyRatings || []);
-          console.log(`[${model}] raw.length=${raw.length}, finishReason=${finishReason}`);
-          console.log(`[${model}] safetyRatings=${safetyRatings}`);
-
-          // Nettoyage : retirer balises markdown éventuelles
-          const cleaned = raw.replace(/```json|```/gi, "").trim();
-          const s = cleaned.indexOf("{"), e = cleaned.lastIndexOf("}");
-          if (s !== -1 && e !== -1) {
-            return { success: true, parsed: JSON.parse(cleaned.slice(s, e + 1)), model };
-          }
-
-          console.error(`[${model}] No JSON found. raw="${raw}"`);
-          // Retourner l'objet complet Google pour debug frontend
-          return {
-            success: false,
-            error: "No JSON in response",
-            rawText: raw,
-            finishReason,
-            googleData: data,
-          };
-        }
-
-        // ===== ERREUR BRUTE COMPLÈTE =====
-        console.error(`\n[${model}] HTTP ${res.status} — FULL ERROR RESPONSE:`);
-        console.error("=== RAW ERROR START ===");
-        console.error(rawText);
-        console.error("=== RAW ERROR END ===\n");
-
-        // 503 surcharge ou 429 quota → retry
-        if (res.status === 503 || res.status === 429) {
-          if (attempt < MAX_RETRIES - 1) continue;
-          break; // passer au modèle suivant
-        }
-
-        // Autre erreur → pas de retry, passer au modèle suivant
-        break;
-
-      } catch (e) {
-        console.error(`[${model}] Fetch exception:`, e.message);
-        break;
-      }
-    }
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
-
-  return { success: false, error: "Tous les modèles ont échoué — voir logs Vercel pour détails" };
-}
-
-module.exports = async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-
-  const { imageBase64, mimeType } = req.body;
-  if (!imageBase64) return res.status(400).json({ error: "Missing imageBase64" });
-
-  const GEMINI_KEY = process.env.GEMINI_API_KEY;
-  console.log("GEMINI_KEY present:", !!GEMINI_KEY, "length:", GEMINI_KEY?.length);
 
   try {
-    const result = await callGemini(imageBase64, mimeType, GEMINI_KEY);
-    if (!result.success) {
-      // Envoyer TOUT le result (incluant googleData, finishReason, etc.)
-      return res.status(200).json(result);
+    // ── 0. Lecture du base64 envoyé par le frontend ──────────────────────
+    const { image } = req.body;
+    if (!image) {
+      return res.status(400).json({ error: 'Champ "image" manquant.' });
     }
-    return res.status(200).json({ success: true, ...result.parsed, model: result.model });
+
+    // Supporte "data:image/jpeg;base64,..." ou base64 brut
+    const base64Data  = image.includes(',') ? image.split(',')[1] : image;
+    const mimeType    = image.includes('data:') ? image.split(';')[0].split(':')[1] : 'image/jpeg';
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+
+    // ── 1. Photoroom — détourage + fond showroom + ombre de contact ───────
+    const photoroomForm = new FormData();
+    photoroomForm.append('imageFile', imageBuffer, {
+      filename: 'car.jpg',
+      contentType: mimeType,
+    });
+    photoroomForm.append('background.color', 'EAEAEA'); // gris clair showroom
+    photoroomForm.append('shadow.mode', 'ai.soft');     // ombre de contact au sol
+    photoroomForm.append('padding', '0.08');            // 8% de marge autour de la voiture
+
+    const prRes = await fetch('https://image-api.photoroom.com/v2/edit', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.PHOTOROOM_API_KEY,
+        ...photoroomForm.getHeaders(),
+      },
+      body: photoroomForm,
+    });
+
+    if (!prRes.ok) {
+      const errText = await prRes.text();
+      console.error('[Photoroom] Erreur:', prRes.status, errText);
+      return res.status(502).json({ error: 'Erreur Photoroom', detail: errText });
+    }
+
+    const photoroomBuffer = Buffer.from(await prRes.arrayBuffer());
+    console.log('[Photoroom] OK — taille:', photoroomBuffer.length, 'octets');
+
+    // ── 2. Gemini — localisation de la plaque sur l'image Photoroom ───────
+    // On analyse l'image PHOTOROOM (pas l'originale) → coords directement
+    // alignées avec le canvas final, zéro problème de recadrage.
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    const base64PR = photoroomBuffer.toString('base64');
+
+    const prompt = `You are a license plate detector for automotive images.
+Find the license plate in this image.
+Return ONLY a valid JSON object with normalized coordinates (float 0-1, relative to image size):
+{"license_plate": {"x_center": float, "y_center": float, "width": float, "height": float}}
+If no plate is visible, return exactly: {"license_plate": null}
+No explanation, no markdown.`;
+
+    const geminiResult = await model.generateContent({
+      contents: [{
+        role: 'user',
+        parts: [
+          { inlineData: { mimeType: 'image/png', data: base64PR } },
+          { text: prompt },
+        ],
+      }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        maxOutputTokens: 4096,
+      },
+    });
+
+    let plateCoords = null;
+    try {
+      const parsed = JSON.parse(geminiResult.response.text());
+      plateCoords = parsed.license_plate;
+      console.log('[Gemini] Plaque:', plateCoords);
+    } catch (e) {
+      console.warn('[Gemini] Parse error:', e.message);
+    }
+
+    // ── 3. Sharp — incrustation du bandeau AUTOEASY ───────────────────────
+    let finalBuffer;
+
+    if (plateCoords) {
+      const { width: prW, height: prH } = await sharp(photoroomBuffer).metadata();
+
+      // Coordonnées normalisées → pixels
+      const pw = Math.round(plateCoords.width    * prW);
+      const ph = Math.round(plateCoords.height   * prH);
+      const px = Math.round(plateCoords.x_center * prW - pw / 2);
+      const py = Math.round(plateCoords.y_center * prH - ph / 2);
+
+      // Clamping dans les bounds de l'image
+      const sx = Math.max(0, Math.min(px, prW - 1));
+      const sy = Math.max(0, Math.min(py, prH - 1));
+      const sw = Math.min(pw, prW - sx);
+      const sh = Math.min(ph, prH - sy);
+
+      console.log(`[Sharp] Bandeau -> x:${sx} y:${sy} w:${sw} h:${sh}`);
+
+      const fontSize = Math.round(sh * 0.52);
+      const bannerSvg = `<svg width="${sw}" height="${sh}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="${sw}" height="${sh}" fill="#111111" rx="3"/>
+  <text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle"
+    fill="#FFFFFF" font-family="Arial Black, Arial, sans-serif"
+    font-weight="900" font-size="${fontSize}" letter-spacing="1">AUTOEASY</text>
+</svg>`;
+
+      finalBuffer = await sharp(photoroomBuffer)
+        .composite([{ input: Buffer.from(bannerSvg), left: sx, top: sy }])
+        .jpeg({ quality: 92 })
+        .toBuffer();
+    } else {
+      console.warn('[Sharp] Pas de plaque — image Photoroom renvoyee sans bandeau.');
+      finalBuffer = await sharp(photoroomBuffer).jpeg({ quality: 92 }).toBuffer();
+    }
+
+    // ── 4. Réponse JSON avec base64 ───────────────────────────────────────
+    return res.status(200).json({
+      result:        'data:image/jpeg;base64,' + finalBuffer.toString('base64'),
+      plateDetected: !!plateCoords,
+    });
+
   } catch (err) {
-    console.error("partner-analyze EXCEPTION:", err.message, err.stack);
-    return res.status(200).json({ success: false, error: err.message });
+    console.error('[partner-analyze] Erreur:', err);
+    return res.status(500).json({ error: 'Erreur serveur', detail: err.message });
   }
-};
+}

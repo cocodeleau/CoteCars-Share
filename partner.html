@@ -29,8 +29,6 @@
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
     .spinner { width: 20px; height: 20px; border: 2px solid rgba(141,198,63,0.3); border-top-color: #8dc63f; border-radius: 50%; animation: spin 0.8s linear infinite; }
     .fade-in { animation: fadeIn 0.3s ease; }
-    .step-done { background: #8dc63f !important; color: #1a1a2e !important; }
-    .step-active { border: 2px solid #8dc63f !important; color: #8dc63f !important; }
     .photo-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
     .photo-card { transition: transform 0.15s, box-shadow 0.15s; }
     .btn-ae { background: #8dc63f; color: #1a1a2e; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: inherit; }
@@ -67,272 +65,53 @@
       "corentin.millet974@gmail.com",
     ];
 
-    // ── Fond AutoEasy — image réelle générée par IA ──────────────
-    const AE_BG_IMG = new Image();
-    AE_BG_IMG.src = "/autoeasy-bg.jpg";
-    let bgLoaded = false;
-    AE_BG_IMG.onload = () => { bgLoaded = true; };
-
-    function drawBackground(canvas) {
-      const ctx = canvas.getContext("2d");
-      const w = canvas.width;
-      const h = canvas.height;
-
-      if (bgLoaded) {
-        // Utiliser l'image réelle comme fond
-        ctx.drawImage(AE_BG_IMG, 0, 0, w, h);
-      } else {
-        // Fallback si image pas encore chargée
-        ctx.fillStyle = "#2a3142";
-        ctx.fillRect(0, 0, w, h);
-      }
-    }
-
-    // ── Fonction principale de traitement image ───────────────────
-    // remove.bg appelé directement depuis le frontend (pas de limite 413)
-    const REMOVE_BG_KEY = "d4MqSKLfmAwY3zgsTiiEFVbe";
-
-    async function removeBgDirect(file) {
-      const fd = new FormData();
-      fd.append("image_file", file);
-      fd.append("size", "auto");
-      fd.append("type", "car");
-
-      const res = await fetch("https://api.remove.bg/v1.0/removebg", {
-        method: "POST",
-        headers: { "X-Api-Key": REMOVE_BG_KEY },
-        body: fd,
-      });
-
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error("remove.bg: " + err);
-      }
-
-      const blob = await res.blob();
-      return URL.createObjectURL(blob); // PNG transparent
-    }
-
-    async function analyzeWithGemini(file) {
+    // ── Pipeline principal : Photoroom + Gemini + Sharp ───────────
+    // Reçoit un File, renvoie { dataUrl }
+    async function processPartnerImage(file, onProgress) {
+      // 1. Compression canvas (max 1500px, JPEG 0.8 ≈ 0.5MB)
+      onProgress("Compression de la photo...", 10);
       const base64 = await new Promise((res, rej) => {
-        const reader = new FileReader();
-        reader.onload = e => res(e.target.result.split(",")[1]);
-        reader.onerror = rej;
-        reader.readAsDataURL(file);
-      });
-
-      const apiRes = await fetch("/api/partner-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageBase64: base64.slice(0, 900000),
-          mimeType: file.type || "image/jpeg"
-        }),
-      });
-
-      if (!apiRes.ok) return { plateBox: null, carPlacement: null, carSourceBox: null };
-      const data = await apiRes.json();
-      console.log("Gemini analysis:", data);
-      return {
-        plateBox: data.plateBox || null,
-        carPlacement: data.carPlacement || null,
-        carSourceBox: data.carSourceBox || null,
-        lighting: data.lighting || null,
-        carAngle: data.carAngle || null,
-      };
-    }
-
-    // ── Pipeline Gemini Vision + Cloudinary ──────────────────────
-    const CLD_CLOUD = "di3xa7ldg";
-    const CLD_UPLOAD_PRESET = "autoeasy_unsigned";
-    const CLD_BG_ID = "autoeasy-bg_tdjz2c";
-    const SHOWROOM_FLOOR_Y = 476; // sol du showroom à 62% de 768px
-    const CANVAS_W = 1024;
-    const CANVAS_H = 768;
-
-    // ── Compression image avant upload ───────────────────────────
-    async function compressImage(file, maxDim = 2048, quality = 0.8) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-          // Calculer les nouvelles dimensions
-          let w = img.width, h = img.height;
-          if (w > maxDim || h > maxDim) {
-            const ratio = Math.min(maxDim / w, maxDim / h);
-            w = Math.round(w * ratio);
-            h = Math.round(h * ratio);
-          }
-          const canvas = document.createElement("canvas");
-          canvas.width = w;
-          canvas.height = h;
-          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-          canvas.toBlob(
-            blob => {
-              if (!blob) return reject(new Error("Compression échouée"));
-              console.log(`Compressed: ${(file.size/1024/1024).toFixed(1)}MB → ${(blob.size/1024/1024).toFixed(1)}MB (${w}x${h})`);
-              resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }));
-            },
-            "image/jpeg",
-            quality
-          );
-          URL.revokeObjectURL(img.src);
-        };
-        img.onerror = reject;
-        img.src = URL.createObjectURL(file);
-      });
-    }
-
-        async function analyzeCarWithGemini(file) {
-      // Compresser l image avant envoi pour rester sous la limite Vercel
-      const compressedBase64 = await new Promise((res, rej) => {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement("canvas");
-          const maxDim = 1024;
-          const scale = Math.min(maxDim/img.width, maxDim/img.height, 1);
-          canvas.width = Math.round(img.width * scale);
+          const maxDim = 1500;
+          const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+          canvas.width  = Math.round(img.width  * scale);
           canvas.height = Math.round(img.height * scale);
           canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-          res(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
+          res(canvas.toDataURL("image/jpeg", 0.8));
         };
         img.onerror = rej;
         img.src = URL.createObjectURL(file);
       });
 
-      const apiRes = await fetch("/api/partner-analyze", {
+      // 2. Envoi au backend Vercel
+      onProgress("Détourage Photoroom...", 30);
+      const response = await fetch("/api/partner-analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageBase64: compressedBase64,
-          mimeType: "image/jpeg",
-        }),
+        body: JSON.stringify({ image: base64 }),
       });
 
-      if (!apiRes.ok) throw new Error("API analyze error " + apiRes.status);
-      const data = await apiRes.json();
-      console.log("Gemini analysis:", data);
-      if (!data.success) {
-        console.error("=== GEMINI ANALYSE ÉCHOUÉE ===");
-        console.error("error:", data.error);
-        console.error("rawText:", data.rawText || "(vide)");
-        console.error("finishReason:", data.finishReason || "(absent)");
-        console.log("googleData COMPLET:", JSON.parse(JSON.stringify(data.googleData || {})));
-        console.error("=== FIN DEBUG GEMINI ===");
-        throw new Error(data.error || "Analyse échouée");
-      }
-      return data;
-    }
-
-    async function processPartnerImage(file, onProgress) {
-      onProgress("Upload vers Cloudinary...", 10);
-
-      // 1. Compresser l image (max 2048px, JPEG 0.8) puis upload
-      onProgress("Compression de la photo...", 8);
-      const compressedFile = await compressImage(file, 2048, 0.8);
-
-      const fd = new FormData();
-      fd.append("file", compressedFile);
-      fd.append("upload_preset", CLD_UPLOAD_PRESET);
-      fd.append("folder", "autoeasy_studio");
-
-      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${CLD_CLOUD}/image/upload`, { method: "POST", body: fd });
-      if (!uploadRes.ok) throw new Error("Upload échoué: " + await uploadRes.text());
-
-      const up = await uploadRes.json();
-      const publicId = up.public_id;
-      const imgW = up.width;
-      const imgH = up.height;
-      console.log("Uploaded:", publicId, imgW+"x"+imgH);
-
-      onProgress("Analyse Gemini Vision...", 30);
-
-      // 2. Analyse Gemini
-      let carBox = null, plateBox = null;
-      try {
-        const analysis = await analyzeCarWithGemini(compressedFile);
-        carBox = analysis.car_box;
-        plateBox = analysis.license_plate;
-        console.log("Analysis:", JSON.stringify(analysis));
-      } catch(e) { console.warn("Gemini échoué:", e.message); }
-
-      onProgress("Construction URL Cloudinary...", 55);
-
-      // 3. Calcul des transformations
-      // Logique simple et robuste : pas de crop, background removal sur image entière
-      const cid = publicId.replace(/\//g, ":");
-      const targetW = 850; // largeur fixe voiture dans le canvas
-
-      // Layer voiture : background removal + resize, ancré au sol en bas au centre
-      const carLayer = `l_${cid},e_background_removal,c_fit,w_${targetW}`;
-      const carApply = `fl_layer_apply,g_south,y_20`;
-
-      // Cache plaque via g_south comme ancre (cohérent avec le placement de la voiture)
-      // Gemini donne des coords normalisées (0-1) sur l'IMAGE ORIGINALE
-      // La voiture est placée g_south,y_20 → on utilise g_south pour la plaque aussi
-      let plateLayer = "";
-      if (plateBox) {
-        const scaleRatio = targetW / imgW;     // ratio de redimensionnement
-        const scaledH    = imgH * scaleRatio;  // hauteur finale de la voiture
-
-        // Taille de la plaque
-        const plateW = Math.max(60, Math.round(plateBox.width  * targetW));
-        const plateH = Math.max(16, Math.round(plateBox.height * scaledH));
-        const fs     = Math.max(10, Math.round(plateH * 0.55));
-
-        // Offset X : depuis le centre du canvas (g_south est centré par défaut)
-        const offsetX = Math.round((plateBox.x_center - 0.5) * targetW);
-
-        // Offset Y depuis le bas du canvas (g_south) :
-        // distance entre le bas de l'image et le centre de la plaque
-        const distFromBottom = (1.0 - plateBox.y_center) * scaledH;
-        // Y = y_anchor + distFromBottom - demi-hauteur plaque
-        const offsetY = Math.round(20 + distFromBottom - plateH / 2);
-
-        console.log("Plate g_south:", { plateW, plateH, offsetX, offsetY, scaleRatio: scaleRatio.toFixed(3), scaledH: Math.round(scaledH) });
-
-        plateLayer =
-          `l_text:Arial_${fs}_bold:AUTOEASY,co_white,b_rgb:1a1a2e,` +
-          `w_${plateW},h_${plateH},c_fit/` +
-          `fl_layer_apply,g_south,x_${offsetX},y_${offsetY}/`;
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Erreur serveur (" + response.status + ")");
       }
 
-      // 4. URL finale
-      const url =
-        `https://res.cloudinary.com/${CLD_CLOUD}/image/upload/` +
-        `w_${CANVAS_W},h_${CANVAS_H},c_fill/` +
-        `${carLayer}/` +
-        `${carApply}/` +
-        `${plateLayer}` +
-        `f_jpg,q_92/` +
-        `${CLD_BG_ID}`;
+      // 3. Récupération du résultat
+      onProgress("Détection plaque & bandeau AUTOEASY...", 70);
+      const data = await response.json();
+      if (!data.result) throw new Error("Aucun résultat reçu du serveur.");
 
-      console.log("URL:", url);
-      onProgress("Récupération image finale...", 75);
-
-      // 5. Fetch avec retry
-      let blob = null;
-      for (let i = 0; i < 6; i++) {
-        if (i > 0) {
-          await new Promise(r => setTimeout(r, 3000));
-          onProgress(`Traitement IA... (${i+1}/6)`, 75 + i*3);
-        }
-        const r = await fetch(url);
-        if (r.ok && r.headers.get("content-type")?.includes("image")) { blob = await r.blob(); break; }
-        console.log("Attempt", i+1, r.status);
+      if (!data.plateDetected) {
+        console.warn("Aucune plaque détectée — image retournée sans bandeau.");
       }
-      if (!blob) throw new Error("Image non disponible après 6 tentatives");
 
-      onProgress("Export JPG...", 96);
-      const dataUrl = await new Promise(r => {
-        const reader = new FileReader();
-        reader.onload = e => r(e.target.result);
-        reader.readAsDataURL(blob);
-      });
       onProgress("Terminé !", 100);
-      return { dataUrl };
+      return { dataUrl: data.result };
     }
 
-        // ── Page Connexion ────────────────────────────────────────────
+    // ── Page Connexion ────────────────────────────────────────────
     function LoginPage({ onLogin }) {
       const [email, setEmail] = useState("");
       const [password, setPassword] = useState("");
@@ -404,10 +183,10 @@
 
             <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:8 }}>
               {[
-                "Détection automatique des plaques via IA",
-                "Fond AutoEasy standardisé",
-                "Export JPG 1024×768 Leboncoin",
-                "Historique par commercial",
+                "Détourage professionnel via Photoroom",
+                "Fond showroom avec ombre au sol réaliste",
+                "Bandeau AUTOEASY sur la plaque (IA)",
+                "Export JPG Leboncoin ready",
               ].map((item, i) => (
                 <div key={i} style={{ display:"flex", alignItems:"center", gap:10, fontSize:13, color:"rgba(255,255,255,0.65)" }}>
                   <div style={{ width:7, height:7, borderRadius:"50%", background:"#8dc63f", flexShrink:0 }} />
@@ -488,11 +267,9 @@
 
       async function downloadSession(sess) {
         if (!sess.photos?.length) return;
-        // Télécharger chaque photo
         for (let i = 0; i < sess.photos.length; i++) {
-          const url = sess.photos[i];
           const a = document.createElement("a");
-          a.href = url;
+          a.href = sess.photos[i];
           a.download = `${sess.vehicleName?.replace(/\s/g,"_") || "vehicule"}_photo_${i+1}.jpg`;
           a.target = "_blank";
           document.body.appendChild(a);
@@ -504,7 +281,6 @@
 
       return (
         <div style={{ minHeight:"100vh", background:"#f5f5f7", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
-          {/* Navbar */}
           <div style={{ background:"#1a1a2e", borderBottom:"2px solid #8dc63f", padding:"0 28px", height:52, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:14 }}>
               <div style={{ width:28, height:28, borderRadius:7, background:"#8dc63f", display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -530,7 +306,6 @@
           </div>
 
           <div style={{ padding:"24px 28px", maxWidth:1200, margin:"0 auto" }}>
-            {/* Stats */}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:20 }}>
               {[
                 { label:"Véhicules traités", value: sessions.length, sub:"Total" },
@@ -545,7 +320,6 @@
               ))}
             </div>
 
-            {/* Historique */}
             <div style={{ background:"white", borderRadius:14, border:"0.5px solid #e2e8f0", overflow:"hidden" }}>
               <div style={{ padding:"14px 18px", borderBottom:"0.5px solid #e2e8f0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <span style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em" }}>Historique des sessions</span>
@@ -604,10 +378,10 @@
 
     // ── Studio Photo ──────────────────────────────────────────────
     function Studio({ user, onBack }) {
-      const [step, setStep] = useState(1); // 1=upload, 2=processing, 3=export
+      const [step, setStep] = useState(1);
       const [files, setFiles] = useState([]);
       const [vehicleName, setVehicleName] = useState("");
-      const [processed, setProcessed] = useState([]); // [{dataUrl, file}]
+      const [processed, setProcessed] = useState([]);
       const [progress, setProgress] = useState({ msg:"", pct:0 });
       const [currentIdx, setCurrentIdx] = useState(0);
       const [saving, setSaving] = useState(false);
@@ -652,7 +426,6 @@
         setSaving(true);
         try {
           const photoUrls = await Promise.all(processed.map(async (p, i) => {
-            // Convertir dataUrl en blob
             const res = await fetch(p.dataUrl);
             const blob = await res.blob();
             const ref = storage.ref(`partner_photos/${user.uid}/${Date.now()}_${i}.jpg`);
@@ -689,7 +462,6 @@
 
       return (
         <div style={{ minHeight:"100vh", background:"#f5f5f7", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
-          {/* Navbar */}
           <div style={{ background:"#1a1a2e", borderBottom:"2px solid #8dc63f", padding:"0 28px", height:52, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:14 }}>
               <div style={{ width:28, height:28, borderRadius:7, background:"#8dc63f", display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -704,7 +476,6 @@
           </div>
 
           <div style={{ padding:"24px 28px", maxWidth:1000, margin:"0 auto" }}>
-
             {/* Steps */}
             <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:"14px 20px", marginBottom:20, display:"flex", alignItems:"center", gap:0 }}>
               {[
@@ -744,7 +515,7 @@
                   </div>
 
                   <label style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:"2px dashed #e2e8f0", borderRadius:12, padding:"24px 16px", cursor:"pointer", background:"#fafafa", marginBottom:12 }}
-                    onDragOver={e => { e.preventDefault(); }}
+                    onDragOver={e => e.preventDefault()}
                     onDrop={e => { e.preventDefault(); const f = Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith("image/")); setFiles(prev=>[...prev,...f].slice(0,5)); }}>
                     <span style={{ fontSize:28, marginBottom:8 }}>📸</span>
                     <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Glissez ou cliquez pour ajouter</span>
@@ -767,7 +538,7 @@
 
                   <button onClick={handleProcess} disabled={files.length === 0} className="btn-ae"
                     style={{ width:"100%", padding:"13px", fontSize:14 }}>
-                    Traiter avec Gemini AI ({files.length} photo{files.length>1?"s":""})
+                    Traiter {files.length} photo{files.length > 1 ? "s" : ""} →
                   </button>
                 </div>
 
@@ -776,10 +547,10 @@
                     Ce qui sera fait
                   </div>
                   {[
-                    { icon:"🔍", title:"Détection plaque", desc:"Gemini Vision localise la plaque d'immatriculation sur chaque photo." },
-                    { icon:"⬛", title:"Cache AUTOEASY", desc:"Canvas HTML5 recouvre la plaque avec une bannière noire AUTOEASY." },
-                    { icon:"🏙️", title:"Fond AutoEasy", desc:"Fond standardisé : sol damier noir/vert + panneau AutoEasy." },
-                    { icon:"📤", title:"Export JPG 1024×768", desc:"Format optimisé pour Leboncoin et le site AutoEasy." },
+                    { icon:"✂️", title:"Détourage Photoroom", desc:"Suppression du fond par IA Photoroom — la carrosserie reste 100% intacte, zéro altération." },
+                    { icon:"🏙️", title:"Fond showroom + ombre", desc:"Fond gris studio avec ombre de contact réaliste au sol." },
+                    { icon:"🔍", title:"Détection plaque (Gemini)", desc:"Gemini Vision localise automatiquement la plaque d'immatriculation." },
+                    { icon:"⬛", title:"Bandeau AUTOEASY", desc:"Incrustation du bandeau AUTOEASY noir par-dessus la plaque." },
                   ].map((item, i) => (
                     <div key={i} style={{ display:"flex", gap:12, marginBottom:16, alignItems:"flex-start" }}>
                       <div style={{ width:36, height:36, borderRadius:8, background:"#f5f5f7", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{item.icon}</div>
@@ -834,7 +605,7 @@
                   <span style={{ fontSize:24 }}>✅</span>
                   <div>
                     <div style={{ fontSize:14, fontWeight:700, color:"#166534" }}>{processed.length} photo{processed.length>1?"s":""} traitée{processed.length>1?"s":""} avec succès !</div>
-                    <div style={{ fontSize:12, color:"#15803d" }}>Format JPG 1024×768 — prêt pour Leboncoin</div>
+                    <div style={{ fontSize:12, color:"#15803d" }}>Photoroom · Gemini · bandeau AUTOEASY</div>
                   </div>
                   <div style={{ marginLeft:"auto", display:"flex", gap:10 }}>
                     <button onClick={downloadAll} className="btn-ae" style={{ padding:"9px 18px", fontSize:13 }}>
@@ -850,8 +621,8 @@
                 </div>
 
                 <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", overflow:"hidden" }}>
-                  <div style={{ padding:"12px 18px", borderBottom:"0.5px solid #e2e8f0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                    <span style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em" }}>Photos traitées — 1024×768 JPG</span>
+                  <div style={{ padding:"12px 18px", borderBottom:"0.5px solid #e2e8f0" }}>
+                    <span style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em" }}>Photos traitées</span>
                   </div>
                   <div style={{ display:"grid", gridTemplateColumns:`repeat(${Math.min(processed.length, 3)},1fr)`, gap:12, padding:16 }}>
                     {processed.map((p, i) => (
@@ -880,7 +651,7 @@
     function App() {
       const [user, setUser] = useState(null);
       const [loading, setLoading] = useState(true);
-      const [view, setView] = useState("dashboard"); // dashboard | studio
+      const [view, setView] = useState("dashboard");
 
       useEffect(() => {
         const unsub = auth.onAuthStateChanged(u => {
@@ -907,9 +678,7 @@
       );
 
       if (!user) return <LoginPage />;
-
       if (view === "studio") return <Studio user={user} onBack={() => setView("dashboard")} />;
-
       return <Dashboard user={user} onNewSession={() => setView("studio")} />;
     }
 
