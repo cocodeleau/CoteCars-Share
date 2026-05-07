@@ -19,7 +19,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const SHOWROOM_URL    = 'https://res.cloudinary.com/di3xa7ldg/image/upload/autoeasy-bg_tdjz2c.jpg';
 // Hash de stability-ai/stable-diffusion-inpainting — source : replicate.com/stability-ai/stable-diffusion-inpainting
-const REPLICATE_VERSION = 'stability-ai/sdxl:39ed52f2a78e934b3ba6e1dccf5b8fdc353b146f0e73f328224531c30ad2b0a2';
+const REPLICATE_VERSION = 'black-forest-labs/flux-fill-pro';
 const INPAINT_SIZE    = 1024;
 const POLL_INTERVAL   = 2500;  // ms entre chaque vérification de statut
 const MAX_WAIT_MS     = 55000; // 55s max (sous la limite maxDuration: 60s de Vercel)
@@ -110,15 +110,13 @@ export default async function handler(req, res) {
     const replicateOutput = await Promise.race([
       replicate.run(REPLICATE_VERSION, {
         input: {
-          image:               initB64,
-          mask:                maskB64,
-          prompt:              'A car perfectly integrated into a showroom, realistic ambient occlusion shadows under the tires, high-end floor reflections, 8k resolution, photorealistic, cinematic lighting.',
-          negative_prompt:     'floating, levitation, no shadows, cartoon, illustration, low quality, blurry, deformed, watermark.',
-          num_inference_steps: 35,
-          guidance_scale:      8.5,
-          strength:            0.85,
-          width:               INPAINT_SIZE,
-          height:              INPAINT_SIZE,
+          image:           initB64,
+          mask:            maskB64,
+          prompt:          'A luxury car in a showroom, high-end checkerboard floor, realistic contact shadows under tires, 8k resolution, cinematic lighting.',
+          guidance:        30,
+          steps:           50,
+          output_format:   'jpg',
+          safety_tolerance: 2,
         },
       }),
       new Promise((_, reject) =>
