@@ -1,19 +1,15 @@
 // api/partner-analyze.js
 //
 // Workflow :
-//   1. Photoroom  → détourage PNG transparent (voiture seule)
+//   1. Photoroom  → détourage PNG transparent
 //   2. Replicate  → logerfo/sdxl-controlnet-inpaint-background
-//                   Masque : canal alpha FLOUTÉ (feathering 20px) pour donner
-//                   à l'IA une zone de transition sous les pneus → ombres de contact
-//                   ⚠️  PAS de re-composite de la voiture par-dessus = les ombres survivent
+//                   Masque flouté (blur 20px) pour ombres de contact sous les pneus
 //   3. Gemini     → coordonnées plaque en pixels absolus
 //   4. Sharp      → bandeau AUTOEASY
 //
-// ⚠️  vercel.json doit avoir : { "functions": { "api/partner-analyze.js": { "maxDuration": 60 } } }
-//
 // Reçoit : POST JSON { image: "data:image/jpeg;base64,..." }
 // Renvoie : { success: true, result: "data:image/jpeg;base64,...", plateDetected: bool }
-//        ou { success: false, error: "...", stack: "..." }
+//        ou { success: false, error: "..." }
 
 import Replicate from 'replicate';
 import FormData  from 'form-data';
@@ -22,8 +18,10 @@ import sharp     from 'sharp';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const SHOWROOM_URL    = 'https://res.cloudinary.com/di3xa7ldg/image/upload/autoeasy-bg_tdjz2c.jpg';
-const REPLICATE_MODEL = 'logerfo/sdxl-controlnet-inpaint-background'; // spécialisé ombres portées
+const REPLICATE_MODEL = 'logerfo/sdxl-controlnet-inpaint-background';
 const INPAINT_SIZE    = 1024;
+const POLL_INTERVAL   = 2500;  // ms entre chaque vérification de statut
+const MAX_WAIT_MS     = 55000; // 55s max (sous la limite maxDuration: 60s de Vercel)
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -40,7 +38,7 @@ export default async function handler(req, res) {
     const mimeType    = image.includes('data:') ? image.split(';')[0].split(':')[1] : 'image/jpeg';
     const imageBuffer = Buffer.from(base64Data, 'base64');
 
-    // ── 1. Photoroom → PNG transparent (détourage seul) ──────────
+    // ── 1. Photoroom → PNG transparent ───────────────────────────
     const photoroomForm = new FormData();
     photoroomForm.append('imageFile', imageBuffer, { filename: 'car.jpg', contentType: mimeType });
     photoroomForm.append('format', 'png');
@@ -63,11 +61,11 @@ export default async function handler(req, res) {
     }
 
     const carPngRaw = Buffer.from(await prRes.arrayBuffer());
-    console.log(`[Photoroom] Détourage OK — ${carPngRaw.length} octets`);
+    console.log(`[Photoroom] OK — ${carPngRaw.length} octets`);
 
     // ── 2. Replicate — Inpainting avec masque flouté ──────────────
 
-    // 2a. Redimensionner fond et voiture à 1024×1024
+    // 2a. Redimensionner fond + voiture à 1024×1024
     const bgRes = await fetch(SHOWROOM_URL);
     if (!bgRes.ok) return res.status(200).json({ success: false, error: 'Fond showroom introuvable.' });
 
@@ -81,38 +79,32 @@ export default async function handler(req, res) {
       .png()
       .toBuffer();
 
-    // 2b. Image d'init : fond showroom + voiture composée par-dessus
+    // 2b. Image d'init : fond + voiture
     const initImageBuffer = await sharp(bgResized)
       .composite([{ input: carResized }])
       .jpeg({ quality: 95 })
       .toBuffer();
 
-    // 2c. Masque avec FEATHERING (flou de 20px sur les bords du canal alpha)
-    //
-    // Logique "fusion sale" :
-    //   - Alpha original : voiture=255, fond=0
-    //   - Après blur(20) : voiture=255, TRANSITION=0-255, fond=0
-    //   - Après negate  : voiture=0 (noir/protégé), TRANSITION=0-255 (zone de fusion), fond=255 (blanc/généré)
-    //
-    // La zone de transition (~20px autour de la carrosserie et sous les pneus)
-    // est partiellement éditable → l'IA peut y peindre des ombres de contact.
-    // C'est ce qui "soude" la voiture au sol.
+    // 2c. Masque flouté — zone de transition sous les pneus
+    //   Avant blur : voiture=255, fond=0
+    //   Après blur : voiture=255, transition=0-255, fond=0
+    //   Après negate : voiture=0 (protégée), transition=gris (semi-éditable), fond=255 (IA génère)
     const maskBuffer = await sharp(carResized)
       .extractChannel('alpha')
-      .blur(20)       // feathering : dilate les bords de 20px (surtout visible sous les pneus)
-      .negate()       // inversion : corps voiture=noir, zone transition=gris, fond=blanc
+      .blur(20)
+      .negate()
       .png()
       .toBuffer();
 
-    // 2d. Conversion en data URIs
     const initB64 = 'data:image/jpeg;base64,' + initImageBuffer.toString('base64');
     const maskB64 = 'data:image/png;base64,'  + maskBuffer.toString('base64');
 
-    // 2e. Appel Replicate (SDK gère le polling automatiquement)
-    console.log('[Replicate] Envoi vers logerfo/sdxl-controlnet-inpaint-background...');
+    // 2d. Création de la prédiction Replicate
     const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
-    const replicateOutput = await replicate.run(REPLICATE_MODEL, {
+    console.log('[Replicate] Création de la prédiction...');
+    const prediction = await replicate.predictions.create({
+      model: REPLICATE_MODEL,
       input: {
         image:               initB64,
         mask:                maskB64,
@@ -125,28 +117,51 @@ export default async function handler(req, res) {
         height:              INPAINT_SIZE,
       },
     });
+    console.log(`[Replicate] Prédiction créée : ${prediction.id}`);
 
-    // 2f. Récupérer l'image générée par Replicate
-    const outputUrl = Array.isArray(replicateOutput) ? replicateOutput[0] : replicateOutput;
+    // 2e. Polling manuel avec timeout explicite
+    let finalPrediction = prediction;
+    const startTime     = Date.now();
+
+    while (['starting', 'processing'].includes(finalPrediction.status)) {
+      const elapsed = Math.round((Date.now() - startTime) / 1000);
+
+      if (Date.now() - startTime > MAX_WAIT_MS) {
+        return res.status(200).json({
+          success: false,
+          error:   `Replicate timeout après ${elapsed}s. Le plan Hobby Vercel est limité à 10s — passe sur Pro pour maxDuration: 60.`,
+        });
+      }
+
+      console.log(`[Replicate] status: ${finalPrediction.status} (${elapsed}s écoulées)`);
+      await new Promise(r => setTimeout(r, POLL_INTERVAL));
+      finalPrediction = await replicate.predictions.get(finalPrediction.id);
+    }
+
+    if (finalPrediction.status !== 'succeeded') {
+      throw new Error(`Replicate échoué : ${finalPrediction.error || finalPrediction.status}`);
+    }
+
+    const outputUrl = Array.isArray(finalPrediction.output)
+      ? finalPrediction.output[0]
+      : finalPrediction.output;
+
     if (!outputUrl) throw new Error('Replicate : aucune URL de sortie.');
-    console.log(`[Replicate] Output : ${outputUrl}`);
+    console.log(`[Replicate] Succès en ${Math.round((Date.now() - startTime) / 1000)}s — ${outputUrl}`);
 
     const replicateImgRes = await fetch(String(outputUrl));
     if (!replicateImgRes.ok) throw new Error('Impossible de télécharger le résultat Replicate.');
 
-    // ⚠️  PAS de re-composite de la voiture par-dessus.
-    // Si on repose le PNG net sur l'image Replicate, on écrase les ombres de contact
-    // que l'IA vient de générer sous les pneus. On garde l'image Replicate telle quelle.
-    const fusedBuffer = Buffer.from(await replicateImgRes.arrayBuffer());
+    // ⚠️  PAS de re-composite — on garde les ombres générées sous les pneus
+    const fusedBuffer            = Buffer.from(await replicateImgRes.arrayBuffer());
     const { width: imgW, height: imgH } = await sharp(fusedBuffer).metadata();
-    console.log(`[Replicate] Image finale : ${imgW}x${imgH}`);
 
     // ── 3. Gemini → pixels absolus de la plaque ──────────────────
     const genAI    = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model    = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const b64Fused = fusedBuffer.toString('base64');
 
-    const prompt = `The image size is ${imgW} pixels wide and ${imgH} pixels high. Find the license plate on the car. Return ONLY a valid JSON object with absolute pixel coordinates (integers): {"license_plate": {"x": int, "y": int, "width": int, "height": int}} where x and y are the top-left corner of the plate. If no plate is visible, return exactly: {"license_plate": null} No explanation, no markdown.`;
+    const geminiPrompt = `The image size is ${imgW} pixels wide and ${imgH} pixels high. Find the license plate on the car. Return ONLY a valid JSON object with absolute pixel coordinates (integers): {"license_plate": {"x": int, "y": int, "width": int, "height": int}} where x and y are the top-left corner. If no plate is visible, return: {"license_plate": null} No explanation, no markdown.`;
 
     const MAX_ATTEMPTS = 3;
     const BACKOFF_MS   = [0, 2000, 4000];
@@ -162,12 +177,12 @@ export default async function handler(req, res) {
         const result  = await model.generateContent({
           contents: [{ role: 'user', parts: [
             { inlineData: { mimeType: 'image/jpeg', data: b64Fused } },
-            { text: prompt },
+            { text: geminiPrompt },
           ]}],
           generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 4096 },
         });
         const rawText = result.response.text();
-        console.log('[Gemini] Réponse brute:', rawText);
+        console.log('[Gemini] Réponse:', rawText);
         plateCoords   = JSON.parse(rawText).license_plate;
         geminiSuccess = true;
         break;
@@ -185,12 +200,12 @@ export default async function handler(req, res) {
 
     if (plateCoords && geminiSuccess) {
       const { x, y, width, height } = plateCoords;
-      const sx = Math.max(0, Math.min(x,      imgW - 1));
-      const sy = Math.max(0, Math.min(y,      imgH - 1));
+      const sx = Math.max(0, Math.min(x,     imgW - 1));
+      const sy = Math.max(0, Math.min(y,     imgH - 1));
       const sw = Math.min(width,  imgW - sx);
       const sh = Math.min(height, imgH - sy);
 
-      console.log(`[Sharp] Bandeau AUTOEASY → left:${sx} top:${sy} w:${sw} h:${sh}`);
+      console.log(`[Sharp] Bandeau → left:${sx} top:${sy} w:${sw} h:${sh}`);
 
       const fontSize  = Math.round(sh * 0.52);
       const bannerSvg = `<svg width="${sw}" height="${sh}" xmlns="http://www.w3.org/2000/svg">
@@ -209,7 +224,7 @@ export default async function handler(req, res) {
       finalBuffer = await sharp(fusedBuffer).jpeg({ quality: 92 }).toBuffer();
     }
 
-    console.log(`[Sharp] Image finale : ${finalBuffer.length} octets`);
+    console.log(`[Sharp] Terminé — ${finalBuffer.length} octets`);
 
     return res.status(200).json({
       success:       true,
@@ -218,7 +233,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('[partner-analyze] Erreur non catchée:', error);
+    console.error('[partner-analyze] Erreur:', error);
     return res.status(200).json({
       success: false,
       error:   error.message || 'Erreur serveur inconnue.',

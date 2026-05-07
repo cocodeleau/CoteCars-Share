@@ -24,9 +24,10 @@
       --ae-border: #2d3448;
     }
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    @keyframes spin    { to { transform: rotate(360deg); } }
+    @keyframes fadeIn  { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    @keyframes barMove { 0%{width:0%} 70%{width:85%} 100%{width:85%} }
     .spinner { width: 20px; height: 20px; border: 2px solid rgba(141,198,63,0.3); border-top-color: #8dc63f; border-radius: 50%; animation: spin 0.8s linear infinite; }
     .fade-in { animation: fadeIn 0.3s ease; }
     .photo-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
@@ -55,9 +56,9 @@
       appId: "1:727958687493:web:f1ca0c1cacb899e425316c"
     };
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    const storage = firebase.storage();
+    const auth           = firebase.auth();
+    const db             = firebase.firestore();
+    const storage        = firebase.storage();
     const googleProvider = new firebase.auth.GoogleAuthProvider();
 
     // ── Emails autorisés ──────────────────────────────────────────
@@ -65,17 +66,21 @@
       "corentin.millet974@gmail.com",
     ];
 
-    // ── Pipeline principal : Photoroom + Gemini + Sharp ───────────
-    // Reçoit un File, renvoie { dataUrl }
+    // ── Pipeline principal ────────────────────────────────────────
+    // Photoroom → PNG transparent
+    // Replicate → inpainting ombres de contact (logerfo/sdxl-controlnet-inpaint-background)
+    // Gemini    → détection plaque pixels absolus
+    // Sharp     → bandeau AUTOEASY
     async function processPartnerImage(file, onProgress) {
-      // 1. Compression canvas (max 1500px, JPEG 0.8 ≈ 0.5MB)
-      onProgress("Compression de la photo...", 10);
+
+      // 1. Compression canvas (max 1500px, JPEG 0.8)
+      onProgress("Compression de la photo...", 8);
       const base64 = await new Promise((res, rej) => {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement("canvas");
           const maxDim = 1500;
-          const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+          const scale  = Math.min(maxDim / img.width, maxDim / img.height, 1);
           canvas.width  = Math.round(img.width  * scale);
           canvas.height = Math.round(img.height * scale);
           canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -85,26 +90,60 @@
         img.src = URL.createObjectURL(file);
       });
 
-      // 2. Envoi au backend Vercel
-      onProgress("Détourage Photoroom...", 30);
-      const response = await fetch("/api/partner-analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: base64 }),
-      });
+      // 2. Envoi au backend + progression animée pendant la génération Replicate (~45s)
+      onProgress("Envoi vers le serveur...", 12);
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || "Erreur serveur (" + response.status + ")");
+      // Simule l'avancement toutes les 600ms pour ne pas paraître bloqué
+      let currentPct = 15;
+      const progressTimer = setInterval(() => {
+        if (currentPct < 82) {
+          currentPct += 1;
+          const msg =
+            currentPct < 25  ? "Détourage Photoroom en cours..." :
+            currentPct < 45  ? "⏳ Génération de l'ombre IA en cours (~45s)..." :
+            currentPct < 70  ? "⏳ Génération de l'ombre IA en cours, patience..." :
+                                "Finalisation du montage...";
+          onProgress(msg, currentPct);
+        }
+      }, 600);
+
+      let response;
+      try {
+        // AbortController à 120s (bien au-delà des ~45s de Replicate)
+        const controller = new AbortController();
+        const timeoutId  = setTimeout(() => controller.abort(), 120000);
+
+        response = await fetch("/api/partner-analyze", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ image: base64 }),
+          signal:  controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+      } catch (fetchErr) {
+        clearInterval(progressTimer);
+        if (fetchErr.name === "AbortError") {
+          throw new Error("Timeout : la génération a dépassé 120s. Réessaie.");
+        }
+        throw fetchErr;
       }
 
-      // 3. Récupération du résultat
-      onProgress("Détection plaque & bandeau AUTOEASY...", 70);
+      clearInterval(progressTimer);
+
+      if (!response.ok) {
+        throw new Error("Erreur serveur : " + response.status);
+      }
+
+      onProgress("Détection de la plaque...", 88);
       const data = await response.json();
-      if (!data.result) throw new Error("Aucun résultat reçu du serveur.");
+
+      if (!data.success) {
+        throw new Error(data.error || "Erreur inconnue du serveur.");
+      }
 
       if (!data.plateDetected) {
-        console.warn("Aucune plaque détectée — image retournée sans bandeau.");
+        console.warn("Aucune plaque détectée — image sans bandeau AUTOEASY.");
       }
 
       onProgress("Terminé !", 100);
@@ -113,10 +152,10 @@
 
     // ── Page Connexion ────────────────────────────────────────────
     function LoginPage({ onLogin }) {
-      const [email, setEmail] = useState("");
+      const [email,    setEmail]    = useState("");
       const [password, setPassword] = useState("");
-      const [error, setError] = useState("");
-      const [loading, setLoading] = useState(false);
+      const [error,    setError]    = useState("");
+      const [loading,  setLoading]  = useState(false);
 
       async function handleLogin(e) {
         e.preventDefault();
@@ -130,9 +169,9 @@
           await auth.signInWithEmailAndPassword(email, password);
         } catch(err) {
           const msgs = {
-            "auth/user-not-found": "Email introuvable.",
-            "auth/wrong-password": "Mot de passe incorrect.",
-            "auth/invalid-email": "Email invalide.",
+            "auth/user-not-found":    "Email introuvable.",
+            "auth/wrong-password":    "Mot de passe incorrect.",
+            "auth/invalid-email":     "Email invalide.",
             "auth/too-many-requests": "Trop de tentatives, réessayez plus tard.",
           };
           setError(msgs[err.code] || "Erreur de connexion.");
@@ -141,10 +180,9 @@
       }
 
       async function handleGoogle() {
-        setError("");
-        setLoading(true);
+        setError(""); setLoading(true);
         try {
-          const result = await auth.signInWithPopup(googleProvider);
+          const result    = await auth.signInWithPopup(googleProvider);
           const userEmail = result.user.email?.toLowerCase();
           if (!ALLOWED_EMAILS.includes(userEmail)) {
             await auth.signOut();
@@ -158,11 +196,9 @@
 
       return (
         <div style={{ minHeight:"100vh", display:"grid", gridTemplateColumns:"1fr 1fr" }}>
-          {/* Panneau gauche AutoEasy */}
           <div style={{ background:"#1a1a2e", padding:"48px 40px", display:"flex", flexDirection:"column", justifyContent:"center", gap:20, position:"relative", overflow:"hidden" }}>
             <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:"#8dc63f" }} />
             <div style={{ position:"absolute", bottom:-60, right:-60, width:200, height:200, borderRadius:"50%", background:"rgba(141,198,63,0.05)" }} />
-
             <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
               <div style={{ width:44, height:44, borderRadius:10, background:"#8dc63f", display:"flex", alignItems:"center", justifyContent:"center" }}>
                 <span style={{ fontSize:16, fontWeight:900, color:"#1a1a2e" }}>AE</span>
@@ -172,20 +208,17 @@
                 <div style={{ fontSize:11, color:"rgba(255,255,255,0.4)" }}>Espace Partenaire</div>
               </div>
             </div>
-
             <div style={{ fontSize:26, fontWeight:700, color:"white", lineHeight:1.3 }}>
               Studio Photo<br/><span style={{color:"#8dc63f"}}>Professionnel</span>
             </div>
-
             <div style={{ fontSize:13, color:"rgba(255,255,255,0.5)", lineHeight:1.7 }}>
-              Traitement automatique des photos véhicule. Détection plaque, suppression fond, export Leboncoin ready.
+              Traitement automatique des photos véhicule. Détection plaque, ombres IA, export Leboncoin ready.
             </div>
-
             <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:8 }}>
               {[
                 "Détourage professionnel via Photoroom",
-                "Fond showroom avec ombre au sol réaliste",
-                "Bandeau AUTOEASY sur la plaque (IA)",
+                "Ombres de contact réalistes (IA Replicate)",
+                "Bandeau AUTOEASY sur la plaque (Gemini)",
                 "Export JPG Leboncoin ready",
               ].map((item, i) => (
                 <div key={i} style={{ display:"flex", alignItems:"center", gap:10, fontSize:13, color:"rgba(255,255,255,0.65)" }}>
@@ -194,18 +227,15 @@
                 </div>
               ))}
             </div>
-
             <div style={{ marginTop:16 }}>
               <a href="/" style={{ fontSize:12, color:"rgba(255,255,255,0.3)", textDecoration:"none" }}>← Retour à CoteCars</a>
             </div>
           </div>
 
-          {/* Panneau droit connexion */}
           <div style={{ background:"white", padding:"48px 40px", display:"flex", flexDirection:"column", justifyContent:"center" }}>
             <div style={{ maxWidth:340, width:"100%" }}>
               <h1 style={{ fontSize:22, fontWeight:700, color:"#111", marginBottom:6 }}>Connexion</h1>
               <p style={{ fontSize:13, color:"#6b7280", marginBottom:28 }}>Accès réservé aux commerciaux AutoEasy.</p>
-
               <form onSubmit={handleLogin} style={{ display:"flex", flexDirection:"column", gap:14 }}>
                 <div>
                   <label style={{ fontSize:11, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Email</label>
@@ -222,22 +252,18 @@
                   {loading ? "Connexion..." : "Se connecter"}
                 </button>
               </form>
-
               <div style={{ display:"flex", alignItems:"center", gap:10, margin:"16px 0" }}>
                 <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
                 <span style={{ fontSize:12, color:"#9ca3af" }}>ou</span>
                 <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
               </div>
-
               <button onClick={handleGoogle} disabled={loading}
                 style={{ width:"100%", padding:"12px", border:"1.5px solid #e2e8f0", borderRadius:10, background:"white", display:"flex", alignItems:"center", justifyContent:"center", gap:10, cursor:"pointer", fontSize:14, fontWeight:600, color:"#374151" }}>
                 <img src="https://www.google.com/favicon.ico" width={16} height={16} alt="" />
                 Continuer avec Google
               </button>
-
               <p style={{ fontSize:11, color:"#9ca3af", textAlign:"center", marginTop:16 }}>
-                Accès réservé aux partenaires AutoEasy.<br/>
-                Problème ? Contactez CoteCars.
+                Accès réservé aux partenaires AutoEasy.<br/>Problème ? Contactez CoteCars.
               </p>
             </div>
           </div>
@@ -248,7 +274,7 @@
     // ── Dashboard ─────────────────────────────────────────────────
     function Dashboard({ user, onNewSession }) {
       const [sessions, setSessions] = useState([]);
-      const [loading, setLoading] = useState(true);
+      const [loading,  setLoading]  = useState(true);
 
       useEffect(() => {
         db.collection("partner_sessions")
@@ -256,10 +282,7 @@
           .orderBy("createdAt", "desc")
           .limit(20)
           .get()
-          .then(snap => {
-            setSessions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-            setLoading(false);
-          })
+          .then(snap => { setSessions(snap.docs.map(d => ({ id: d.id, ...d.data() }))); setLoading(false); })
           .catch(() => setLoading(false));
       }, []);
 
@@ -272,9 +295,7 @@
           a.href = sess.photos[i];
           a.download = `${sess.vehicleName?.replace(/\s/g,"_") || "vehicule"}_photo_${i+1}.jpg`;
           a.target = "_blank";
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
           await new Promise(r => setTimeout(r, 400));
         }
       }
@@ -290,26 +311,22 @@
               <span style={{ fontSize:11, color:"rgba(255,255,255,0.35)" }}>/ Dashboard</span>
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              <button onClick={onNewSession} className="btn-ae" style={{ padding:"7px 16px", fontSize:12 }}>
-                + Nouveau traitement
-              </button>
+              <button onClick={onNewSession} className="btn-ae" style={{ padding:"7px 16px", fontSize:12 }}>+ Nouveau traitement</button>
               <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:"rgba(255,255,255,0.6)" }}>
                 <div style={{ width:28, height:28, borderRadius:"50%", background:"#2d2d3a", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, color:"#8dc63f", fontWeight:700 }}>
                   {user.email?.[0]?.toUpperCase()}
                 </div>
                 {user.email?.split("@")[0]}
               </div>
-              <button onClick={() => auth.signOut()} className="btn-outline" style={{ padding:"5px 12px", fontSize:11 }}>
-                Déconnexion
-              </button>
+              <button onClick={() => auth.signOut()} className="btn-outline" style={{ padding:"5px 12px", fontSize:11 }}>Déconnexion</button>
             </div>
           </div>
 
           <div style={{ padding:"24px 28px", maxWidth:1200, margin:"0 auto" }}>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:20 }}>
               {[
-                { label:"Véhicules traités", value: sessions.length, sub:"Total" },
-                { label:"Photos traitées", value: totalPhotos, sub:"~" + (sessions.length ? Math.round(totalPhotos/sessions.length*10)/10 : 0) + " par véhicule" },
+                { label:"Véhicules traités",  value: sessions.length, sub:"Total" },
+                { label:"Photos traitées",    value: totalPhotos, sub:"~" + (sessions.length ? Math.round(totalPhotos/sessions.length*10)/10 : 0) + " par véhicule" },
                 { label:"Dernier traitement", value: sessions[0] ? new Date(sessions[0].createdAt).toLocaleDateString("fr-FR") : "—", sub: sessions[0]?.vehicleName || "Aucun" },
               ].map((s, i) => (
                 <div key={i} style={{ background:"white", borderRadius:12, padding:"16px 18px", border:"0.5px solid #e2e8f0" }}>
@@ -325,34 +342,24 @@
                 <span style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em" }}>Historique des sessions</span>
                 <span style={{ fontSize:12, color:"#9ca3af" }}>{sessions.length} session{sessions.length > 1 ? "s" : ""}</span>
               </div>
-
-              {loading && (
-                <div style={{ padding:40, textAlign:"center" }}>
-                  <div className="spinner" style={{ margin:"0 auto" }} />
-                </div>
-              )}
-
+              {loading && <div style={{ padding:40, textAlign:"center" }}><div className="spinner" style={{ margin:"0 auto" }} /></div>}
               {!loading && sessions.length === 0 && (
                 <div style={{ padding:"60px 20px", textAlign:"center" }}>
                   <div style={{ fontSize:40, marginBottom:12 }}>📷</div>
                   <div style={{ fontSize:15, fontWeight:600, color:"#374151", marginBottom:6 }}>Aucune session</div>
                   <div style={{ fontSize:13, color:"#9ca3af", marginBottom:20 }}>Commencez votre premier traitement photo.</div>
-                  <button onClick={onNewSession} className="btn-ae" style={{ padding:"10px 20px", fontSize:13 }}>
-                    + Nouveau traitement
-                  </button>
+                  <button onClick={onNewSession} className="btn-ae" style={{ padding:"10px 20px", fontSize:13 }}>+ Nouveau traitement</button>
                 </div>
               )}
-
               {!loading && sessions.length > 0 && (
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:12, padding:16 }}>
                   {sessions.map(sess => (
                     <div key={sess.id} className="photo-card" style={{ border:"0.5px solid #e2e8f0", borderRadius:10, overflow:"hidden", background:"#fafafa" }}>
                       <div style={{ height:120, background:"#1a1a2e", overflow:"hidden", position:"relative" }}>
-                        {sess.photos?.[0] ? (
-                          <img src={sess.photos[0]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                        ) : (
-                          <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:30 }}>🚗</div>
-                        )}
+                        {sess.photos?.[0]
+                          ? <img src={sess.photos[0]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                          : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:30 }}>🚗</div>
+                        }
                         <div style={{ position:"absolute", bottom:0, left:0, right:0, height:18, background:"#1a1a2e", display:"flex", alignItems:"center", justifyContent:"center" }}>
                           <span style={{ fontSize:9, fontWeight:800, color:"white", letterSpacing:"0.08em" }}>AUTOEASY</span>
                         </div>
@@ -378,14 +385,14 @@
 
     // ── Studio Photo ──────────────────────────────────────────────
     function Studio({ user, onBack }) {
-      const [step, setStep] = useState(1);
-      const [files, setFiles] = useState([]);
+      const [step,        setStep]        = useState(1);
+      const [files,       setFiles]       = useState([]);
       const [vehicleName, setVehicleName] = useState("");
-      const [processed, setProcessed] = useState([]);
-      const [progress, setProgress] = useState({ msg:"", pct:0 });
-      const [currentIdx, setCurrentIdx] = useState(0);
-      const [saving, setSaving] = useState(false);
-      const [saved, setSaved] = useState(false);
+      const [processed,   setProcessed]   = useState([]);
+      const [progress,    setProgress]    = useState({ msg:"", pct:0 });
+      const [currentIdx,  setCurrentIdx]  = useState(0);
+      const [saving,      setSaving]      = useState(false);
+      const [saved,       setSaved]       = useState(false);
       const fileInputRef = useRef();
 
       function handleFiles(e) {
@@ -405,7 +412,6 @@
         for (let i = 0; i < files.length; i++) {
           setCurrentIdx(i);
           setProgress({ msg: `Photo ${i+1}/${files.length} — démarrage...`, pct: 0 });
-
           try {
             const result = await processPartnerImage(
               files[i],
@@ -426,22 +432,18 @@
         setSaving(true);
         try {
           const photoUrls = await Promise.all(processed.map(async (p, i) => {
-            const res = await fetch(p.dataUrl);
+            const res  = await fetch(p.dataUrl);
             const blob = await res.blob();
-            const ref = storage.ref(`partner_photos/${user.uid}/${Date.now()}_${i}.jpg`);
+            const ref  = storage.ref(`partner_photos/${user.uid}/${Date.now()}_${i}.jpg`);
             await ref.put(blob, { contentType: "image/jpeg" });
             return ref.getDownloadURL();
           }));
-
           await db.collection("partner_sessions").add({
-            uid: user.uid,
-            userEmail: user.email,
+            uid: user.uid, userEmail: user.email,
             vehicleName: vehicleName || "Véhicule",
-            photoCount: photoUrls.length,
-            photos: photoUrls,
+            photoCount: photoUrls.length, photos: photoUrls,
             createdAt: new Date().toISOString(),
           });
-
           setSaved(true);
         } catch(err) {
           alert("Erreur sauvegarde : " + err.message);
@@ -454,9 +456,7 @@
           const a = document.createElement("a");
           a.href = p.dataUrl;
           a.download = `${vehicleName?.replace(/\s/g,"_") || "vehicule"}_photo_${i+1}.jpg`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
         });
       }
 
@@ -470,26 +470,19 @@
               <span style={{ fontSize:14, fontWeight:700, color:"white" }}>AutoEasy Studio</span>
               <span style={{ fontSize:11, color:"rgba(255,255,255,0.35)" }}>/ Nouveau traitement</span>
             </div>
-            <button onClick={onBack} className="btn-outline" style={{ padding:"5px 14px", fontSize:12 }}>
-              ← Dashboard
-            </button>
+            <button onClick={onBack} className="btn-outline" style={{ padding:"5px 14px", fontSize:12 }}>← Dashboard</button>
           </div>
 
           <div style={{ padding:"24px 28px", maxWidth:1000, margin:"0 auto" }}>
             {/* Steps */}
             <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:"14px 20px", marginBottom:20, display:"flex", alignItems:"center", gap:0 }}>
-              {[
-                { n:1, label:"Upload photos" },
-                { n:2, label:"Traitement IA" },
-                { n:3, label:"Export" },
-              ].map((s, i) => (
+              {[{ n:1, label:"Upload photos" }, { n:2, label:"Traitement IA" }, { n:3, label:"Export" }].map((s, i) => (
                 <React.Fragment key={s.n}>
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                     <div style={{ width:26, height:26, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, flexShrink:0,
                       background: step > s.n ? "#8dc63f" : "transparent",
                       border: step === s.n ? "2px solid #8dc63f" : step > s.n ? "none" : "2px solid #e2e8f0",
-                      color: step > s.n ? "#1a1a2e" : step === s.n ? "#8dc63f" : "#9ca3af"
-                    }}>
+                      color: step > s.n ? "#1a1a2e" : step === s.n ? "#8dc63f" : "#9ca3af" }}>
                       {step > s.n ? "✓" : s.n}
                     </div>
                     <span style={{ fontSize:12, fontWeight: step === s.n ? 700 : 400, color: step === s.n ? "#111" : "#9ca3af" }}>{s.label}</span>
@@ -503,17 +496,13 @@
             {step === 1 && (
               <div className="fade-in" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
                 <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:18 }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:14 }}>
-                    Informations véhicule
-                  </div>
+                  <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:14 }}>Informations véhicule</div>
                   <label style={{ fontSize:11, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Nom du véhicule</label>
                   <input type="text" value={vehicleName} onChange={e=>setVehicleName(e.target.value)} placeholder="Ex: Renault Clio 2018"
                     style={{ width:"100%", padding:"11px 14px", border:"1.5px solid #e2e8f0", borderRadius:8, fontSize:14, outline:"none", marginBottom:16, color:"#111" }} />
-
                   <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:10 }}>
                     Photos ({files.length}/5)
                   </div>
-
                   <label style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:"2px dashed #e2e8f0", borderRadius:12, padding:"24px 16px", cursor:"pointer", background:"#fafafa", marginBottom:12 }}
                     onDragOver={e => e.preventDefault()}
                     onDrop={e => { e.preventDefault(); const f = Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith("image/")); setFiles(prev=>[...prev,...f].slice(0,5)); }}>
@@ -522,7 +511,6 @@
                     <span style={{ fontSize:11, color:"#9ca3af", marginTop:4 }}>JPG, PNG · Max 5 photos</span>
                     <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFiles} style={{ display:"none" }} />
                   </label>
-
                   {files.length > 0 && (
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:14 }}>
                       {files.map((f, i) => (
@@ -535,22 +523,18 @@
                       ))}
                     </div>
                   )}
-
-                  <button onClick={handleProcess} disabled={files.length === 0} className="btn-ae"
-                    style={{ width:"100%", padding:"13px", fontSize:14 }}>
+                  <button onClick={handleProcess} disabled={files.length === 0} className="btn-ae" style={{ width:"100%", padding:"13px", fontSize:14 }}>
                     Traiter {files.length} photo{files.length > 1 ? "s" : ""} →
                   </button>
                 </div>
 
                 <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:18 }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:14 }}>
-                    Ce qui sera fait
-                  </div>
+                  <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:14 }}>Ce qui sera fait</div>
                   {[
-                    { icon:"✂️", title:"Détourage Photoroom", desc:"Suppression du fond par IA Photoroom — la carrosserie reste 100% intacte, zéro altération." },
-                    { icon:"🏙️", title:"Fond showroom + ombre", desc:"Fond gris studio avec ombre de contact réaliste au sol." },
-                    { icon:"🔍", title:"Détection plaque (Gemini)", desc:"Gemini Vision localise automatiquement la plaque d'immatriculation." },
-                    { icon:"⬛", title:"Bandeau AUTOEASY", desc:"Incrustation du bandeau AUTOEASY noir par-dessus la plaque." },
+                    { icon:"✂️", title:"Détourage Photoroom",         desc:"Suppression du fond — carrosserie 100% intacte." },
+                    { icon:"🤖", title:"Inpainting IA (Replicate ~45s)", desc:"Ombres de contact et reflets réalistes générés sous les pneus." },
+                    { icon:"🔍", title:"Détection plaque (Gemini)",    desc:"Localisation automatique de la plaque d'immatriculation." },
+                    { icon:"⬛", title:"Bandeau AUTOEASY",             desc:"Incrustation du bandeau sur la plaque." },
                   ].map((item, i) => (
                     <div key={i} style={{ display:"flex", gap:12, marginBottom:16, alignItems:"flex-start" }}>
                       <div style={{ width:36, height:36, borderRadius:8, background:"#f5f5f7", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{item.icon}</div>
@@ -560,6 +544,9 @@
                       </div>
                     </div>
                   ))}
+                  <div style={{ background:"#fffbeb", border:"1px solid #fde68a", borderRadius:8, padding:"10px 14px", fontSize:12, color:"#92400e" }}>
+                    ⏱ La génération IA prend environ <strong>45 secondes</strong>. Une barre de progression te tient informé.
+                  </div>
                 </div>
               </div>
             )}
@@ -570,25 +557,25 @@
                 <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:20 }}>
                   <div className="spinner" style={{ width:52, height:52, borderWidth:4 }} />
                   <div style={{ fontSize:18, fontWeight:700, color:"#111" }}>Traitement en cours</div>
-                  <div style={{ fontSize:13, color:"#6b7280" }}>{progress.msg}</div>
-
+                  <div style={{ fontSize:13, color:"#6b7280", minHeight:20 }}>{progress.msg}</div>
                   <div style={{ width:320 }}>
                     <div style={{ background:"#f3f4f6", borderRadius:99, overflow:"hidden", height:8, marginBottom:8 }}>
-                      <div style={{ height:"100%", background:"#8dc63f", borderRadius:99, width:`${progress.pct}%`, transition:"width 0.3s" }} />
+                      <div style={{ height:"100%", background:"#8dc63f", borderRadius:99, width:`${progress.pct}%`, transition:"width 0.6s ease" }} />
                     </div>
                     <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#9ca3af" }}>
                       <span>Photo {currentIdx+1}/{files.length}</span>
                       <span>{progress.pct}%</span>
                     </div>
                   </div>
-
                   <div style={{ display:"grid", gridTemplateColumns:`repeat(${files.length},1fr)`, gap:8, marginTop:8 }}>
                     {files.map((f, i) => (
                       <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
-                        <div style={{ width:60, height:44, borderRadius:6, overflow:"hidden", border: i < currentIdx ? "2px solid #8dc63f" : i === currentIdx ? "2px solid #f59e0b" : "1px solid #e2e8f0", opacity: i > currentIdx ? 0.4 : 1 }}>
+                        <div style={{ width:60, height:44, borderRadius:6, overflow:"hidden",
+                          border: i < currentIdx ? "2px solid #8dc63f" : i === currentIdx ? "2px solid #f59e0b" : "1px solid #e2e8f0",
+                          opacity: i > currentIdx ? 0.4 : 1 }}>
                           <img src={URL.createObjectURL(f)} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                         </div>
-                        <div style={{ fontSize:9, color: i < currentIdx ? "#8dc63f" : i === currentIdx ? "#f59e0b" : "#9ca3af", fontWeight:600 }}>
+                        <div style={{ fontSize:9, fontWeight:600, color: i < currentIdx ? "#8dc63f" : i === currentIdx ? "#f59e0b" : "#9ca3af" }}>
                           {i < currentIdx ? "✓ OK" : i === currentIdx ? "⏳ En cours" : "En attente"}
                         </div>
                       </div>
@@ -605,7 +592,7 @@
                   <span style={{ fontSize:24 }}>✅</span>
                   <div>
                     <div style={{ fontSize:14, fontWeight:700, color:"#166534" }}>{processed.length} photo{processed.length>1?"s":""} traitée{processed.length>1?"s":""} avec succès !</div>
-                    <div style={{ fontSize:12, color:"#15803d" }}>Photoroom · Gemini · bandeau AUTOEASY</div>
+                    <div style={{ fontSize:12, color:"#15803d" }}>Photoroom · Replicate · Gemini · AUTOEASY</div>
                   </div>
                   <div style={{ marginLeft:"auto", display:"flex", gap:10 }}>
                     <button onClick={downloadAll} className="btn-ae" style={{ padding:"9px 18px", fontSize:13 }}>
@@ -613,13 +600,12 @@
                     </button>
                     {!saved && (
                       <button onClick={handleSave} disabled={saving} className="btn-outline" style={{ padding:"9px 18px", fontSize:13 }}>
-                        {saving ? "Sauvegarde..." : "💾 Sauvegarder dans l'historique"}
+                        {saving ? "Sauvegarde..." : "💾 Sauvegarder"}
                       </button>
                     )}
                     {saved && <div style={{ padding:"9px 14px", fontSize:12, color:"#8dc63f", fontWeight:600 }}>✓ Sauvegardé</div>}
                   </div>
                 </div>
-
                 <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", overflow:"hidden" }}>
                   <div style={{ padding:"12px 18px", borderBottom:"0.5px solid #e2e8f0" }}>
                     <span style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em" }}>Photos traitées</span>
@@ -649,17 +635,16 @@
 
     // ── App principale ────────────────────────────────────────────
     function App() {
-      const [user, setUser] = useState(null);
+      const [user,    setUser]    = useState(null);
       const [loading, setLoading] = useState(true);
-      const [view, setView] = useState("dashboard");
+      const [view,    setView]    = useState("dashboard");
 
       useEffect(() => {
         const unsub = auth.onAuthStateChanged(u => {
           if (u && ALLOWED_EMAILS.includes(u.email?.toLowerCase())) {
             setUser(u);
           } else if (u) {
-            auth.signOut();
-            setUser(null);
+            auth.signOut(); setUser(null);
           } else {
             setUser(null);
           }
