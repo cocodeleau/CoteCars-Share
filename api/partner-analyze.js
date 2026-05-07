@@ -19,7 +19,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const SHOWROOM_URL    = 'https://res.cloudinary.com/di3xa7ldg/image/upload/autoeasy-bg_tdjz2c.jpg';
 // Hash de stability-ai/stable-diffusion-inpainting — source : replicate.com/stability-ai/stable-diffusion-inpainting
-const REPLICATE_VERSION = 'a9758cbfbd5f3c2094457d996681af52552901775aa2d6dd0b17fd15df959bef';
+const REPLICATE_VERSION = 'lucataco/sdxl-inpainting';
 const INPAINT_SIZE    = 1024;
 const POLL_INTERVAL   = 2500;  // ms entre chaque vérification de statut
 const MAX_WAIT_MS     = 55000; // 55s max (sous la limite maxDuration: 60s de Vercel)
@@ -100,55 +100,37 @@ export default async function handler(req, res) {
     const initB64 = 'data:image/jpeg;base64,' + initImageBuffer.toString('base64');
     const maskB64 = 'data:image/png;base64,'  + maskBuffer.toString('base64');
 
-    // 2d. Création de la prédiction Replicate
-    const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+    // 2d. Appel Replicate — replicate.run() gère la résolution de version automatiquement.
+    // Promise.race() garantit qu'on ne dépasse jamais MAX_WAIT_MS (55s).
+    const replicate  = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+    const startTime  = Date.now();
 
-    console.log('[Replicate] Création de la prédiction...');
-    const prediction = await replicate.predictions.create({
-      version: REPLICATE_VERSION,
-      input: {
-        image:               initB64,
-        mask:                maskB64,
-        prompt:              'High-end car showroom, shiny checkerboard floor, cinematic lighting, realistic soft shadows under the car tires, ambient occlusion shadows under the tires, tires squashing slightly on the floor, realistic floor reflections, heavy car weight distribution, 8k resolution, photorealistic.',
-        negative_prompt:     'floating, levitation, no shadows, cartoon, illustration, low quality, blurry, deformed, watermark.',
-        num_inference_steps: 35,
-        guidance_scale:      8.5,
-        strength:            0.85,
-        width:               INPAINT_SIZE,
-        height:              INPAINT_SIZE,
-      },
-    });
-    console.log(`[Replicate] Prédiction créée : ${prediction.id}`);
+    console.log(`[Replicate] Lancement de ${REPLICATE_VERSION}...`);
 
-    // 2e. Polling manuel avec timeout explicite
-    let finalPrediction = prediction;
-    const startTime     = Date.now();
+    const replicateOutput = await Promise.race([
+      replicate.run(REPLICATE_VERSION, {
+        input: {
+          image:               initB64,
+          mask:                maskB64,
+          prompt:              'High-end car showroom, shiny checkerboard floor, cinematic lighting, realistic soft shadows under the car tires, ambient occlusion shadows under the tires, tires squashing slightly on the floor, realistic floor reflections, heavy car weight distribution, 8k resolution, photorealistic.',
+          negative_prompt:     'floating, levitation, no shadows, cartoon, illustration, low quality, blurry, deformed, watermark.',
+          num_inference_steps: 35,
+          guidance_scale:      8.5,
+          strength:            0.85,
+          width:               INPAINT_SIZE,
+          height:              INPAINT_SIZE,
+        },
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Replicate timeout après ${MAX_WAIT_MS/1000}s — plan Pro requis pour maxDuration: 60`)), MAX_WAIT_MS)
+      ),
+    ]);
 
-    while (['starting', 'processing'].includes(finalPrediction.status)) {
-      const elapsed = Math.round((Date.now() - startTime) / 1000);
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    console.log(`[Replicate] Terminé en ${elapsed}s`);
 
-      if (Date.now() - startTime > MAX_WAIT_MS) {
-        return res.status(200).json({
-          success: false,
-          error:   `Replicate timeout après ${elapsed}s. Le plan Hobby Vercel est limité à 10s — passe sur Pro pour maxDuration: 60.`,
-        });
-      }
-
-      console.log(`[Replicate] status: ${finalPrediction.status} (${elapsed}s écoulées)`);
-      await new Promise(r => setTimeout(r, POLL_INTERVAL));
-      finalPrediction = await replicate.predictions.get(finalPrediction.id);
-    }
-
-    if (finalPrediction.status !== 'succeeded') {
-      throw new Error(`Replicate échoué : ${finalPrediction.error || finalPrediction.status}`);
-    }
-
-    const outputUrl = Array.isArray(finalPrediction.output)
-      ? finalPrediction.output[0]
-      : finalPrediction.output;
-
+    const outputUrl = Array.isArray(replicateOutput) ? replicateOutput[0] : replicateOutput;
     if (!outputUrl) throw new Error('Replicate : aucune URL de sortie.');
-    console.log(`[Replicate] Succès en ${Math.round((Date.now() - startTime) / 1000)}s — ${outputUrl}`);
 
     const replicateImgRes = await fetch(String(outputUrl));
     if (!replicateImgRes.ok) throw new Error('Impossible de télécharger le résultat Replicate.');
