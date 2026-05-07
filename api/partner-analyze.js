@@ -2,11 +2,11 @@
 //
 // Workflow :
 //   1. Photoroom  → PNG transparent forcé (format=png) + ombre de contact
-//   2. Gemini     → coordonnées plaque en PIXELS ABSOLUS (x, y, width, height)
+//   2. Gemini     → coordonnées PIXELS ABSOLUS de la plaque sur ce PNG
 //   3. Sharp      → Sandwich sur canvas 1920×1080 :
 //                     Couche 0 : fond showroom damier (SVG)
-//                     Couche 1 : voiture Photoroom redimensionnée et positionnée
-//                     Couche 2 : bandeau AUTOEASY (pixels Gemini × scale + offset)
+//                     Couche 1 : voiture Photoroom redimensionnée + positionnée
+//                     Couche 2 : bandeau AUTOEASY (coords × scale + offset)
 //
 // Reçoit : POST JSON { image: "data:image/jpeg;base64,..." }
 // Renvoie : JSON { success: true, result: "data:image/jpeg;base64,...", plateDetected: bool }
@@ -59,16 +59,17 @@ export default async function handler(req, res) {
     const imageBuffer = Buffer.from(base64Data, 'base64');
 
     // ── 1. Photoroom → PNG transparent + ombre de contact ────────
-    // CORRECTION : 'format=png' force Photoroom à retourner un vrai PNG
-    // avec canal alpha. Sans ça, Photoroom renvoie du JPEG blanc par défaut.
+    // FIX : format=png force Photoroom à retourner un vrai PNG avec canal alpha.
+    // Sans ce paramètre, Photoroom renvoie du JPEG (fond blanc) par défaut.
     const photoroomForm = new FormData();
     photoroomForm.append('imageFile', imageBuffer, {
       filename: 'car.jpg',
       contentType: mimeType,
     });
-    photoroomForm.append('format', 'png');       // ← OBLIGATOIRE pour la transparence
     photoroomForm.append('shadow.mode', 'ai.soft');
+    photoroomForm.append('background.color', 'transparent'); // ← force fond transparent même avec les ombres actives
     photoroomForm.append('padding', '0.05');
+    photoroomForm.append('format', 'png'); // ← OBLIGATOIRE pour canal alpha transparent
 
     let prRes;
     try {
@@ -94,12 +95,11 @@ export default async function handler(req, res) {
     const { width: prW, height: prH } = await sharp(photoroomBuffer).metadata();
     console.log(`[Photoroom] OK — ${prW}x${prH} | content-type: ${prRes.headers.get('content-type')}`);
 
-    // ── 2. Gemini → plaque en PIXELS ABSOLUS ─────────────────────
-    // CORRECTION : on donne les dimensions réelles à Gemini et on lui demande
-    // des entiers (x, y, width, height) plutôt que des flottants normalisés.
-    // Gemini est bien plus précis avec des pixels qu'avec des ratios 0-1.
-    const genAI    = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model    = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    // ── 2. Gemini → pixels ABSOLUS de la plaque sur le PNG Photoroom ──
+    // FIX : on demande des pixels entiers (x, y coin sup-gauche + width + height)
+    // au lieu de coordonnées normalisées. Gemini est beaucoup plus précis ainsi.
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const base64PR = photoroomBuffer.toString('base64');
 
     const prompt = `The image size is ${prW} pixels wide and ${prH} pixels high. Find the license plate. Return ONLY a valid JSON object with absolute pixel coordinates (integers): {"license_plate": {"x": int, "y": int, "width": int, "height": int}} where x and y are the top-left corner of the plate. If no plate is visible, return exactly: {"license_plate": null} No explanation, no markdown.`;
@@ -149,8 +149,11 @@ export default async function handler(req, res) {
       .png()
       .toBuffer();
 
-    // Calcul du placement de la voiture
-    const scale   = Math.min(CANVAS_W * 0.90 / prW, CANVAS_H * 0.92 / prH, 1);
+    // Calcul du placement de la voiture sur le canvas
+    const maxCarW = Math.round(CANVAS_W * 0.90);
+    const maxCarH = Math.round(CANVAS_H * 0.92);
+    const scale   = Math.min(maxCarW / prW, maxCarH / prH, 1);
+
     const carW    = Math.round(prW * scale);
     const carH    = Math.round(prH * scale);
     const carLeft = Math.round((CANVAS_W - carW) / 2);
@@ -158,7 +161,7 @@ export default async function handler(req, res) {
 
     console.log(`[Sharp] Voiture: ${carW}x${carH} | left=${carLeft} top=${carTop} | scale=${scale.toFixed(3)}`);
 
-    // Couche 1 : voiture redimensionnée (PNG transparent → l'ombre se fond sur le damier)
+    // Couche 1 : voiture redimensionnée (PNG transparent → ombre fondue sur fond)
     const resizedCarBuffer = await sharp(photoroomBuffer)
       .resize(carW, carH, { fit: 'fill' })
       .png()
@@ -169,14 +172,13 @@ export default async function handler(req, res) {
     ];
 
     // Couche 2 : bandeau AUTOEASY
-    // CORRECTION : Gemini donne maintenant des pixels absolus sur le PNG Photoroom.
-    // La transformation est simple :
-    //   pixel_canvas = offset_voiture + pixel_photoroom × scale
+    // FIX : plateCoords contient des pixels absolus sur le PNG Photoroom (prW×prH).
+    // Transformation simple : multiplier par scale + ajouter l'offset de la voiture.
     if (plateCoords && geminiSuccess) {
-      const px = Math.round(carLeft + plateCoords.x     * scale);
-      const py = Math.round(carTop  + plateCoords.y     * scale);
-      const pw = Math.round(plateCoords.width            * scale);
-      const ph = Math.round(plateCoords.height           * scale);
+      const pw = Math.round(plateCoords.width  * scale);
+      const ph = Math.round(plateCoords.height * scale);
+      const px = Math.round(carLeft + plateCoords.x * scale);
+      const py = Math.round(carTop  + plateCoords.y * scale);
 
       // Clamping dans les bounds du canvas
       const sx = Math.max(0, Math.min(px, CANVAS_W - 1));
@@ -197,7 +199,7 @@ export default async function handler(req, res) {
 
       layers.push({ input: Buffer.from(bannerSvg), left: sx, top: sy });
     } else {
-      console.warn('[Sharp] Plaque non détectée ou Gemini KO — bandeau ignoré.');
+      console.warn('[Sharp] Plaque non détectée — bandeau ignoré.');
     }
 
     // Assemblage final
