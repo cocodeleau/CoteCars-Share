@@ -18,7 +18,8 @@ import sharp     from 'sharp';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const SHOWROOM_URL    = 'https://res.cloudinary.com/di3xa7ldg/image/upload/autoeasy-bg_tdjz2c.jpg';
-const REPLICATE_MODEL = 'stability-ai/stable-diffusion-inpainting';
+// Hash de stability-ai/stable-diffusion-inpainting — source : replicate.com/stability-ai/stable-diffusion-inpainting
+const REPLICATE_VERSION = 'a9758cbfbd5f3c2094457d996681af52552901775aa2d6dd0b17fd15df959bef';
 const INPAINT_SIZE    = 1024;
 const POLL_INTERVAL   = 2500;  // ms entre chaque vérification de statut
 const MAX_WAIT_MS     = 55000; // 55s max (sous la limite maxDuration: 60s de Vercel)
@@ -104,7 +105,7 @@ export default async function handler(req, res) {
 
     console.log('[Replicate] Création de la prédiction...');
     const prediction = await replicate.predictions.create({
-      model: REPLICATE_MODEL,
+      version: REPLICATE_VERSION,
       input: {
         image:               initB64,
         mask:                maskB64,
