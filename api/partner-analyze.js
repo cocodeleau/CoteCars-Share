@@ -17,31 +17,10 @@ import fetch    from 'node-fetch';
 import sharp    from 'sharp';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const CANVAS_W   = 1920;
-const CANVAS_H   = 1080;
-const BOTTOM_PAD = 30;
-
-function buildShowroomSVG(w, h) {
-  const horizonY = Math.round(h * 0.56);
-  const tile     = 54;
-  return `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%"   stop-color="#AAAAAA"/>
-        <stop offset="100%" stop-color="#CECECE"/>
-      </linearGradient>
-      <pattern id="checker" width="${tile * 2}" height="${tile * 2}" patternUnits="userSpaceOnUse">
-        <rect width="${tile}"  height="${tile}"  fill="#B8B8B8"/>
-        <rect x="${tile}" y="${tile}" width="${tile}" height="${tile}" fill="#B8B8B8"/>
-        <rect x="${tile}" width="${tile}"  height="${tile}"  fill="#D0D0D0"/>
-        <rect y="${tile}" width="${tile}"  height="${tile}"  fill="#D0D0D0"/>
-      </pattern>
-    </defs>
-    <rect width="${w}" height="${horizonY}" fill="url(#wall)"/>
-    <rect y="${horizonY}" width="${w}" height="${h - horizonY}" fill="url(#checker)"/>
-    <rect y="${horizonY - 1}" width="${w}" height="2" fill="rgba(0,0,0,0.10)"/>
-  </svg>`;
-}
+const CANVAS_W      = 1920;
+const CANVAS_H      = 1080;
+const BOTTOM_PAD    = 30;
+const SHOWROOM_URL  = 'https://res.cloudinary.com/di3xa7ldg/image/upload/autoeasy-bg_tdjz2c.jpg';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -144,9 +123,11 @@ export default async function handler(req, res) {
 
     // ── 3. Sharp — Sandwich 3 couches ────────────────────────────
 
-    // Couche 0 : fond showroom 1920×1080
-    const showroomBuffer = await sharp(Buffer.from(buildShowroomSVG(CANVAS_W, CANVAS_H)))
-      .png()
+    // Couche 0 : vrai fond AutoEasy téléchargé depuis Cloudinary
+    const backgroundRes = await fetch(SHOWROOM_URL);
+    if (!backgroundRes.ok) throw new Error(`Fond showroom introuvable (${backgroundRes.status})`);
+    const showroomBuffer = await sharp(Buffer.from(await backgroundRes.arrayBuffer()))
+      .resize(CANVAS_W, CANVAS_H, { fit: 'cover' })
       .toBuffer();
 
     // Calcul du placement de la voiture sur le canvas
