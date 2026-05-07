@@ -1,12 +1,16 @@
 // api/partner-analyze.js
 //
 // Workflow :
-//   1. Photoroom  → PNG transparent forcé (format=png) + ombre de contact
-//   2. Gemini     → coordonnées PIXELS ABSOLUS de la plaque sur ce PNG
-//   3. Sharp      → Sandwich sur canvas 1920×1080 :
-//                     Couche 0 : fond showroom damier (SVG)
-//                     Couche 1 : voiture Photoroom redimensionnée + positionnée
-//                     Couche 2 : bandeau AUTOEASY (coords × scale + offset)
+//   1. Photoroom  → envoie la voiture + background.imageUrl du fond AutoEasy.
+//                   Photoroom analyse l'angle, détoure, redimensionne, pose la voiture
+//                   sur le fond avec ombre. Il renvoie l'image fusionnée finale (JPEG).
+//
+//   2. Gemini     → analyse cette image fusionnée et retourne les coordonnées
+//                   PIXEL ABSOLUS (x, y, width, height) de la plaque.
+//
+//   3. Sharp      → AUCUN calcul de scale ou d'offset.
+//                   On prend l'image Photoroom telle quelle et on composite
+//                   le bandeau AUTOEASY exactement à left=x, top=y.
 //
 // Reçoit : POST JSON { image: "data:image/jpeg;base64,..." }
 // Renvoie : JSON { success: true, result: "data:image/jpeg;base64,...", plateDetected: bool }
@@ -17,10 +21,7 @@ import fetch    from 'node-fetch';
 import sharp    from 'sharp';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const CANVAS_W      = 1920;
-const CANVAS_H      = 1080;
-const BOTTOM_PAD    = 30;
-const SHOWROOM_URL  = 'https://res.cloudinary.com/di3xa7ldg/image/upload/autoeasy-bg_tdjz2c.jpg';
+const SHOWROOM_URL = 'https://res.cloudinary.com/di3xa7ldg/image/upload/autoeasy-bg_tdjz2c.jpg';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -37,18 +38,18 @@ export default async function handler(req, res) {
     const mimeType    = image.includes('data:') ? image.split(';')[0].split(':')[1] : 'image/jpeg';
     const imageBuffer = Buffer.from(base64Data, 'base64');
 
-    // ── 1. Photoroom → PNG transparent + ombre de contact ────────
-    // FIX : format=png force Photoroom à retourner un vrai PNG avec canal alpha.
-    // Sans ce paramètre, Photoroom renvoie du JPEG (fond blanc) par défaut.
+    // ── 1. Photoroom — compositing IA complet ────────────────────
+    // On envoie la voiture + l'URL du fond AutoEasy.
+    // Photoroom détecte l'angle, détoure, positionne et fusionne tout seul.
+    // On récupère directement l'image finale avec ombre et fond.
     const photoroomForm = new FormData();
     photoroomForm.append('imageFile', imageBuffer, {
       filename: 'car.jpg',
       contentType: mimeType,
     });
+    photoroomForm.append('background.imageUrl', SHOWROOM_URL);
     photoroomForm.append('shadow.mode', 'ai.soft');
-    photoroomForm.append('background.color', 'transparent'); // ← force fond transparent même avec les ombres actives
     photoroomForm.append('padding', '0.05');
-    photoroomForm.append('format', 'png'); // ← OBLIGATOIRE pour canal alpha transparent
 
     let prRes;
     try {
@@ -70,18 +71,18 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: false, error: `Photoroom erreur ${prRes.status} : ${errText}` });
     }
 
-    const photoroomBuffer = Buffer.from(await prRes.arrayBuffer());
-    const { width: prW, height: prH } = await sharp(photoroomBuffer).metadata();
-    console.log(`[Photoroom] OK — ${prW}x${prH} | content-type: ${prRes.headers.get('content-type')}`);
+    const fusedBuffer = Buffer.from(await prRes.arrayBuffer());
+    const { width: imgW, height: imgH } = await sharp(fusedBuffer).metadata();
+    console.log(`[Photoroom] Image fusionnée : ${imgW}x${imgH}`);
 
-    // ── 2. Gemini → pixels ABSOLUS de la plaque sur le PNG Photoroom ──
-    // FIX : on demande des pixels entiers (x, y coin sup-gauche + width + height)
-    // au lieu de coordonnées normalisées. Gemini est beaucoup plus précis ainsi.
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const base64PR = photoroomBuffer.toString('base64');
+    // ── 2. Gemini — pixels absolus sur l'image fusionnée ─────────
+    // Gemini analyse l'image finale (celle que verra l'utilisateur).
+    // Les coordonnées retournées correspondent directement aux pixels de cette image.
+    const genAI   = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model   = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const base64Fused = fusedBuffer.toString('base64');
 
-    const prompt = `The image size is ${prW} pixels wide and ${prH} pixels high. Find the license plate. Return ONLY a valid JSON object with absolute pixel coordinates (integers): {"license_plate": {"x": int, "y": int, "width": int, "height": int}} where x and y are the top-left corner of the plate. If no plate is visible, return exactly: {"license_plate": null} No explanation, no markdown.`;
+    const prompt = `The image size is ${imgW} pixels wide and ${imgH} pixels high. Find the license plate on the car. Return ONLY a valid JSON object with absolute pixel coordinates (integers): {"license_plate": {"x": int, "y": int, "width": int, "height": int}} where x and y are the top-left corner of the plate. If no plate is visible, return exactly: {"license_plate": null} No explanation, no markdown.`;
 
     const MAX_ATTEMPTS = 3;
     const BACKOFF_MS   = [0, 2000, 4000];
@@ -98,7 +99,7 @@ export default async function handler(req, res) {
           contents: [{
             role: 'user',
             parts: [
-              { inlineData: { mimeType: 'image/png', data: base64PR } },
+              { inlineData: { mimeType: 'image/jpeg', data: base64Fused } },
               { text: prompt },
             ],
           }],
@@ -121,53 +122,21 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── 3. Sharp — Sandwich 3 couches ────────────────────────────
+    // ── 3. Sharp — bandeau AUTOEASY uniquement ───────────────────
+    // Aucun calcul de scale, carTop, CANVAS_H ou offset.
+    // On utilise directement les pixels renvoyés par Gemini.
+    let finalBuffer;
 
-    // Couche 0 : vrai fond AutoEasy téléchargé depuis Cloudinary
-    const backgroundRes = await fetch(SHOWROOM_URL);
-    if (!backgroundRes.ok) throw new Error(`Fond showroom introuvable (${backgroundRes.status})`);
-    const showroomBuffer = await sharp(Buffer.from(await backgroundRes.arrayBuffer()))
-      .resize(CANVAS_W, CANVAS_H, { fit: 'cover' })
-      .toBuffer();
-
-    // Calcul du placement de la voiture sur le canvas
-    const maxCarW = Math.round(CANVAS_W * 0.90);
-    const maxCarH = Math.round(CANVAS_H * 0.92);
-    const scale   = Math.min(maxCarW / prW, maxCarH / prH, 1);
-
-    const carW    = Math.round(prW * scale);
-    const carH    = Math.round(prH * scale);
-    const carLeft = Math.round((CANVAS_W - carW) / 2);
-    const carTop  = Math.max(0, CANVAS_H - carH - BOTTOM_PAD);
-
-    console.log(`[Sharp] Voiture: ${carW}x${carH} | left=${carLeft} top=${carTop} | scale=${scale.toFixed(3)}`);
-
-    // Couche 1 : voiture redimensionnée (PNG transparent → ombre fondue sur fond)
-    const resizedCarBuffer = await sharp(photoroomBuffer)
-      .resize(carW, carH, { fit: 'fill' })
-      .png()
-      .toBuffer();
-
-    const layers = [
-      { input: resizedCarBuffer, left: carLeft, top: carTop },
-    ];
-
-    // Couche 2 : bandeau AUTOEASY
-    // FIX : plateCoords contient des pixels absolus sur le PNG Photoroom (prW×prH).
-    // Transformation simple : multiplier par scale + ajouter l'offset de la voiture.
     if (plateCoords && geminiSuccess) {
-      const pw = Math.round(plateCoords.width  * scale);
-      const ph = Math.round(plateCoords.height * scale);
-      const px = Math.round(carLeft + plateCoords.x * scale);
-      const py = Math.round(carTop  + plateCoords.y * scale);
+      const { x, y, width, height } = plateCoords;
 
-      // Clamping dans les bounds du canvas
-      const sx = Math.max(0, Math.min(px, CANVAS_W - 1));
-      const sy = Math.max(0, Math.min(py, CANVAS_H - 1));
-      const sw = Math.min(pw, CANVAS_W - sx);
-      const sh = Math.min(ph, CANVAS_H - sy);
+      // Clamping de sécurité pour rester dans les bounds de l'image
+      const sx = Math.max(0, Math.min(x,     imgW - 1));
+      const sy = Math.max(0, Math.min(y,     imgH - 1));
+      const sw = Math.min(width,  imgW - sx);
+      const sh = Math.min(height, imgH - sy);
 
-      console.log(`[Sharp] Bandeau → x:${sx} y:${sy} w:${sw} h:${sh}`);
+      console.log(`[Sharp] Bandeau AUTOEASY → left:${sx} top:${sy} w:${sw} h:${sh}`);
 
       const fontSize  = Math.round(sh * 0.52);
       const bannerSvg = `<svg width="${sw}" height="${sh}" xmlns="http://www.w3.org/2000/svg">
@@ -178,18 +147,18 @@ export default async function handler(req, res) {
     font-weight="900" font-size="${fontSize}" letter-spacing="1">AUTOEASY</text>
 </svg>`;
 
-      layers.push({ input: Buffer.from(bannerSvg), left: sx, top: sy });
+      finalBuffer = await sharp(fusedBuffer)
+        .composite([{ input: Buffer.from(bannerSvg), left: sx, top: sy }])
+        .jpeg({ quality: 92 })
+        .toBuffer();
+
     } else {
-      console.warn('[Sharp] Plaque non détectée — bandeau ignoré.');
+      // Pas de plaque détectée → on retourne l'image Photoroom telle quelle
+      console.warn('[Sharp] Plaque non détectée — image retournée sans bandeau.');
+      finalBuffer = await sharp(fusedBuffer).jpeg({ quality: 92 }).toBuffer();
     }
 
-    // Assemblage final
-    const finalBuffer = await sharp(showroomBuffer)
-      .composite(layers)
-      .jpeg({ quality: 92 })
-      .toBuffer();
-
-    console.log(`[Sharp] Image finale : ${CANVAS_W}x${CANVAS_H} — ${finalBuffer.length} octets`);
+    console.log(`[Sharp] Image finale : ${finalBuffer.length} octets`);
 
     return res.status(200).json({
       success:       true,
