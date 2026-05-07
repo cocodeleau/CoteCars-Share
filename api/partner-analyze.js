@@ -2,29 +2,28 @@
 //
 // Workflow :
 //   1. Photoroom  → détourage PNG transparent (voiture seule)
-//   2. Replicate  → SDXL Inpainting : voiture posée sur le fond damier Cloudinary,
-//                   IA génère ombres + reflets réalistes dans la zone fond uniquement
-//                   Safeguard : voiture originale re-composée par-dessus (100% contractuel)
-//   3. Gemini     → coordonnées plaque en pixels absolus sur l'image fusionnée
-//   4. Sharp      → bandeau AUTOEASY à left=x, top=y (zéro calcul)
+//   2. Replicate  → logerfo/sdxl-controlnet-inpaint-background
+//                   Masque : canal alpha FLOUTÉ (feathering 20px) pour donner
+//                   à l'IA une zone de transition sous les pneus → ombres de contact
+//                   ⚠️  PAS de re-composite de la voiture par-dessus = les ombres survivent
+//   3. Gemini     → coordonnées plaque en pixels absolus
+//   4. Sharp      → bandeau AUTOEASY
 //
-// ⚠️  TIMEOUT : ajoute dans vercel.json :
-//     { "functions": { "api/partner-analyze.js": { "maxDuration": 60 } } }
-//     (plan Pro requis pour dépasser 10s — SDXL prend ~20-40s)
+// ⚠️  vercel.json doit avoir : { "functions": { "api/partner-analyze.js": { "maxDuration": 60 } } }
 //
 // Reçoit : POST JSON { image: "data:image/jpeg;base64,..." }
-// Renvoie : { success: true,  result: "data:image/jpeg;base64,...", plateDetected: bool }
+// Renvoie : { success: true, result: "data:image/jpeg;base64,...", plateDetected: bool }
 //        ou { success: false, error: "...", stack: "..." }
 
-import Replicate   from 'replicate';
-import FormData    from 'form-data';
-import fetch       from 'node-fetch';
-import sharp       from 'sharp';
+import Replicate from 'replicate';
+import FormData  from 'form-data';
+import fetch     from 'node-fetch';
+import sharp     from 'sharp';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const SHOWROOM_URL    = 'https://res.cloudinary.com/di3xa7ldg/image/upload/autoeasy-bg_tdjz2c.jpg';
-const REPLICATE_MODEL = 'stability-ai/sdxl-inpainting'; // SDK utilise la dernière version
-const INPAINT_SIZE    = 1024; // résolution cible SDXL
+const REPLICATE_MODEL = 'logerfo/sdxl-controlnet-inpaint-background'; // spécialisé ombres portées
+const INPAINT_SIZE    = 1024;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -42,8 +41,6 @@ export default async function handler(req, res) {
     const imageBuffer = Buffer.from(base64Data, 'base64');
 
     // ── 1. Photoroom → PNG transparent (détourage seul) ──────────
-    // Aucun fond ni ombre ici : on veut uniquement la voiture découpée
-    // avec son canal alpha pour générer le masque Replicate.
     const photoroomForm = new FormData();
     photoroomForm.append('imageFile', imageBuffer, { filename: 'car.jpg', contentType: mimeType });
     photoroomForm.append('format', 'png');
@@ -68,9 +65,9 @@ export default async function handler(req, res) {
     const carPngRaw = Buffer.from(await prRes.arrayBuffer());
     console.log(`[Photoroom] Détourage OK — ${carPngRaw.length} octets`);
 
-    // ── 2. Replicate — SDXL Inpainting ───────────────────────────
+    // ── 2. Replicate — Inpainting avec masque flouté ──────────────
 
-    // 2a. Fond showroom + voiture redimensionnés à 1024×1024 pour SDXL
+    // 2a. Redimensionner fond et voiture à 1024×1024
     const bgRes = await fetch(SHOWROOM_URL);
     if (!bgRes.ok) return res.status(200).json({ success: false, error: 'Fond showroom introuvable.' });
 
@@ -84,63 +81,65 @@ export default async function handler(req, res) {
       .png()
       .toBuffer();
 
-    // 2b. Image d'init : fond showroom + voiture posée par-dessus
+    // 2b. Image d'init : fond showroom + voiture composée par-dessus
     const initImageBuffer = await sharp(bgResized)
       .composite([{ input: carResized }])
       .jpeg({ quality: 95 })
       .toBuffer();
 
-    // 2c. Masque de protection
-    // Convention SDXL : BLANC = zone à générer, NOIR = zone protégée
-    // On extrait le canal alpha de la voiture et on l'inverse :
-    //   voiture (alpha > 0) → noir  (0)   → protégée, IA ne touche pas
-    //   fond    (alpha = 0) → blanc (255) → IA génère ombres + reflets
+    // 2c. Masque avec FEATHERING (flou de 20px sur les bords du canal alpha)
+    //
+    // Logique "fusion sale" :
+    //   - Alpha original : voiture=255, fond=0
+    //   - Après blur(20) : voiture=255, TRANSITION=0-255, fond=0
+    //   - Après negate  : voiture=0 (noir/protégé), TRANSITION=0-255 (zone de fusion), fond=255 (blanc/généré)
+    //
+    // La zone de transition (~20px autour de la carrosserie et sous les pneus)
+    // est partiellement éditable → l'IA peut y peindre des ombres de contact.
+    // C'est ce qui "soude" la voiture au sol.
     const maskBuffer = await sharp(carResized)
       .extractChannel('alpha')
-      .negate()
+      .blur(20)       // feathering : dilate les bords de 20px (surtout visible sous les pneus)
+      .negate()       // inversion : corps voiture=noir, zone transition=gris, fond=blanc
       .png()
       .toBuffer();
 
-    // 2d. Conversion en data URIs (format attendu par Replicate)
+    // 2d. Conversion en data URIs
     const initB64 = 'data:image/jpeg;base64,' + initImageBuffer.toString('base64');
     const maskB64 = 'data:image/png;base64,'  + maskBuffer.toString('base64');
 
-    // 2e. Appel Replicate via SDK (gère le polling automatiquement)
-    console.log('[Replicate] Envoi vers SDXL Inpainting...');
+    // 2e. Appel Replicate (SDK gère le polling automatiquement)
+    console.log('[Replicate] Envoi vers logerfo/sdxl-controlnet-inpaint-background...');
     const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
     const replicateOutput = await replicate.run(REPLICATE_MODEL, {
       input: {
         image:               initB64,
         mask:                maskB64,
-        prompt:              'Photorealistic car in a modern high-end showroom with a shiny black and white checkerboard floor. Perfect grounding shadows under the tires, highly detailed floor reflections, studio lighting, 8k resolution, photorealistic.',
-        negative_prompt:     'floating, levitation, distorted, cartoon, illustration, low quality, altered car body, missing tires, blurry, deformed wheels.',
-        num_inference_steps: 30,
-        guidance_scale:      8,
-        strength:            0.75,
+        prompt:              'High-end car showroom, shiny checkerboard floor, cinematic lighting, realistic soft shadows under the car tires, ambient occlusion shadows under the tires, tires squashing slightly on the floor, realistic floor reflections, heavy car weight distribution, 8k resolution, photorealistic.',
+        negative_prompt:     'floating, levitation, no shadows, cartoon, illustration, low quality, blurry, deformed, watermark.',
+        num_inference_steps: 35,
+        guidance_scale:      8.5,
+        strength:            0.85,
         width:               INPAINT_SIZE,
         height:              INPAINT_SIZE,
       },
     });
 
-    // 2f. Récupérer l'image générée (Replicate renvoie une URL ou un tableau d'URLs)
+    // 2f. Récupérer l'image générée par Replicate
     const outputUrl = Array.isArray(replicateOutput) ? replicateOutput[0] : replicateOutput;
-    if (!outputUrl) throw new Error('Replicate : aucune URL de sortie dans la réponse.');
+    if (!outputUrl) throw new Error('Replicate : aucune URL de sortie.');
     console.log(`[Replicate] Output : ${outputUrl}`);
 
     const replicateImgRes = await fetch(String(outputUrl));
     if (!replicateImgRes.ok) throw new Error('Impossible de télécharger le résultat Replicate.');
-    const replicateRaw = Buffer.from(await replicateImgRes.arrayBuffer());
 
-    // 2g. Safeguard contractuel : re-composer la voiture originale par-dessus
-    // Garantit que la carrosserie est pixel-perfect identique à l'originale.
-    const fusedBuffer = await sharp(replicateRaw)
-      .composite([{ input: carResized }])
-      .jpeg({ quality: 92 })
-      .toBuffer();
-
+    // ⚠️  PAS de re-composite de la voiture par-dessus.
+    // Si on repose le PNG net sur l'image Replicate, on écrase les ombres de contact
+    // que l'IA vient de générer sous les pneus. On garde l'image Replicate telle quelle.
+    const fusedBuffer = Buffer.from(await replicateImgRes.arrayBuffer());
     const { width: imgW, height: imgH } = await sharp(fusedBuffer).metadata();
-    console.log(`[Replicate+Sharp] Image fusionnée safeguard : ${imgW}x${imgH}`);
+    console.log(`[Replicate] Image finale : ${imgW}x${imgH}`);
 
     // ── 3. Gemini → pixels absolus de la plaque ──────────────────
     const genAI    = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -181,7 +180,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── 4. Sharp → bandeau AUTOEASY (coordonnées directes Gemini) ──
+    // ── 4. Sharp → bandeau AUTOEASY ──────────────────────────────
     let finalBuffer;
 
     if (plateCoords && geminiSuccess) {
