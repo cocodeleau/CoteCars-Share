@@ -86,14 +86,34 @@ export default async function handler(req, res) {
       .jpeg({ quality: 95 })
       .toBuffer();
 
-    // 2c. Masque flouté — zone de transition sous les pneus
-    //   Avant blur : voiture=255, fond=0
-    //   Après blur : voiture=255, transition=0-255, fond=0
-    //   Après negate : voiture=0 (protégée), transition=gris (semi-éditable), fond=255 (IA génère)
-    const maskBuffer = await sharp(carResized)
-      .extractChannel('alpha')
-      .blur(20)
-      .negate()
+    // 2c. Masque précis — UNIQUEMENT la zone sol directement sous les pneus
+    //
+    // Logique pixel par pixel :
+    //   • Voiture (alpha > 30)           → noir (carrosserie 100% protégée)
+    //   • Zone sol bas 28% SANS voiture  → blanc (IA peint les ombres ici)
+    //   • Reste du fond (haut + côtés)   → noir (showroom préservé intact)
+    //
+    // Résultat : FLUX ne touche qu'une fine bande sous les roues.
+
+    const alphaRaw    = await sharp(carResized).extractChannel('alpha').raw().toBuffer();
+    const shadowStart = Math.round(INPAINT_SIZE * 0.72); // zone sol = bottom 28%
+    const maskPixels  = Buffer.alloc(INPAINT_SIZE * INPAINT_SIZE);
+
+    for (let y = 0; y < INPAINT_SIZE; y++) {
+      for (let x = 0; x < INPAINT_SIZE; x++) {
+        const i            = y * INPAINT_SIZE + x;
+        const isCar        = alphaRaw[i] > 30;
+        const inShadowZone = y >= shadowStart;
+        // Blanc uniquement : dans la zone sol ET pas sur la voiture
+        maskPixels[i] = (!isCar && inShadowZone) ? 255 : 0;
+      }
+    }
+
+    // Feathering léger pour une transition naturelle entre l'ombre et le sol
+    const maskBuffer = await sharp(maskPixels, {
+      raw: { width: INPAINT_SIZE, height: INPAINT_SIZE, channels: 1 },
+    })
+      .blur(6)
       .png()
       .toBuffer();
 
@@ -110,11 +130,13 @@ export default async function handler(req, res) {
     const replicateOutput = await Promise.race([
       replicate.run(REPLICATE_VERSION, {
         input: {
-          image:           initB64,
+          // image : fond showroom Cloudinary seul (sans la voiture)
+          // FLUX préserve tout ce qui est hors du masque → showroom intact
+          image:           'data:image/jpeg;base64,' + bgResized.toString('base64'),
           mask:            maskB64,
           prompt:          'A luxury car in a showroom, high-end checkerboard floor, realistic contact shadows under tires, 8k resolution, cinematic lighting.',
-          guidance:        30,
-          steps:           50,
+          guidance:        15,
+          steps:           40,
           output_format:   'jpg',
           safety_tolerance: 2,
         },
@@ -133,8 +155,12 @@ export default async function handler(req, res) {
     const replicateImgRes = await fetch(String(outputUrl));
     if (!replicateImgRes.ok) throw new Error('Impossible de télécharger le résultat Replicate.');
 
-    // ⚠️  PAS de re-composite — on garde les ombres générées sous les pneus
-    const fusedBuffer            = Buffer.from(await replicateImgRes.arrayBuffer());
+    // FLUX a travaillé sur le fond seul → on recompose la voiture Photoroom par-dessus.
+    // Résultat : ombres IA au sol + carrosserie 100% originale et contractuelle.
+    const fusedBuffer = await sharp(Buffer.from(await replicateImgRes.arrayBuffer()))
+      .composite([{ input: carResized }])
+      .jpeg({ quality: 92 })
+      .toBuffer();
     const { width: imgW, height: imgH } = await sharp(fusedBuffer).metadata();
 
     // ── 3. Gemini → pixels absolus de la plaque ──────────────────
