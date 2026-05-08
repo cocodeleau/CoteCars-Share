@@ -1,11 +1,16 @@
 // api/partner-analyze.js
 //
-// Workflow :
-//   1. Photoroom  → détourage PNG transparent
-//   2. Replicate  → logerfo/sdxl-controlnet-inpaint-background
-//                   Masque flouté (blur 20px) pour ombres de contact sous les pneus
-//   3. Gemini     → coordonnées plaque en pixels absolus
-//   4. Sharp      → bandeau AUTOEASY
+// Workflow "Double-Masquage + Sandwich Sharp" :
+//   1. Photoroom  → PNG transparent voiture (carResized)
+//   2. Replicate  → FLUX-Fill génère les ombres de contact dans la zone sol
+//   3. Sharp      → Sandwich 3 couches :
+//                     Base   : showroom Cloudinary original (bgResized)
+//                     Milieu : zone d'ombres FLUX extraite, blend 'multiply' → ombres naturelles
+//                     Top    : voiture Photoroom intacte par-dessus
+//   4. Gemini     → coordonnées plaque pixels absolus
+//   5. Sharp      → bandeau AUTOEASY
+//
+// ⚠️  vercel.json → { "functions": { "api/partner-analyze.js": { "maxDuration": 60 } } }
 //
 // Reçoit : POST JSON { image: "data:image/jpeg;base64,..." }
 // Renvoie : { success: true, result: "data:image/jpeg;base64,...", plateDetected: bool }
@@ -18,11 +23,10 @@ import sharp     from 'sharp';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const SHOWROOM_URL    = 'https://res.cloudinary.com/di3xa7ldg/image/upload/autoeasy-bg_tdjz2c.jpg';
-// Hash de stability-ai/stable-diffusion-inpainting — source : replicate.com/stability-ai/stable-diffusion-inpainting
-const REPLICATE_VERSION = 'black-forest-labs/flux-fill-pro';
+const REPLICATE_MODEL = 'black-forest-labs/flux-fill-pro';
 const INPAINT_SIZE    = 1024;
-const POLL_INTERVAL   = 2500;  // ms entre chaque vérification de statut
-const MAX_WAIT_MS     = 55000; // 55s max (sous la limite maxDuration: 60s de Vercel)
+const SHADOW_START_Y  = Math.round(INPAINT_SIZE * 0.72); // zone sol = bottom 28%
+const MAX_WAIT_MS     = 55000;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -32,14 +36,13 @@ export default async function handler(req, res) {
   try {
     // ── 0. Lecture du base64 ─────────────────────────────────────
     const { image } = req.body;
-    if (!image) {
-      return res.status(200).json({ success: false, error: 'Champ "image" manquant.' });
-    }
+    if (!image) return res.status(200).json({ success: false, error: 'Champ "image" manquant.' });
+
     const base64Data  = image.includes(',') ? image.split(',')[1] : image;
     const mimeType    = image.includes('data:') ? image.split(';')[0].split(':')[1] : 'image/jpeg';
     const imageBuffer = Buffer.from(base64Data, 'base64');
 
-    // ── 1. Photoroom → PNG transparent ───────────────────────────
+    // ── 1. Photoroom → PNG transparent (détourage voiture) ───────
     const photoroomForm = new FormData();
     photoroomForm.append('imageFile', imageBuffer, { filename: 'car.jpg', contentType: mimeType });
     photoroomForm.append('format', 'png');
@@ -64,9 +67,9 @@ export default async function handler(req, res) {
     const carPngRaw = Buffer.from(await prRes.arrayBuffer());
     console.log(`[Photoroom] OK — ${carPngRaw.length} octets`);
 
-    // ── 2. Replicate — Inpainting avec masque flouté ──────────────
+    // ── 2. Préparation des calques Sharp ─────────────────────────
 
-    // 2a. Redimensionner fond + voiture à 1024×1024
+    // Fond showroom Cloudinary — couche de base finale (100% préservée)
     const bgRes = await fetch(SHOWROOM_URL);
     if (!bgRes.ok) return res.status(200).json({ success: false, error: 'Fond showroom introuvable.' });
 
@@ -75,95 +78,118 @@ export default async function handler(req, res) {
       .jpeg({ quality: 95 })
       .toBuffer();
 
+    // Voiture redimensionnée (PNG transparent) — couche du dessus finale
     const carResized = await sharp(carPngRaw)
       .resize(INPAINT_SIZE, INPAINT_SIZE, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
       .png()
       .toBuffer();
 
-    // 2b. Image d'init : fond + voiture
+    // Image d'init pour FLUX : fond + voiture (FLUX voit la voiture → ombres bien placées)
     const initImageBuffer = await sharp(bgResized)
       .composite([{ input: carResized }])
       .jpeg({ quality: 95 })
       .toBuffer();
+    const initB64 = 'data:image/jpeg;base64,' + initImageBuffer.toString('base64');
 
-    // 2c. Masque précis — UNIQUEMENT la zone sol directement sous les pneus
-    //
-    // Logique pixel par pixel :
-    //   • Voiture (alpha > 30)           → noir (carrosserie 100% protégée)
-    //   • Zone sol bas 28% SANS voiture  → blanc (IA peint les ombres ici)
-    //   • Reste du fond (haut + côtés)   → noir (showroom préservé intact)
-    //
-    // Résultat : FLUX ne touche qu'une fine bande sous les roues.
-
-    const alphaRaw    = await sharp(carResized).extractChannel('alpha').raw().toBuffer();
-    const shadowStart = Math.round(INPAINT_SIZE * 0.72); // zone sol = bottom 28%
-    const maskPixels  = Buffer.alloc(INPAINT_SIZE * INPAINT_SIZE);
+    // ── 3. Masque précis pixel par pixel ─────────────────────────
+    // • Blanc : zone sol (bottom 28%) SANS la carrosserie → FLUX peint ici les ombres
+    // • Noir  : carrosserie + tout le reste du fond → protégés
+    const alphaRaw   = await sharp(carResized).extractChannel('alpha').raw().toBuffer();
+    const maskPixels = Buffer.alloc(INPAINT_SIZE * INPAINT_SIZE);
 
     for (let y = 0; y < INPAINT_SIZE; y++) {
       for (let x = 0; x < INPAINT_SIZE; x++) {
-        const i            = y * INPAINT_SIZE + x;
-        const isCar        = alphaRaw[i] > 30;
-        const inShadowZone = y >= shadowStart;
-        // Blanc uniquement : dans la zone sol ET pas sur la voiture
-        maskPixels[i] = (!isCar && inShadowZone) ? 255 : 0;
+        const i = y * INPAINT_SIZE + x;
+        maskPixels[i] = (alphaRaw[i] <= 30 && y >= SHADOW_START_Y) ? 255 : 0;
       }
     }
 
-    // Feathering léger pour une transition naturelle entre l'ombre et le sol
     const maskBuffer = await sharp(maskPixels, {
       raw: { width: INPAINT_SIZE, height: INPAINT_SIZE, channels: 1 },
-    })
-      .blur(6)
-      .png()
-      .toBuffer();
+    }).blur(6).png().toBuffer();
 
-    const initB64 = 'data:image/jpeg;base64,' + initImageBuffer.toString('base64');
-    const maskB64 = 'data:image/png;base64,'  + maskBuffer.toString('base64');
+    const maskB64 = 'data:image/png;base64,' + maskBuffer.toString('base64');
 
-    // 2d. Appel Replicate — replicate.run() gère la résolution de version automatiquement.
-    // Promise.race() garantit qu'on ne dépasse jamais MAX_WAIT_MS (55s).
-    const replicate  = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
-    const startTime  = Date.now();
-
-    console.log(`[Replicate] Lancement de ${REPLICATE_VERSION}...`);
+    // ── 4. Replicate FLUX-Fill — génération des ombres ───────────
+    const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+    console.log('[Replicate] Génération des ombres FLUX...');
 
     const replicateOutput = await Promise.race([
-      replicate.run(REPLICATE_VERSION, {
+      replicate.run(REPLICATE_MODEL, {
         input: {
-          // image : fond showroom Cloudinary seul (sans la voiture)
-          // FLUX préserve tout ce qui est hors du masque → showroom intact
-          image:           'data:image/jpeg;base64,' + bgResized.toString('base64'),
-          mask:            maskB64,
-          prompt:          'A luxury car in a showroom, high-end checkerboard floor, realistic contact shadows under tires, 8k resolution, cinematic lighting.',
-          guidance:        15,
-          steps:           40,
-          output_format:   'jpg',
+          // FLUX voit fond + voiture → il place les ombres sous les roues réelles
+          image:            initB64,
+          mask:             maskB64,
+          prompt:           'Realistic contact shadows and ambient occlusion under car tires on a shiny checkerboard floor, cinematic studio lighting, 8k resolution.',
+          guidance:         20,
+          steps:            40,
+          output_format:    'jpg',
           safety_tolerance: 2,
         },
       }),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error(`Replicate timeout après ${MAX_WAIT_MS/1000}s — plan Pro requis pour maxDuration: 60`)), MAX_WAIT_MS)
+        setTimeout(() => reject(new Error(`Replicate timeout après ${MAX_WAIT_MS / 1000}s`)), MAX_WAIT_MS)
       ),
     ]);
 
-    const elapsed = Math.round((Date.now() - startTime) / 1000);
-    console.log(`[Replicate] Terminé en ${elapsed}s`);
-
     const outputUrl = Array.isArray(replicateOutput) ? replicateOutput[0] : replicateOutput;
     if (!outputUrl) throw new Error('Replicate : aucune URL de sortie.');
+    console.log(`[Replicate] Output : ${outputUrl}`);
 
-    const replicateImgRes = await fetch(String(outputUrl));
-    if (!replicateImgRes.ok) throw new Error('Impossible de télécharger le résultat Replicate.');
+    const fluxImgRes = await fetch(String(outputUrl));
+    if (!fluxImgRes.ok) throw new Error('Impossible de télécharger le résultat FLUX.');
+    const fluxBuffer = Buffer.from(await fluxImgRes.arrayBuffer());
 
-    // FLUX a travaillé sur le fond seul → on recompose la voiture Photoroom par-dessus.
-    // Résultat : ombres IA au sol + carrosserie 100% originale et contractuelle.
-    const fusedBuffer = await sharp(Buffer.from(await replicateImgRes.arrayBuffer()))
-      .composite([{ input: carResized }])
+    // ── 5. Sandwich Sharp — 3 couches ────────────────────────────
+    //
+    // LOGIQUE :
+    //   Couche BASE   : bgResized (showroom Cloudinary, 100% intact)
+    //   Couche MILIEU : zone d'ombres FLUX (bottom 28%) en blend 'multiply'
+    //                   → multiply assombrit le showroom là où FLUX a créé des ombres
+    //                   → zones claires du showroom non affectées
+    //   Couche TOP    : carResized (voiture Photoroom, 100% contractuelle)
+    //
+    // Le mode 'multiply' : résultat = (fond × ombre) / 255
+    //   - Pixel d'ombre sombre (ex: 50) × fond (200) / 255 ≈ 39  → zone assombrie = ombre réaliste
+    //   - Pixel FLUX clair (ex: 240) × fond (200) / 255 ≈ 188    → presque inchangé
+
+    const shadowZoneH = INPAINT_SIZE - SHADOW_START_Y;
+
+    // Extraire UNIQUEMENT la zone d'ombres du résultat FLUX
+    const fluxShadowZone = await sharp(fluxBuffer)
+      .extract({
+        left:   0,
+        top:    SHADOW_START_Y,
+        width:  INPAINT_SIZE,
+        height: shadowZoneH,
+      })
+      .png()
+      .toBuffer();
+
+    // Sandwich final
+    const fusedBuffer = await sharp(bgResized)
+      .composite([
+        // Milieu : ombres FLUX en multiply → assombrit naturellement le showroom
+        {
+          input:   fluxShadowZone,
+          top:     SHADOW_START_Y,
+          left:    0,
+          blend:   'multiply',
+        },
+        // Top : voiture Photoroom intacte, carrosserie contractuelle
+        {
+          input:   carResized,
+          top:     0,
+          left:    0,
+        },
+      ])
       .jpeg({ quality: 92 })
       .toBuffer();
-    const { width: imgW, height: imgH } = await sharp(fusedBuffer).metadata();
 
-    // ── 3. Gemini → pixels absolus de la plaque ──────────────────
+    const { width: imgW, height: imgH } = await sharp(fusedBuffer).metadata();
+    console.log(`[Sharp] Sandwich OK — ${imgW}x${imgH}`);
+
+    // ── 6. Gemini → pixels absolus de la plaque ──────────────────
     const genAI    = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model    = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const b64Fused = fusedBuffer.toString('base64');
@@ -202,13 +228,13 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── 4. Sharp → bandeau AUTOEASY ──────────────────────────────
+    // ── 7. Sharp → bandeau AUTOEASY ──────────────────────────────
     let finalBuffer;
 
     if (plateCoords && geminiSuccess) {
       const { x, y, width, height } = plateCoords;
-      const sx = Math.max(0, Math.min(x,     imgW - 1));
-      const sy = Math.max(0, Math.min(y,     imgH - 1));
+      const sx = Math.max(0, Math.min(x,      imgW - 1));
+      const sy = Math.max(0, Math.min(y,      imgH - 1));
       const sw = Math.min(width,  imgW - sx);
       const sh = Math.min(height, imgH - sy);
 
@@ -231,7 +257,7 @@ export default async function handler(req, res) {
       finalBuffer = await sharp(fusedBuffer).jpeg({ quality: 92 }).toBuffer();
     }
 
-    console.log(`[Sharp] Terminé — ${finalBuffer.length} octets`);
+    console.log(`[Sharp] Image finale : ${finalBuffer.length} octets`);
 
     return res.status(200).json({
       success:       true,
