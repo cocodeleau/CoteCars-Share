@@ -1,21 +1,30 @@
 // api/partner-analyze.js
 //
-// Workflow léger et stable (zéro Replicate) :
-//   1. Photoroom /v2/edit → pose la voiture sur le fond showroom Cloudinary
-//                           avec ombres IA natives (shadow.mode: ai.soft)
-//   2. Gemini             → coordonnées plaque en pixels absolus
-//   3. Sharp              → bandeau AUTOEASY
+// Workflow hybride (meilleur des deux mondes) :
+//   1. Photoroom   → détourage PNG transparent
+//   2. Sharp       → placement mathématique GROUND_LINE 85% sur le fond showroom
+//                    + création du masque "sol uniquement" pixel par pixel
+//   3. FLUX Fill   → génère les ombres de contact UNIQUEMENT dans la zone sol
+//                    (la voiture et le reste du fond sont protégés par le masque)
+//   4. Gemini      → coordonnées plaque
+//   5. Sharp       → bandeau AUTOEASY
 //
 // Reçoit : POST JSON { image: "data:image/jpeg;base64,..." }
 // Renvoie : { success: true, result: "data:image/jpeg;base64,...", plateDetected: bool }
 //        ou { success: false, error: "..." }
 
-import FormData from 'form-data';
-import fetch    from 'node-fetch';
-import sharp    from 'sharp';
+import Replicate from 'replicate';
+import FormData  from 'form-data';
+import fetch     from 'node-fetch';
+import sharp     from 'sharp';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const SHOWROOM_URL = 'https://res.cloudinary.com/di3xa7ldg/image/upload/autoeasy-bg_tdjz2c.jpg';
+const SHOWROOM_URL  = 'https://res.cloudinary.com/di3xa7ldg/image/upload/autoeasy-bg_tdjz2c.jpg';
+const FLUX_MODEL    = 'black-forest-labs/flux-fill-pro';
+const CANVAS_W      = 1024; // taille FLUX (doit être multiple de 64)
+const CANVAS_H      = 1024;
+const GROUND_LINE   = 0.82; // pneus à 82% de hauteur (optique showroom)
+const MAX_WAIT_MS   = 55000;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -31,16 +40,12 @@ export default async function handler(req, res) {
     const mimeType    = image.includes('data:') ? image.split(';')[0].split(':')[1] : 'image/jpeg';
     const imageBuffer = Buffer.from(base64Data, 'base64');
 
-    // ── 1. Photoroom → composition complète ──────────────────────
-    // Photoroom détecte l'angle de la voiture, la détoure, la pose sur le
-    // fond showroom et génère les ombres de contact avec son IA native.
+    // ── 1. Photoroom → PNG transparent (détourage pur) ───────────
     const photoroomForm = new FormData();
-    photoroomForm.append('imageFile',                 imageBuffer, { filename: 'car.jpg', contentType: mimeType });
-    photoroomForm.append('background.imageUrl',       SHOWROOM_URL); // fond showroom Cloudinary
-    photoroomForm.append('shadow.mode',               'ai.soft');    // ombres de contact IA
-    photoroomForm.append('padding',                   '0.1');        // marge autour de la voiture
-    photoroomForm.append('outputSize',                '1920x1080'); // format final
-    photoroomForm.append('subject.verticalAlignment', 'bottom');     // voiture ancrée en bas
+    photoroomForm.append('imageFile',        imageBuffer, { filename: 'car.jpg', contentType: mimeType });
+    photoroomForm.append('format',           'png');
+    photoroomForm.append('background.color', 'transparent');
+    photoroomForm.append('padding',          '0.02');
 
     let prRes;
     try {
@@ -52,20 +57,146 @@ export default async function handler(req, res) {
     } catch (e) {
       return res.status(200).json({ success: false, error: 'Photoroom injoignable : ' + e.message });
     }
-
     if (!prRes.ok) {
       const t = await prRes.text().catch(() => '');
-      console.error('[Photoroom] Erreur:', prRes.status, t);
       return res.status(200).json({ success: false, error: `Photoroom erreur ${prRes.status} : ${t}` });
     }
 
-    const fusedBuffer = Buffer.from(await prRes.arrayBuffer());
-    const { width: imgW, height: imgH } = await sharp(fusedBuffer).metadata();
-    console.log(`[Photoroom] OK — ${imgW}x${imgH}`);
+    const carPngBuffer = Buffer.from(await prRes.arrayBuffer());
+    const { width: prW, height: prH } = await sharp(carPngBuffer).metadata();
+    console.log(`[Photoroom] OK — ${prW}x${prH}`);
 
-    // ── 2. Gemini → pixels absolus de la plaque ──────────────────
+    // ── 2. Placement mathématique + création du masque ────────────
+
+    // 2a. Fond showroom → 1024×1024
+    const bgRes = await fetch(SHOWROOM_URL);
+    if (!bgRes.ok) return res.status(200).json({ success: false, error: 'Fond showroom introuvable.' });
+    const bgBuffer = await sharp(Buffer.from(await bgRes.arrayBuffer()))
+      .resize(CANVAS_W, CANVAS_H, { fit: 'cover' })
+      .jpeg({ quality: 95 })
+      .toBuffer();
+
+    // 2b. Dimensionner la voiture (max 82% largeur, jusqu'à GROUND_LINE)
+    const maxCarW = Math.round(CANVAS_W * 0.82);
+    const maxCarH = Math.round(CANVAS_H * GROUND_LINE * 0.96);
+    const scale   = Math.min(maxCarW / prW, maxCarH / prH, 1);
+    const carW    = Math.round(prW * scale);
+    const carH    = Math.round(prH * scale);
+
+    const groundY = Math.round(CANVAS_H * GROUND_LINE); // pixel Y de la ligne de sol
+    const carLeft = Math.round((CANVAS_W - carW) / 2);
+    const carTop  = groundY - carH; // bas de la voiture = GROUND_LINE
+
+    console.log(`[Sharp] Voiture ${carW}x${carH} | left:${carLeft} top:${carTop} | groundY:${groundY}`);
+
+    // 2c. Redimensionner la voiture
+    const carResized = await sharp(carPngBuffer)
+      .resize(carW, carH, { fit: 'fill' })
+      .png()
+      .toBuffer();
+    const alphaRaw = await sharp(carResized).extractChannel('alpha').raw().toBuffer();
+
+    // 2d. Image d'init : fond + voiture placée à GROUND_LINE
+    const initBuffer = await sharp(bgBuffer)
+      .composite([{ input: carResized, left: carLeft, top: carTop }])
+      .jpeg({ quality: 95 })
+      .toBuffer();
+
+    // 2e. Masque "sol uniquement" pixel par pixel
+    //
+    // Zone blanche (FLUX peut peindre) :
+    //   • La zone sol autour des pneus :
+    //     - X : carLeft - marge … carLeft + carW + marge  (généreuse en largeur)
+    //     - Y : groundY - 40px … groundY + 120px          (généreuse en hauteur)
+    //   • Dans cette zone, si c'est un pixel voiture → noir quand même (protection)
+    //
+    // Zone noire (protégée) :
+    //   • Toute la carrosserie de la voiture
+    //   • Le reste du fond (damier, murs) → FLUX ne le modifie pas
+
+    const SHADOW_MARGIN_X = 80;  // px de marge de chaque côté de la voiture
+    const SHADOW_ABOVE    = 40;  // px au-dessus de la ligne de sol (transition)
+    const SHADOW_BELOW    = 120; // px sous la ligne de sol (ombre projetée)
+
+    const shadowXmin = carLeft - SHADOW_MARGIN_X;
+    const shadowXmax = carLeft + carW + SHADOW_MARGIN_X;
+    const shadowYmin = groundY - SHADOW_ABOVE;
+    const shadowYmax = groundY + SHADOW_BELOW;
+
+    const maskPixels = Buffer.alloc(CANVAS_W * CANVAS_H);
+
+    for (let y = 0; y < CANVAS_H; y++) {
+      for (let x = 0; x < CANVAS_W; x++) {
+        const i = y * CANVAS_W + x;
+
+        // Est-ce que ce pixel est dans la zone sol ?
+        const inShadowZone = (x >= shadowXmin && x <= shadowXmax &&
+                              y >= shadowYmin && y <= shadowYmax);
+        if (!inShadowZone) { maskPixels[i] = 0; continue; } // hors zone → noir
+
+        // Dans la zone sol, vérifier si c'est un pixel voiture
+        const carPixelX = x - carLeft;
+        const carPixelY = y - carTop;
+        const inCarBounds = (carPixelX >= 0 && carPixelX < carW &&
+                             carPixelY >= 0 && carPixelY < carH);
+        const isCar = inCarBounds && alphaRaw[carPixelY * carW + carPixelX] > 30;
+
+        // Blanc si zone sol ET pas voiture, noir sinon
+        maskPixels[i] = isCar ? 0 : 255;
+      }
+    }
+
+    // Léger feathering pour une transition naturelle
+    const maskBuffer = await sharp(maskPixels, {
+      raw: { width: CANVAS_W, height: CANVAS_H, channels: 1 },
+    }).blur(8).png().toBuffer();
+
+    const initB64 = 'data:image/jpeg;base64,' + initBuffer.toString('base64');
+    const maskB64 = 'data:image/png;base64,'  + maskBuffer.toString('base64');
+
+    // ── 3. FLUX Fill Pro → ombres de contact ─────────────────────
+    const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+    console.log('[FLUX] Génération des ombres...');
+
+    const fluxOutput = await Promise.race([
+      replicate.run(FLUX_MODEL, {
+        input: {
+          image:            initB64,
+          mask:             maskB64,
+          prompt:           [
+            'Photorealistic car showroom floor.',
+            'Keep the exact same black and white checkerboard floor pattern, same tile size, high reflections.',
+            'Strong ambient occlusion under the car.',
+            'Heavy car contact shadows integrated into the checkerboard.',
+            'Shadows integrated into the checkerboard tiles.',
+            'Cinematic studio lighting, 8k resolution.',
+          ].join(' '),
+          guidance:         10,   // faible = maximum fidélité au fond original
+          steps:            35,
+          output_format:    'jpg',
+          safety_tolerance: 2,
+        },
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`FLUX timeout après ${MAX_WAIT_MS / 1000}s`)), MAX_WAIT_MS)
+      ),
+    ]);
+
+    const outputUrl = Array.isArray(fluxOutput) ? fluxOutput[0] : fluxOutput;
+    if (!outputUrl) throw new Error('FLUX : aucune URL de sortie.');
+    console.log(`[FLUX] Output : ${outputUrl}`);
+
+    const fluxImgRes = await fetch(String(outputUrl));
+    if (!fluxImgRes.ok) throw new Error('Impossible de télécharger le résultat FLUX.');
+
+    // PAS de re-composite — les ombres générées par FLUX doivent rester visibles
+    const fusedBuffer            = Buffer.from(await fluxImgRes.arrayBuffer());
+    const { width: imgW, height: imgH } = await sharp(fusedBuffer).metadata();
+    console.log(`[FLUX] Image finale : ${imgW}x${imgH}`);
+
+    // ── 4. Gemini → pixels absolus de la plaque ──────────────────
     const genAI    = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model    = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const gModel   = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const b64Fused = fusedBuffer.toString('base64');
 
     const geminiPrompt = `The image size is ${imgW} pixels wide and ${imgH} pixels high. Find the license plate on the car. Return ONLY a valid JSON object with absolute pixel coordinates (integers): {"license_plate": {"x": int, "y": int, "width": int, "height": int}} where x and y are the top-left corner. If no plate is visible, return: {"license_plate": null} No explanation, no markdown.`;
@@ -81,7 +212,7 @@ export default async function handler(req, res) {
         console.log(`[Gemini] Tentative ${attempt + 1}/${MAX_ATTEMPTS}...`);
       }
       try {
-        const result  = await model.generateContent({
+        const result  = await gModel.generateContent({
           contents: [{ role: 'user', parts: [
             { inlineData: { mimeType: 'image/jpeg', data: b64Fused } },
             { text: geminiPrompt },
@@ -89,7 +220,7 @@ export default async function handler(req, res) {
           generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 4096 },
         });
         const rawText = result.response.text();
-        console.log('[Gemini] Réponse:', rawText);
+        console.log('[Gemini]', rawText);
         plateCoords   = JSON.parse(rawText).license_plate;
         geminiSuccess = true;
         break;
@@ -102,7 +233,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── 3. Sharp → bandeau AUTOEASY ──────────────────────────────
+    // ── 5. Sharp → bandeau AUTOEASY ──────────────────────────────
     let finalBuffer;
 
     if (plateCoords && geminiSuccess) {
@@ -111,7 +242,6 @@ export default async function handler(req, res) {
       const sy = Math.max(0, Math.min(y,     imgH - 1));
       const sw = Math.min(width,  imgW - sx);
       const sh = Math.min(height, imgH - sy);
-
       console.log(`[Sharp] Bandeau → left:${sx} top:${sy} w:${sw} h:${sh}`);
 
       const fontSize  = Math.round(sh * 0.52);
@@ -121,17 +251,16 @@ export default async function handler(req, res) {
     fill="#FFFFFF" font-family="Arial Black, Arial, sans-serif"
     font-weight="900" font-size="${fontSize}" letter-spacing="1">AUTOEASY</text>
 </svg>`;
-
       finalBuffer = await sharp(fusedBuffer)
         .composite([{ input: Buffer.from(bannerSvg), left: sx, top: sy }])
         .jpeg({ quality: 92 })
         .toBuffer();
     } else {
-      console.warn('[Sharp] Plaque non détectée — image sans bandeau.');
+      console.warn('[Sharp] Plaque non détectée.');
       finalBuffer = await sharp(fusedBuffer).jpeg({ quality: 92 }).toBuffer();
     }
 
-    console.log(`[Sharp] Image finale : ${finalBuffer.length} octets`);
+    console.log(`[Sharp] Terminé — ${finalBuffer.length} octets`);
 
     return res.status(200).json({
       success:       true,
