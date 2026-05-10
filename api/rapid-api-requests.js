@@ -1,35 +1,42 @@
 // api/rapid-api-requests.js
 //
-// Remplace l'appel RapidAPI (Autoways) par un lookup gratuit sur les APIs
-// internes de Mister-Auto et Oscaro (sites de pièces auto FR).
+// Lookup SIV gratuit via l'endpoint interne de Mister-Auto.
+// URL confirmée par inspection DevTools le 10/05/2026.
 //
-// Sources interrogées dans l'ordre :
-//   1. Mister-Auto (API JSON interne)
-//   2. Oscaro (API JSON interne, fallback)
-//
-// ⚠️  Ces endpoints sont les APIs internes que leurs propres frontends utilisent.
-//     Si un site change son API, cherche l'endpoint réel dans l'onglet Réseau
-//     de Chrome sur mister-auto.com/oscaro.com en faisant une recherche par plaque.
+// ⚠️  IMPORTANT : Au premier déploiement, check les logs Vercel pour voir
+//     le JSON brut retourné et corriger le parsing si nécessaire.
 //
 // Reçoit : GET ?plaque=AB123CD
-// Renvoie : { data: { AWN_marque, AWN_modele, ... } }  ← compatible frontend actuel
-//           + { marque, modele, puissance, motorisation, annee } ← nouvelle structure
+// Renvoie : { data: { AWN_marque, AWN_modele, ... } }
 
 import fetch from 'node-fetch';
 
-// ── User-Agents réalistes (rotation pour éviter le blocage) ──────
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
 ];
 const randomUA = () => USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 
-// ── Source 1 : Mister-Auto ────────────────────────────────────────
+// ── Mister-Auto — endpoint confirmé par DevTools ──────────────────
 async function lookupMisterAuto(plate) {
-  // Endpoint interne utilisé par le widget de sélection véhicule de Mister-Auto
-  const url = `https://www.mister-auto.com/api/vehicle/licence-plate/${encodeURIComponent(plate)}?country=FR`;
+  const url = [
+    'https://www.mister-auto.com/nwsAjax/Plate',
+    '?captcha_token=',
+    '&family_id=0',
+    '&generic_id=0',
+    '&category_id=0',
+    '&locale=fr_FR',
+    '&device=desktop',
+    '&pageType=homepage',
+    '&country=FR',
+    '&lang=fr',
+    '&captchaVersion=v3',
+    '&plate_selector_vof=',
+    `&immatriculation=${encodeURIComponent(plate)}`,
+  ].join('');
+
+  console.log(`[MA] Appel : ${url}`);
 
   const res = await fetch(url, {
     method: 'GET',
@@ -38,66 +45,111 @@ async function lookupMisterAuto(plate) {
       'Accept':          'application/json, text/plain, */*',
       'Accept-Language': 'fr-FR,fr;q=0.9',
       'Referer':         'https://www.mister-auto.com/',
-      'Origin':          'https://www.mister-auto.com',
     },
-    timeout: 9000,
+    // node-fetch v2 : timeout via signal
+    signal: AbortSignal.timeout ? AbortSignal.timeout(9000) : undefined,
   });
 
-  if (!res.ok) throw new Error(`Mister-Auto HTTP ${res.status}`);
-  const json = await res.json();
-  console.log('[Mister-Auto] Réponse brute:', JSON.stringify(json).slice(0, 300));
+  const text = await res.text();
+
+  // Log complet pour débug — à retirer une fois le parsing confirmé
+  console.log(`[MA] HTTP ${res.status} | Réponse brute : ${text.slice(0, 600)}`);
+
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  let json;
+  try { json = JSON.parse(text); }
+  catch (e) { throw new Error('Réponse non-JSON : ' + text.slice(0, 100)); }
+
   return parseMisterAuto(json);
 }
 
 function parseMisterAuto(json) {
-  // Mister-Auto retourne souvent { vehicle: { brand, model, engine, year } }
-  // ou directement { brand, model, engine, year }
-  const v = json.vehicle || json.data || json;
+  // status "3" = plaque inconnue
+  // status "1" ou "2" = trouvé (à confirmer dans les logs)
+  if (json.status === '3' || json.status === 3) {
+    throw new Error('Plaque inconnue (status 3)');
+  }
 
-  const marque  = (v.brand       || v.marque || v.make         || '').toUpperCase().trim();
-  const modele  = (v.model       || v.modele || v.model_name   || '').trim();
-  const libelle = (v.engine      || v.libelle || v.description || v.version || '').trim();
-  const annee   = String(v.year  || v.annee  || v.millesime    || '').replace(/\D/g,'').slice(0,4);
+  // Le tableau vehicule[] contient les motorisations disponibles
+  const vehicules = json.vehicule || json.vehicle || json.vehicles || [];
+
+  if (!Array.isArray(vehicules) || vehicules.length === 0) {
+    // Log le JSON complet pour comprendre la structure
+    console.log('[MA] Structure inattendue, JSON complet :', JSON.stringify(json).slice(0, 800));
+    throw new Error('Tableau vehicule vide ou absent');
+  }
+
+  // On prend le premier véhicule
+  const v = vehicules[0];
+  console.log('[MA] Premier véhicule :', JSON.stringify(v).slice(0, 400));
+
+  // Extraction flexible — les vrais noms de champs apparaîtront dans les logs
+  const marque  = (v.marque  || v.brand  || v.make   || v.manufacturer || '').toUpperCase().trim();
+  const modele  = (v.modele  || v.model  || v.range  || v.model_name   || '').trim();
+  const libelle = (v.libelle || v.type   || v.engine || v.version      || v.app_type || '').trim();
+  const annee   = String(
+    v.annee || v.year || v.millesime ||
+    v.first_registration_year || json.firstRegistrationDate || ''
+  ).replace(/\D/g, '').slice(0, 4);
+
+  if (!marque && !modele) {
+    console.log('[MA] Champs vides — objet complet :', JSON.stringify(v));
+    throw new Error('Marque et modèle vides');
+  }
 
   return buildResult({ marque, modele, libelle, annee });
 }
 
-// ── Source 2 : Oscaro (fallback) ─────────────────────────────────
+// ── Oscaro — fallback (endpoint GET confirmé par DevTools) ────────
 async function lookupOscaro(plate) {
-  // Endpoint interne Oscaro — POST JSON avec la plaque
-  const res = await fetch('https://www.oscaro.com/api/v2/vehicle/plate', {
-    method: 'POST',
+  const url = `https://www.oscaro.com/xhr/dionysos-search/fr/fr?plate=${encodeURIComponent(plate)}`;
+  console.log(`[Oscaro] Appel : ${url}`);
+
+  const res = await fetch(url, {
+    method: 'GET',
     headers: {
-      'User-Agent':    randomUA(),
-      'Accept':        'application/json',
-      'Content-Type':  'application/json',
-      'Referer':       'https://www.oscaro.com/',
-      'Origin':        'https://www.oscaro.com',
+      'User-Agent':      randomUA(),
+      'Accept':          'application/json, text/plain, */*',
+      'Accept-Language': 'fr-FR,fr;q=0.9',
+      'Referer':         'https://www.oscaro.com/',
     },
-    body: JSON.stringify({ plate: plate.toUpperCase(), country: 'FR' }),
-    timeout: 9000,
+    signal: AbortSignal.timeout ? AbortSignal.timeout(9000) : undefined,
   });
 
-  if (!res.ok) throw new Error(`Oscaro HTTP ${res.status}`);
-  const json = await res.json();
-  console.log('[Oscaro] Réponse brute:', JSON.stringify(json).slice(0, 300));
+  // 204 = plaque inconnue
+  if (res.status === 204) throw new Error('Plaque inconnue (204 No Content)');
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const text = await res.text();
+  console.log(`[Oscaro] HTTP ${res.status} | Réponse brute : ${text.slice(0, 600)}`);
+
+  let json;
+  try { json = JSON.parse(text); }
+  catch (e) { throw new Error('Réponse non-JSON : ' + text.slice(0, 100)); }
+
   return parseOscaro(json);
 }
 
 function parseOscaro(json) {
-  const v = json.vehicle || json.data || json;
+  // Structure à confirmer dans les logs
+  const v = json.vehicle || json.vehicule || json.data || json;
 
-  const marque  = (v.make    || v.brand  || v.marque      || '').toUpperCase().trim();
-  const modele  = (v.model   || v.modele || v.range        || '').trim();
-  const libelle = (v.version || v.engine || v.motorization || '').trim();
-  const annee   = String(v.year || v.registration_year || v.millesime || '').replace(/\D/g,'').slice(0,4);
+  const marque  = (v.make  || v.brand  || v.marque || '').toUpperCase().trim();
+  const modele  = (v.model || v.modele || v.range  || '').trim();
+  const libelle = (v.type  || v.engine || v.version || v.libelle || '').trim();
+  const annee   = String(v.year || v.annee || v.registration_year || '').replace(/\D/g, '').slice(0, 4);
+
+  if (!marque && !modele) {
+    console.log('[Oscaro] Structure inattendue :', JSON.stringify(json).slice(0, 400));
+    throw new Error('Marque et modèle vides');
+  }
 
   return buildResult({ marque, modele, libelle, annee });
 }
 
-// ── Parsing commun + extraction regex ────────────────────────────
+// ── Parsing commun ────────────────────────────────────────────────
 function extractPower(libelle) {
-  // Cherche "90ch", "90 ch", "90CV", "90 cv", "90kW", "66 kw"
   const match = libelle.match(/(\d{2,4})\s*(ch|cv|kw)/i);
   if (!match) return { ch: null, kw: null };
   const val  = parseInt(match[1]);
@@ -108,39 +160,26 @@ function extractPower(libelle) {
 
 function extractEnergie(libelle) {
   const l = libelle.toLowerCase();
-  if (l.includes('diesel') || l.includes('dci') || l.includes('hdi') || l.includes('tdci') || l.includes('crd'))
+  if (l.includes('diesel') || l.includes('dci') || l.includes('hdi') ||
+      l.includes('tdci')   || l.includes('cdi') || l.includes('crd'))
     return 'GAZOLE';
-  if (l.includes('electric') || l.includes('électr') || l.includes('ev'))
-    return 'ELECTRIQUE';
-  if (l.includes('hybrid') || l.includes('hybride'))
-    return 'HYBRIDE';
-  if (l.includes('gpl') || l.includes('lpg'))
-    return 'GPL';
-  return 'ESSENCE'; // défaut
+  if (l.includes('electr') || l.includes('ev')) return 'ELECTRIQUE';
+  if (l.includes('hybrid'))  return 'HYBRIDE';
+  if (l.includes('gpl') || l.includes('lpg')) return 'GPL';
+  return 'ESSENCE';
 }
 
 function buildResult({ marque, modele, libelle, annee }) {
-  if (!marque && !modele) throw new Error('Données véhicule vides ou introuvables.');
-
   const { ch, kw } = extractPower(libelle);
   const energie     = extractEnergie(libelle);
-
-  // Motorisation = libelle sans le bloc de puissance (ex: "1.2 PureTech 110ch" → "1.2 PureTech")
   const motorisation = libelle.replace(/\d{2,4}\s*(ch|cv|kw)/gi, '').trim();
-
-  // Date de mise en circulation (fictive si on n'a que l'année)
-  const dateMEC = annee ? `01/01/${annee}` : '';
+  const dateMEC      = annee ? `01/01/${annee}` : '';
 
   return {
-    // ── Nouvelle structure simple ────────────────────────────────
-    marque,
-    modele,
-    motorisation,
-    puissance:  ch ? `${ch}ch` : '',
+    marque, modele, motorisation,
+    puissance: ch ? `${ch}ch` : '',
     annee,
-
-    // ── Structure AWN_ compatible frontend actuel ────────────────
-    // Le frontend index.html utilise ces champs — ne pas les supprimer
+    // Champs AWN_ pour compatibilité frontend
     AWN_marque:                   marque,
     AWN_modele:                   modele,
     AWN_date_mise_en_circulation: dateMEC,
@@ -149,10 +188,8 @@ function buildResult({ marque, modele, libelle, annee }) {
     AWN_puissance_KW:             kw   || null,
     AWN_version:                  libelle,
     AWN_label:                    `${marque} ${modele}`.trim(),
-    AWN_boite:                    '',   // non fourni par ces sources
+    AWN_boite:                    '',
     AWN_nb_portes:                null,
-    AWN_passagers:                null,
-    AWN_cylindres:                null,
     AWN_puissance_SUSPECT:        ch ? ch > 500 : false,
   };
 }
@@ -171,32 +208,29 @@ export default async function handler(req, res) {
   // Source 1 : Mister-Auto
   try {
     result = await lookupMisterAuto(plaque);
-    console.log(`[SIV] Mister-Auto OK pour ${plaque}`);
+    console.log(`[SIV] ✓ Mister-Auto OK — ${plaque}`);
   } catch (e) {
-    console.warn('[SIV] Mister-Auto échec:', e.message);
+    console.warn(`[SIV] ✗ Mister-Auto : ${e.message}`);
     errors.push('Mister-Auto: ' + e.message);
   }
 
-  // Source 2 : Oscaro (si Mister-Auto a échoué)
+  // Source 2 : Oscaro
   if (!result) {
     try {
       result = await lookupOscaro(plaque);
-      console.log(`[SIV] Oscaro OK pour ${plaque}`);
+      console.log(`[SIV] ✓ Oscaro OK — ${plaque}`);
     } catch (e) {
-      console.warn('[SIV] Oscaro échec:', e.message);
+      console.warn(`[SIV] ✗ Oscaro : ${e.message}`);
       errors.push('Oscaro: ' + e.message);
     }
   }
 
-  // Toutes les sources ont échoué
   if (!result) {
-    console.error('[SIV] Toutes les sources ont échoué:', errors);
-    return res.status(404).json({
+    return res.status(200).json({
       error:  'Véhicule non trouvé.',
       detail: errors.join(' | '),
     });
   }
 
-  // Réponse — wrappé dans { data: ... } comme l'ancienne API RapidAPI
   return res.status(200).json({ data: result });
 }
