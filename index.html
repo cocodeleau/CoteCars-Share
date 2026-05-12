@@ -2592,9 +2592,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
     // ─── DÉTAIL ANNONCE ───────────────────────────────────────────
     function AnnonceDetail({ annonce: a, onBack, user }) {
-      const [msgSent, setMsgSent] = React.useState(false);
       const [photoPlein, setPhotoPlein] = React.useState(null);
+      const [photoActive, setPhotoActive] = React.useState(0);
       const isOwner = user?.uid === a.uid;
+      const photos = a.photos || [];
 
       async function handleDelete() {
         if (!confirm("Supprimer cette annonce ?")) return;
@@ -2603,84 +2604,104 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       }
 
       return (
-        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"var(--bg)" }}>
-          <div style={{ background:"var(--card)", padding:"0 32px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)" }}>
-            <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)" }}>←</button>
-            <span style={{ fontWeight:700, fontSize:16, color:"var(--text)", flex:1, textAlign:"center" }}>{a.nom}</span>
-            {isOwner && <button onClick={handleDelete} style={{ fontSize:11, color:"#ef4444", background:"#fef2f2", padding:"4px 10px", borderRadius:999, border:"none", cursor:"pointer" }}>Supprimer</button>}
+        <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+          <style>{`
+            .detail-mobile { display: block; }
+            .detail-desktop { display: none; }
+            @media(min-width: 900px) {
+              .detail-mobile { display: none !important; }
+              .detail-desktop { display: block !important; }
+            }
+          `}</style>
+
+          {/* ── Navbar commune ── */}
+          <div style={{ background:"var(--card)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
+              <span style={{ fontWeight:700, fontSize:18, color:"#1a3fdb" }}>Cote<span style={{color:"var(--text2)"}}>Cars</span></span>
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <DarkToggle />
+              {isOwner && (
+                <button onClick={handleDelete} style={{ fontSize:11, color:"#ef4444", background:"#fef2f2", padding:"4px 10px", borderRadius:999, border:"none", cursor:"pointer" }}>
+                  Supprimer
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* ── Lightbox ── */}
           {photoPlein && (
             <div onClick={()=>setPhotoPlein(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.95)", zIndex:3000, display:"flex", alignItems:"center", justifyContent:"center" }}>
               <img src={photoPlein} alt="" style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />
               <button onClick={()=>setPhotoPlein(null)} style={{ position:"absolute", top:20, right:20, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:40, height:40, fontSize:20, color:"white", cursor:"pointer" }}>✕</button>
             </div>
           )}
-          <div style={{ paddingBottom:40, maxWidth:900, margin:"0 auto" }}>
-            {a.photos?.length > 0 && (
+
+          {/* ══ MOBILE ══ */}
+          <div className="detail-mobile" style={{ maxWidth:480, margin:"0 auto", paddingBottom:40 }}>
+            {photos.length > 0 && (
               <div style={{ overflowX:"auto", display:"flex", gap:8, padding:"12px 16px" }}>
-                {a.photos.map((p,i) => <img key={i} src={p} alt="" onClick={()=>setPhotoPlein(p)} style={{ height:220, width:"auto", borderRadius:12, flexShrink:0, cursor:"pointer" }} />)}
+                {photos.map((p,i) => (
+                  <img key={i} src={p} alt="" onClick={()=>setPhotoPlein(p)}
+                    style={{ height:220, width:"auto", borderRadius:12, flexShrink:0, cursor:"pointer" }} />
+                ))}
               </div>
             )}
             <div style={{ padding:"0 16px" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                 <div>
-                  <h1 style={{ fontWeight:800, fontSize:20, color:"#111", margin:"0 0 4px" }}>{a.nom}{a.finition ? ` · ${a.finition}` : ""}</h1>
+                  <h1 style={{ fontWeight:800, fontSize:20, color:"var(--text)", margin:"0 0 4px" }}>{a.nom}{a.finition ? ` · ${a.finition}` : ""}</h1>
                   <p style={{ margin:0, fontSize:13, color:"var(--text2)" }}>{a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km?.toLocaleString("fr-FR")} km` : ""} · {a.gearbox==="1"?"Manuelle":"Automatique"}</p>
                 </div>
                 <span style={{ fontWeight:800, fontSize:26, color:EMERALD }}>{a.prix?.toLocaleString("fr-FR")} €</span>
               </div>
               <p style={{ fontSize:13, color:"var(--text2)", margin:"0 0 16px" }}>📍 {a.localisation}</p>
-
               {a.stats && (
                 <div style={{ background:"#eff4ff", border:"1px solid #93c5fd", borderRadius:14, padding:"12px 14px", marginBottom:16 }}>
                   <p style={{ margin:"0 0 8px", fontSize:11, fontWeight:800, color:"#1a3fdb", textTransform:"uppercase", letterSpacing:"0.08em" }}>📊 Prix estimé par CoteCars</p>
                   <div style={{ display:"flex", gap:8 }}>
-                    <div style={{ flex:1, textAlign:"center" }}>
-                      <p style={{ margin:0, fontSize:10, color:"#6b7280" }}>Agressif</p>
-                      <p style={{ margin:0, fontWeight:700, fontSize:14, color:"#F59E0B" }}>{Math.round(a.stats?.pMin || 0).toLocaleString("fr-FR")}€</p>
-                    </div>
-                    <div style={{ flex:1, textAlign:"center" }}>
-                      <p style={{ margin:0, fontSize:10, color:"#6b7280" }}>Marché</p>
-                      <p style={{ margin:0, fontWeight:700, fontSize:14, color:EMERALD }}>{Math.round(a.stats?.p25 || 0).toLocaleString("fr-FR")}€</p>
-                    </div>
-                    <div style={{ flex:1, textAlign:"center" }}>
-                      <p style={{ margin:0, fontSize:10, color:"#6b7280" }}>Haut</p>
-                      <p style={{ margin:0, fontWeight:700, fontSize:14, color:"#6366F1" }}>{Math.round(a.stats?.p50 || 0).toLocaleString("fr-FR")}€</p>
-                    </div>
+                    {[
+                      { label:"Agressif", val:a.stats?.pMin, color:"#F59E0B" },
+                      { label:"Marché",   val:a.stats?.p25,  color:EMERALD },
+                      { label:"Haut",     val:a.stats?.p50,  color:"#6366F1" },
+                    ].map((s,i) => (
+                      <div key={i} style={{ flex:1, textAlign:"center" }}>
+                        <p style={{ margin:0, fontSize:10, color:"var(--text2)" }}>{s.label}</p>
+                        <p style={{ margin:0, fontWeight:700, fontSize:14, color:s.color }}>{Math.round(s.val||0).toLocaleString("fr-FR")}€</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
-
-              {/* Fiche technique complète */}
               <div style={{ background:"var(--card)", border:"0.5px solid var(--border)", borderRadius:14, overflow:"hidden", marginBottom:16 }}>
-                <div style={{ padding:"10px 14px", borderBottom:"0.5px solid var(--border)", background:"var(--bg)" }}>
-                  <p style={{ margin:0, fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.08em" }}>🔧 Fiche technique</p>
+                <div style={{ padding:"10px 14px", borderBottom:"0.5px solid var(--border)", background:"var(--bg3)" }}>
+                  <p style={{ margin:0, fontSize:11, fontWeight:800, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>🔧 Fiche technique</p>
                 </div>
                 {[
-                  { label:"Année", val: a.annee },
-                  { label:"Énergie", val: a.energie },
-                  { label:"Puissance DIN", val: a.ch ? `${a.ch} ch` : null },
-                  { label:"Boîte de vitesse", val: a.boite || (a.gearbox === "1" ? "Manuelle" : a.gearbox === "2" ? "Automatique" : "") },
-                  { label:"Kilométrage", val: a.km ? `${a.km?.toLocaleString("fr-FR")} km` : null },
-                  { label:"Localisation", val: a.localisation },
-                ].filter(r => r.val).map((r, i, arr) => (
-                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"10px 14px", borderBottom: i < arr.length-1 ? `0.5px solid var(--border)` : "none" }}>
+                  { label:"Année",           val: a.annee },
+                  { label:"Énergie",          val: a.energie },
+                  { label:"Puissance DIN",    val: a.ch ? `${a.ch} ch` : null },
+                  { label:"Boîte de vitesse", val: a.boite || (a.gearbox==="1"?"Manuelle":a.gearbox==="2"?"Automatique":"") },
+                  { label:"Kilométrage",      val: a.km ? `${a.km?.toLocaleString("fr-FR")} km` : null },
+                  { label:"Localisation",     val: a.localisation },
+                ].filter(r => r.val).map((r,i,arr) => (
+                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"10px 14px", borderBottom: i < arr.length-1 ? "0.5px solid var(--border)" : "none" }}>
                     <span style={{ fontSize:13, color:"var(--text2)" }}>{r.label}</span>
                     <span style={{ fontSize:13, fontWeight:600, color:"var(--text)" }}>{r.val}</span>
                   </div>
                 ))}
               </div>
-
               {(a.descriptionIA || a.description) && (
                 <div style={{ marginBottom:14 }}>
-                  <p style={{ fontWeight:700, fontSize:13, color:"#111", margin:"0 0 6px" }}>✨ Description</p>
+                  <p style={{ fontWeight:700, fontSize:13, color:"var(--text)", margin:"0 0 6px" }}>✨ Description</p>
                   <p style={{ fontSize:13, color:"var(--text2)", margin:0, whiteSpace:"pre-line", lineHeight:1.6 }}>{a.descriptionIA || a.description}</p>
                 </div>
               )}
               {a.options && (
                 <div style={{ marginBottom:14 }}>
-                  <p style={{ fontWeight:700, fontSize:13, color:"#111", margin:"0 0 6px" }}>✅ Équipements</p>
-                  <p style={{ fontSize:13, color:"#374151", margin:0, whiteSpace:"pre-line" }}>{a.options}</p>
+                  <p style={{ fontWeight:700, fontSize:13, color:"var(--text)", margin:"0 0 6px" }}>✅ Équipements</p>
+                  <p style={{ fontSize:13, color:"var(--text2)", margin:0, whiteSpace:"pre-line" }}>{a.options}</p>
                 </div>
               )}
               {a.defauts && (
@@ -2689,12 +2710,134 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <p style={{ fontSize:13, color:"#92400e", margin:0, whiteSpace:"pre-line" }}>{a.defauts}</p>
                 </div>
               )}
-
-              <div style={{ background:"white", border:"1px solid #f3f4f6", borderRadius:16, padding:"16px", marginTop:16 }}>
-                <p style={{ fontWeight:700, fontSize:14, color:"#111", margin:"0 0 12px" }}>📞 Contacter le vendeur</p>
+              <div style={{ background:"var(--card)", border:"1px solid var(--border)", borderRadius:16, padding:"16px", marginTop:16 }}>
+                <p style={{ fontWeight:700, fontSize:14, color:"var(--text)", margin:"0 0 12px" }}>📞 Contacter le vendeur</p>
                 <a href={`tel:${a.tel}`} style={{ display:"block", width:"100%", background:`linear-gradient(135deg,${EMERALD},#0f28a8)`, color:"white", fontWeight:800, fontSize:16, borderRadius:14, padding:"14px 0", textAlign:"center", textDecoration:"none", boxSizing:"border-box" }}>
                   Appeler {a.tel}
                 </a>
+              </div>
+            </div>
+          </div>
+
+          {/* ══ DESKTOP ══ */}
+          <div className="detail-desktop" style={{ maxWidth:1200, margin:"0 auto", padding:"32px 40px 60px" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 400px", gap:32, alignItems:"start" }}>
+
+              {/* ── Colonne gauche : photos + description ── */}
+              <div>
+                {/* Grande photo principale */}
+                <div style={{ borderRadius:16, overflow:"hidden", background:"var(--bg3)", marginBottom:10, cursor: photos.length > 0 ? "pointer" : "default", position:"relative" }}
+                  onClick={() => photos[photoActive] && setPhotoPlein(photos[photoActive])}>
+                  {photos.length > 0
+                    ? <img src={photos[photoActive]} alt="" style={{ width:"100%", height:460, objectFit:"cover", display:"block" }} />
+                    : <div style={{ width:"100%", height:460, display:"flex", alignItems:"center", justifyContent:"center", fontSize:72, color:"var(--text3)" }}>🚗</div>
+                  }
+                  {photos.length > 1 && (
+                    <div style={{ position:"absolute", bottom:14, right:14, background:"rgba(0,0,0,0.5)", color:"white", fontSize:12, fontWeight:600, padding:"4px 12px", borderRadius:999 }}>
+                      {photoActive+1} / {photos.length}
+                    </div>
+                  )}
+                </div>
+                {/* Miniatures */}
+                {photos.length > 1 && (
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:28 }}>
+                    {photos.map((p,i) => (
+                      <img key={i} src={p} alt="" onClick={()=>setPhotoActive(i)}
+                        style={{ width:88, height:64, objectFit:"cover", borderRadius:10, cursor:"pointer",
+                          border: i===photoActive ? "2.5px solid #1a3fdb" : "2.5px solid transparent",
+                          opacity: i===photoActive ? 1 : 0.65, transition:"all 0.15s" }} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Description */}
+                {(a.descriptionIA || a.description) && (
+                  <div style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", padding:"18px 22px", marginBottom:12 }}>
+                    <p style={{ fontWeight:700, fontSize:13, color:"var(--text)", margin:"0 0 8px" }}>✨ Description</p>
+                    <p style={{ fontSize:13, color:"var(--text2)", margin:0, whiteSpace:"pre-line", lineHeight:1.7 }}>{a.descriptionIA || a.description}</p>
+                  </div>
+                )}
+                {/* Équipements */}
+                {a.options && (
+                  <div style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", padding:"18px 22px", marginBottom:12 }}>
+                    <p style={{ fontWeight:700, fontSize:13, color:"var(--text)", margin:"0 0 8px" }}>✅ Équipements</p>
+                    <p style={{ fontSize:13, color:"var(--text2)", margin:0, lineHeight:1.7 }}>{a.options}</p>
+                  </div>
+                )}
+                {/* Défauts */}
+                {a.defauts && (
+                  <div style={{ background:"#fff7ed", border:"1px solid #fed7aa", borderRadius:14, padding:"18px 22px" }}>
+                    <p style={{ fontWeight:700, fontSize:13, color:"#92400e", margin:"0 0 8px" }}>⚠️ À noter</p>
+                    <p style={{ fontSize:13, color:"#92400e", margin:0, whiteSpace:"pre-line", lineHeight:1.7 }}>{a.defauts}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Colonne droite sticky ── */}
+              <div style={{ position:"sticky", top:72, display:"flex", flexDirection:"column", gap:12 }}>
+
+                {/* Titre + prix */}
+                <div style={{ background:"var(--card)", borderRadius:16, border:"0.5px solid var(--border)", padding:"20px 22px" }}>
+                  <h1 style={{ fontWeight:800, fontSize:22, color:"var(--text)", margin:"0 0 6px", lineHeight:1.25 }}>
+                    {a.nom}
+                    {a.finition && <span style={{ color:"var(--text2)", fontWeight:600 }}>{` · ${a.finition}`}</span>}
+                  </h1>
+                  <p style={{ margin:"0 0 4px", fontSize:13, color:"var(--text2)" }}>
+                    {a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km?.toLocaleString("fr-FR")} km` : ""} · {a.boite || (a.gearbox==="1"?"Manuelle":"Automatique")}
+                  </p>
+                  <p style={{ margin:"0 0 16px", fontSize:13, color:"var(--text2)" }}>📍 {a.localisation}</p>
+                  <span style={{ fontSize:36, fontWeight:800, color:EMERALD, letterSpacing:"-1px" }}>{a.prix?.toLocaleString("fr-FR")} €</span>
+                </div>
+
+                {/* Stats CoteCars */}
+                {a.stats && (
+                  <div style={{ background:"#eff4ff", border:"1px solid #93c5fd", borderRadius:16, padding:"16px 18px" }}>
+                    <p style={{ margin:"0 0 12px", fontSize:11, fontWeight:800, color:"#1a3fdb", textTransform:"uppercase", letterSpacing:"0.08em" }}>📊 Prix estimé par CoteCars</p>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+                      {[
+                        { label:"Agressif", sub:"Vente rapide", val:a.stats?.pMin, color:"#F59E0B", bg:"#fffbeb", bd:"#fde68a" },
+                        { label:"Marché",   sub:"Max contacts", val:a.stats?.p25,  color:EMERALD,   bg:"#eff4ff", bd:"#93c5fd" },
+                        { label:"Haut",     sub:"Avec négo",    val:a.stats?.p50,  color:"#6366F1", bg:"#eef2ff", bd:"#c7d2fe" },
+                      ].map((s,i) => (
+                        <div key={i} style={{ background:s.bg, border:`1px solid ${s.bd}`, borderRadius:10, padding:"10px 6px", textAlign:"center" }}>
+                          <p style={{ margin:"0 0 4px", fontSize:9, fontWeight:800, color:s.color, textTransform:"uppercase", letterSpacing:"0.06em" }}>{s.label}</p>
+                          <p style={{ margin:"0 0 2px", fontSize:17, fontWeight:800, color:s.color }}>{Math.round(s.val||0).toLocaleString("fr-FR")}€</p>
+                          <p style={{ margin:0, fontSize:10, color:"var(--text2)" }}>{s.sub}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Fiche technique */}
+                <div style={{ background:"var(--card)", border:"0.5px solid var(--border)", borderRadius:14, overflow:"hidden" }}>
+                  <div style={{ padding:"10px 16px", borderBottom:"0.5px solid var(--border)", background:"var(--bg3)" }}>
+                    <p style={{ margin:0, fontSize:11, fontWeight:800, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>🔧 Fiche technique</p>
+                  </div>
+                  {[
+                    { label:"Année",           val: a.annee },
+                    { label:"Énergie",          val: a.energie },
+                    { label:"Puissance DIN",    val: a.ch ? `${a.ch} ch` : null },
+                    { label:"Boîte de vitesse", val: a.boite || (a.gearbox==="1"?"Manuelle":a.gearbox==="2"?"Automatique":"") },
+                    { label:"Kilométrage",      val: a.km ? `${a.km?.toLocaleString("fr-FR")} km` : null },
+                    { label:"Localisation",     val: a.localisation },
+                  ].filter(r => r.val).map((r,i,arr) => (
+                    <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"10px 16px", borderBottom: i < arr.length-1 ? "0.5px solid var(--border)" : "none" }}>
+                      <span style={{ fontSize:13, color:"var(--text2)" }}>{r.label}</span>
+                      <span style={{ fontSize:13, fontWeight:600, color:"var(--text)" }}>{r.val}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Bouton contact */}
+                <div style={{ background:"var(--card)", border:"0.5px solid var(--border)", borderRadius:14, padding:"16px" }}>
+                  <p style={{ fontWeight:700, fontSize:13, color:"var(--text)", margin:"0 0 10px" }}>📞 Contacter le vendeur</p>
+                  <a href={`tel:${a.tel}`}
+                    style={{ display:"block", width:"100%", background:`linear-gradient(135deg,${EMERALD},#0f28a8)`, color:"white", fontWeight:800, fontSize:15, borderRadius:12, padding:"14px 0", textAlign:"center", textDecoration:"none", boxSizing:"border-box" }}>
+                    Appeler {a.tel}
+                  </a>
+                </div>
+
               </div>
             </div>
           </div>
