@@ -1591,7 +1591,7 @@
               {/* Ligne haute : logo marque + infos principales */}
               <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
                 {veh.AWN_logo_marque && (
-                  <img src={veh.AWN_logo_marque} alt={veh.AWN_marque} style={{ width:36, height:36, objectFit:"contain", flexShrink:0, marginTop:2 }} />
+                  <img src={veh.AWN_logo_marque} alt={veh.AWN_marque} style={{ width:52, height:52, objectFit:"contain", flexShrink:0, marginTop:2 }} />
                 )}
                 <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ margin:0, color:"var(--badge-text)", fontWeight:600, fontSize:16 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
@@ -2467,7 +2467,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10 }}>
             <div style={{ display:"flex", alignItems:"center", gap:16 }}>
               <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
-              <span style={{ fontWeight:700, fontSize:18, color:"#1a3fdb" }}>Cote<span style={{color:"var(--text2)"}}>Cars</span></span>
+              <span style={{ fontWeight:800, fontSize:28, color:"#1a3fdb", letterSpacing:"-0.5px" }}>Cote<span style={{color:"var(--text2)"}}>Cars</span></span>
               <span style={{ fontSize:13, color:"var(--text3)", fontWeight:500 }}>Annonces</span>
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
@@ -2646,7 +2646,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           <div style={{ background:"var(--card)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)" }}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
               <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
-              <span style={{ fontWeight:700, fontSize:18, color:"#1a3fdb" }}>Cote<span style={{color:"var(--text2)"}}>Cars</span></span>
+              <span style={{ fontWeight:800, fontSize:28, color:"#1a3fdb", letterSpacing:"-0.5px" }}>Cote<span style={{color:"var(--text2)"}}>Cars</span></span>
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <DarkToggle />
