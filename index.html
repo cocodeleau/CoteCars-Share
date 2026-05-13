@@ -1184,7 +1184,7 @@
           {/* ── DESKTOP ── */}
           <div className="desktop-spinner">
             <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
-              <span style={{ fontSize:28, fontWeight:800, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
+              <span style={{ fontSize:32, fontWeight:800, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
               <div style={{ display:"flex", gap:20, alignItems:"center" }}>
                 <span style={{ fontSize:13, color:"var(--text3)" }}>🏷️ Nos annonces</span>
                 <span style={{ fontSize:13, color:"var(--text3)" }}>Comment ça marche</span>
@@ -1618,7 +1618,7 @@
                 {/* Photo du modèle */}
                 {veh.AWN_photo_modele && (
                   <img src={veh.AWN_photo_modele} alt={`${veh.AWN_marque} ${veh.AWN_modele}`}
-                    style={{ width:140, height:80, objectFit:"contain", borderRadius:8, flexShrink:0, background:"transparent" }}
+                    style={{ width:220, height:140, objectFit:"contain", flexShrink:0, mixBlendMode:"multiply" }}
                     onError={e => { e.target.style.display="none"; }}
                   />
                 )}
