@@ -1570,7 +1570,7 @@
       return (
         <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
           <div style={{ background:"var(--card)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
-            <span style={{ fontWeight:700, fontSize:18, color:EMERALD }}>Cote<span style={{color:"var(--text2)"}}>Cars</span></span>
+            <span style={{ fontWeight:800, fontSize:28, color:EMERALD, letterSpacing:"-0.5px" }}>Cote<span style={{color:"var(--text2)"}}>Cars</span></span>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <DarkToggle />
               {user ? (
@@ -1594,15 +1594,15 @@
                   <img src={veh.AWN_logo_marque} alt={veh.AWN_marque} style={{ width:36, height:36, objectFit:"contain", flexShrink:0, marginTop:2 }} />
                 )}
                 <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ margin:0, color:"var(--badge-text)", fontWeight:600, fontSize:14 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
-                  {nom && <p style={{ margin:"4px 0 0", color:"#1a3fdb", fontWeight:700, fontSize:13 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
-                  <p style={{ margin:"4px 0 0", color:"var(--badge-text)", fontSize:12 }}>
+                  <p style={{ margin:0, color:"var(--badge-text)", fontWeight:600, fontSize:16 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
+                  {nom && <p style={{ margin:"6px 0 0", color:"#1a3fdb", fontWeight:800, fontSize:17 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
+                  <p style={{ margin:"6px 0 0", color:"var(--badge-text)", fontSize:14 }}>
                     {veh.AWN_energie} · {veh.AWN_puissance_CH} ch
                     {veh.AWN_boite ? ` · ${veh.AWN_boite}` : ""}
                     {" · "}{veh.AWN_date_mise_en_circulation}
                   </p>
                   {(veh.AWN_version||veh.AWN_nb_portes||veh.AWN_cylindres) && (
-                    <p style={{ margin:"2px 0 0", color:"#1e3a8a", fontSize:12 }}>
+                    <p style={{ margin:"4px 0 0", color:"#1e3a8a", fontSize:13 }}>
                       {veh.AWN_version ? veh.AWN_version+" · " : ""}
                       {veh.AWN_nb_portes ? veh.AWN_nb_portes+" portes · " : ""}
                       {veh.AWN_passagers ? veh.AWN_passagers+" places · " : ""}
@@ -1610,7 +1610,7 @@
                     </p>
                   )}
                   {veh.AWN_vin && (
-                    <p style={{ margin:"4px 0 0", color:"var(--text3)", fontSize:11, fontFamily:"monospace", letterSpacing:"0.05em" }}>
+                    <p style={{ margin:"4px 0 0", color:"var(--text3)", fontSize:12, fontFamily:"monospace", letterSpacing:"0.05em" }}>
                       VIN : {veh.AWN_vin}
                     </p>
                   )}
