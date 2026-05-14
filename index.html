@@ -1570,7 +1570,7 @@
       return (
         <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
           <div style={{ background:"var(--card)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
-            <span style={{ fontWeight:800, fontSize:28, color:EMERALD, letterSpacing:"-0.5px" }}>Cote<span style={{color:"var(--text2)"}}>Cars</span></span>
+            <span onClick={onReset} style={{ fontWeight:800, fontSize:28, color:EMERALD, letterSpacing:"-0.5px", cursor:"pointer" }}>Cote<span style={{color:"var(--text2)"}}>Cars</span></span>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <DarkToggle />
               {user ? (
