@@ -61,12 +61,25 @@ export default async function handler(req, res) {
   const annee    = d.date1erCir_us ? d.date1erCir_us.slice(0, 4) : '';
 
   // Énergie
-  const energieRaw = (d.energieNGC || d.type_moteur || '').toUpperCase();
-  const energie    = energieRaw.includes('DIESEL')  ? 'GAZOLE'
-    : energieRaw.includes('ELECT')   ? 'ELECTRIQUE'
-    : energieRaw.includes('HYBRID')  ? 'HYBRIDE'
-    : energieRaw.includes('GPL')     ? 'GPL'
-    : 'ESSENCE';
+  const energieNGC  = (d.energieNGC  || '').toUpperCase();
+  const typeMoteur  = (d.type_moteur || '').toUpperCase();
+
+  function toEnergie(raw) {
+    if (!raw) return null;
+    if (raw.includes('DIESEL') || raw.includes('GAZOLE')) return 'GAZOLE';
+    if (raw.includes('ELECT'))  return 'ELECTRIQUE';
+    if (raw.includes('HYBRID')) return 'HYBRIDE';
+    if (raw.includes('GPL'))    return 'GPL';
+    if (raw.includes('ESSENCE') || raw.includes('ESSENC')) return 'ESSENCE';
+    return null;
+  }
+
+  const energieA = toEnergie(energieNGC);
+  const energieB = toEnergie(typeMoteur);
+
+  // Contradiction : les deux champs sont renseignés et divergent
+  const energieSuspect = !!(energieA && energieB && energieA !== energieB);
+  const energie = energieA || energieB || 'ESSENCE';
 
   // Boîte
   const boite = d.boite_vitesse === 'A' ? 'Automatique'
@@ -93,6 +106,8 @@ export default async function handler(req, res) {
     AWN_passagers:                parseInt(d.nr_passagers) || null,
     AWN_cylindres:                parseInt(d.cylindres)    || null,
     AWN_puissance_SUSPECT:        puissCH ? puissCH > 500 : false,
+    AWN_energie_SUSPECT:          energieSuspect,
+    AWN_energie_SUSPECT_valeurs:  energieSuspect ? [energieA, energieB] : [],
 
     // Champs bonus disponibles grâce à la nouvelle API
     AWN_couleur:      d.couleur       || '',

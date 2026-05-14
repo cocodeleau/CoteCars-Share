@@ -3022,6 +3022,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       const [showPuissanceConfirm, setShowPuissanceConfirm] = React.useState(false);
       const [puissanceConfirmValue, setPuissanceConfirmValue] = React.useState("");
       const [pendingResult, setPendingResult] = React.useState(null);
+      const [showEnergieConfirm, setShowEnergieConfirm] = React.useState(false);
       const [plate, setPlate] = useState("");
       const [km, setKm] = useState("");
       const [finition, setFinition] = useState("");
@@ -3135,7 +3136,11 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           }
 
           const resultData = { veh, nom, ads, stats, finition, peuResultats, marque, modele, kmUser, anneeUser, chUser, fuelCode, gearbox, finitionsList: finitionsList2 };
-          if (veh.AWN_puissance_SUSPECT) {
+          if (veh.AWN_energie_SUSPECT) {
+            setPendingResult(resultData);
+            setShowEnergieConfirm(true);
+            setState("home");
+          } else if (veh.AWN_puissance_SUSPECT) {
             setPendingResult(resultData);
             setPuissanceConfirmValue("");
             setShowPuissanceConfirm(true);
@@ -3252,6 +3257,46 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   style={{width:"100%",background:"#f3f4f6",color:"#6b7280",fontWeight:700,fontSize:14,borderRadius:14,padding:"12px 0",border:"none",cursor:"pointer"}}>
                   Ignorer et continuer
                 </button>
+              </div>
+            </div>
+          )}
+          {showEnergieConfirm && pendingResult && (
+            <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+              <div style={{background:"white",borderRadius:20,padding:"28px 24px",width:"100%",maxWidth:380,boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+                <p style={{fontWeight:800,fontSize:17,color:"#111",margin:"0 0 6px"}}>⛽ Type de carburant à confirmer</p>
+                <p style={{fontSize:13,color:"#6b7280",margin:"0 0 20px",lineHeight:1.6}}>
+                  Nos sources retournent deux informations contradictoires pour ce véhicule. Quelle est la vraie motorisation ?
+                </p>
+                <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
+                  {(pendingResult.veh.AWN_energie_SUSPECT_valeurs || []).map(val => {
+                    const labels = { GAZOLE:"⛽ Diesel", ESSENCE:"🔥 Essence", ELECTRIQUE:"⚡ Électrique", HYBRIDE:"🌿 Hybride", GPL:"🟡 GPL" };
+                    return (
+                      <button key={val} onClick={()=>{
+                        const r = {...pendingResult, veh: {...pendingResult.veh}};
+                        r.veh.AWN_energie = val;
+                        const FUEL_CODES = {"ESSENCE":"1","GAZOLE":"2","GPL":"3","ELECTRIQUE":"4","HYBRIDE":"6"};
+                        r.fuelCode = FUEL_CODES[val] || "";
+                        setShowEnergieConfirm(false); setPendingResult(null); setResult(r); setState("results");
+                      }}
+                        style={{width:"100%",padding:"14px 0",borderRadius:14,border:"2px solid #e5e7eb",background:"white",color:"#111",fontWeight:700,fontSize:15,cursor:"pointer",transition:"border-color 0.15s"}}
+                        onMouseEnter={e=>e.currentTarget.style.borderColor="#1a3fdb"}
+                        onMouseLeave={e=>e.currentTarget.style.borderColor="#e5e7eb"}>
+                        {labels[val] || val}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{borderTop:"1px solid #f3f4f6",paddingTop:16,textAlign:"center"}}>
+                  <p style={{fontSize:12,color:"#9ca3af",margin:"0 0 8px"}}>Aucune des deux options ne correspond ?</p>
+                  <button onClick={()=>{
+                    setShowEnergieConfirm(false); setPendingResult(null);
+                    setApiErr("Données carburant incohérentes pour cette plaque. Merci de nous signaler le problème.");
+                    setState("error");
+                  }}
+                    style={{background:"none",border:"none",color:"#1a3fdb",fontSize:13,fontWeight:600,cursor:"pointer",textDecoration:"underline"}}>
+                    📩 Signaler une erreur
+                  </button>
+                </div>
               </div>
             </div>
           )}
