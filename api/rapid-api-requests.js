@@ -29,9 +29,10 @@ export default async function handler(req, res) {
     return res.status(200).json({ error: 'Clé API SIV non configurée.' });
   }
 
-  // Recherche par VIN ou par plaque — l'API utilise toujours le paramètre "immatriculation"
-  const lookup = vin || plaque;
-  const url = `https://api.apiplaqueimmatriculation.com/plaque?immatriculation=${encodeURIComponent(lookup)}&token=${token}&pays=FR`;
+  // Recherche par VIN (/vin?vin=) ou par plaque (/plaque?immatriculation=)
+  const url = vin
+    ? `https://api.apiplaqueimmatriculation.com/vin?vin=${encodeURIComponent(vin)}&token=${token}`
+    : `https://api.apiplaqueimmatriculation.com/plaque?immatriculation=${encodeURIComponent(plaque)}&token=${token}&pays=FR`;
 
   let json;
   try {
