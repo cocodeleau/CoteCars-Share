@@ -43,23 +43,33 @@
 <body>
   <div id="root"></div>
 
+  <!-- Firebase initialisé de manière asynchrone depuis /api/firebase-config -->
+  <!-- Aucune clé n'est exposée dans ce fichier HTML -->
+  <script>
+    window.__firebaseReady = fetch("/api/firebase-config")
+      .then(r => r.json())
+      .then(cfg => {
+        firebase.initializeApp(cfg);
+        window.__firebase = {
+          auth:           firebase.auth(),
+          db:             firebase.firestore(),
+          storage:        firebase.storage(),
+          googleProvider: new firebase.auth.GoogleAuthProvider(),
+        };
+      })
+      .catch(err => {
+        console.error("[Firebase] Impossible de charger la config :", err);
+        document.getElementById("root").innerHTML =
+          '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#ef4444">Erreur de chargement. Veuillez réessayer.</div>';
+      });
+  </script>
+
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // ── Firebase ──────────────────────────────────────────────────
-    const firebaseConfig = {
-      apiKey: "AIzaSyCGVGeYrZ7JIgOTXN598V1O_0ez9QETyoA",
-      authDomain: "cotecars-8857f.firebaseapp.com",
-      projectId: "cotecars-8857f",
-      storageBucket: "cotecars-8857f.firebasestorage.app",
-      messagingSenderId: "727958687493",
-      appId: "1:727958687493:web:f1ca0c1cacb899e425316c"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth           = firebase.auth();
-    const db             = firebase.firestore();
-    const storage        = firebase.storage();
-    const googleProvider = new firebase.auth.GoogleAuthProvider();
+    // ── Firebase — chargé via /api/firebase-config ────────────────
+    // Aucune clé n'est stockée dans ce fichier HTML.
+    let auth, db, storage, googleProvider;
 
     // ── Emails autorisés ──────────────────────────────────────────
     const ALLOWED_EMAILS = [
@@ -671,7 +681,14 @@
       return <Dashboard user={user} onNewSession={() => setView("studio")} />;
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    // On attend que Firebase soit prêt avant de monter l'app React
+    window.__firebaseReady.then(() => {
+      auth           = window.__firebase.auth;
+      db             = window.__firebase.db;
+      storage        = window.__firebase.storage;
+      googleProvider = window.__firebase.googleProvider;
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    });
   </script>
 </body>
 </html>
