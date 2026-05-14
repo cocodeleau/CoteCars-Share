@@ -3150,7 +3150,16 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                     vehVin.AWN_energie_SUSPECT = true;
                     vehVin.AWN_energie_SUSPECT_valeurs = veh.AWN_energie_SUSPECT_valeurs;
                     const nomVin = [vehVin.AWN_marque, vehVin.AWN_modele, vehVin.AWN_date_mise_en_circulation?.slice(-4)].filter(Boolean).join(" ");
-                    resultData = { ...resultData, veh: vehVin, nom: nomVin, chUser: vehVin.AWN_puissance_CH || chUser };
+                    const chVin = vehVin.AWN_puissance_CH || chUser;
+                    resultData = {
+                      ...resultData,
+                      veh: vehVin,
+                      nom: nomVin,
+                      chUser: chVin,
+                      marque: vehVin.AWN_marque || marque,
+                      modele: vehVin.AWN_modele || modele,
+                      anneeUser: vehVin.AWN_date_mise_en_circulation ? parseInt(vehVin.AWN_date_mise_en_circulation.slice(-4)) : anneeUser,
+                    };
                   }
                 }
               } catch(e) {
@@ -3299,20 +3308,24 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                           const r = {...pendingResult, veh: {...pendingResult.veh}};
                           r.veh.AWN_energie = val;
                           r.fuelCode = chosenFuelCode;
-                          // Relancer Leboncoin avec le bon carburant
+                          // Utiliser chUser du pendingResult (données VIN si disponible)
+                          const chFinal = r.chUser || r.veh.AWN_puissance_CH;
+                          const anneeFinal = r.anneeUser || (r.veh.AWN_date_mise_en_circulation ? parseInt(r.veh.AWN_date_mise_en_circulation.slice(-4)) : null);
+                          // Relancer Leboncoin avec le bon carburant et les bonnes données VIN
                           const lbcParams = new URLSearchParams({ marque: r.marque, modele: r.modele });
                           if (r.kmUser)        lbcParams.set("km", r.kmUser);
-                          if (r.anneeUser)     lbcParams.set("annee", r.anneeUser);
-                          if (r.chUser)        lbcParams.set("ch", r.chUser);
+                          if (anneeFinal)      lbcParams.set("annee", anneeFinal);
+                          if (chFinal)         lbcParams.set("ch", chFinal);
                           if (chosenFuelCode)  lbcParams.set("fuel", chosenFuelCode);
                           if (r.gearbox)       lbcParams.set("gearbox", r.gearbox);
                           if (r.finition)      lbcParams.set("finition", r.finition);
                           const lbcRes = await fetch(`/api/leboncoin?${lbcParams.toString()}`);
                           const lbcData = await lbcRes.json();
                           const rawAds = lbcData.ads || [];
-                          r.ads = filterAds(rawAds, r.kmUser, r.anneeUser, r.chUser, r.marque, r.modele, r.finition);
+                          r.ads = filterAds(rawAds, r.kmUser, anneeFinal, chFinal, r.marque, r.modele, r.finition);
                           r.stats = computeStats(r.ads);
                           r.peuResultats = r.finition && r.ads.length < 5;
+                          r.chUser = chFinal; r.anneeUser = anneeFinal;
                           setResult(r); setState("results");
                         } catch(e) { setState("error"); setApiErr(e.message); }
                       }}
