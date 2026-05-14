@@ -3271,12 +3271,30 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   {(pendingResult.veh.AWN_energie_SUSPECT_valeurs || []).map(val => {
                     const labels = { GAZOLE:"⛽ Diesel", ESSENCE:"🔥 Essence", ELECTRIQUE:"⚡ Électrique", HYBRIDE:"🌿 Hybride", GPL:"🟡 GPL" };
                     return (
-                      <button key={val} onClick={()=>{
-                        const r = {...pendingResult, veh: {...pendingResult.veh}};
-                        r.veh.AWN_energie = val;
+                      <button key={val} onClick={async ()=>{
                         const FUEL_CODES = {"ESSENCE":"1","GAZOLE":"2","GPL":"3","ELECTRIQUE":"4","HYBRIDE":"6"};
-                        r.fuelCode = FUEL_CODES[val] || "";
-                        setShowEnergieConfirm(false); setPendingResult(null); setResult(r); setState("results");
+                        const chosenFuelCode = FUEL_CODES[val] || "";
+                        setShowEnergieConfirm(false); setPendingResult(null); setState("loading");
+                        try {
+                          const r = {...pendingResult, veh: {...pendingResult.veh}};
+                          r.veh.AWN_energie = val;
+                          r.fuelCode = chosenFuelCode;
+                          // Relancer Leboncoin avec le bon carburant
+                          const lbcParams = new URLSearchParams({ marque: r.marque, modele: r.modele });
+                          if (r.kmUser)        lbcParams.set("km", r.kmUser);
+                          if (r.anneeUser)     lbcParams.set("annee", r.anneeUser);
+                          if (r.chUser)        lbcParams.set("ch", r.chUser);
+                          if (chosenFuelCode)  lbcParams.set("fuel", chosenFuelCode);
+                          if (r.gearbox)       lbcParams.set("gearbox", r.gearbox);
+                          if (r.finition)      lbcParams.set("finition", r.finition);
+                          const lbcRes = await fetch(`/api/leboncoin?${lbcParams.toString()}`);
+                          const lbcData = await lbcRes.json();
+                          const rawAds = lbcData.ads || [];
+                          r.ads = filterAds(rawAds, r.kmUser, r.anneeUser, r.chUser, r.marque, r.modele, r.finition);
+                          r.stats = computeStats(r.ads);
+                          r.peuResultats = r.finition && r.ads.length < 5;
+                          setResult(r); setState("results");
+                        } catch(e) { setState("error"); setApiErr(e.message); }
                       }}
                         style={{width:"100%",padding:"14px 0",borderRadius:14,border:"2px solid #e5e7eb",background:"white",color:"#111",fontWeight:700,fontSize:15,cursor:"pointer",transition:"border-color 0.15s"}}
                         onMouseEnter={e=>e.currentTarget.style.borderColor="#1a3fdb"}
