@@ -3135,8 +3135,28 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             db.collection("historique").doc(user?.uid).set({ items: newHisto }).catch(() => {});
           }
 
-          const resultData = { veh, nom, ads, stats, finition, peuResultats, marque, modele, kmUser, anneeUser, chUser, fuelCode, gearbox, finitionsList: finitionsList2 };
+          let resultData = { veh, nom, ads, stats, finition, peuResultats, marque, modele, kmUser, anneeUser, chUser, fuelCode, gearbox, finitionsList: finitionsList2 };
           if (veh.AWN_energie_SUSPECT) {
+            // Relancer par VIN pour obtenir des données plus précises (puissance, cylindrée, version)
+            const vinCode = veh.AWN_vin;
+            if (vinCode) {
+              try {
+                const vinRes = await fetch(`/api/rapid-api-requests?vin=${vinCode}`);
+                if (vinRes.ok) {
+                  const vinData = await vinRes.json();
+                  const vehVin = vinData.data;
+                  if (vehVin && !vehVin.error) {
+                    // Garder les deux valeurs énergie contradictoires pour le modal
+                    vehVin.AWN_energie_SUSPECT = true;
+                    vehVin.AWN_energie_SUSPECT_valeurs = veh.AWN_energie_SUSPECT_valeurs;
+                    const nomVin = [vehVin.AWN_marque, vehVin.AWN_modele, vehVin.AWN_date_mise_en_circulation?.slice(-4)].filter(Boolean).join(" ");
+                    resultData = { ...resultData, veh: vehVin, nom: nomVin, chUser: vehVin.AWN_puissance_CH || chUser };
+                  }
+                }
+              } catch(e) {
+                console.warn('[VIN] Recherche VIN échouée, on garde les données plaque', e.message);
+              }
+            }
             setPendingResult(resultData);
             setShowEnergieConfirm(true);
             setState("home");

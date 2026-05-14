@@ -4,16 +4,23 @@
 // Endpoint : POST https://api.apiplaqueimmatriculation.com/plaque
 // Token    : variable d'env PLAQUE_API_TOKEN (Vercel)
 //
-// Reçoit : GET ?plaque=AB123CD
+// Reçoit : GET ?plaque=AB123CD  ou  GET ?vin=WP1ZZZ9PZ4LA51880
 // Renvoie : { data: { AWN_marque, AWN_modele, ... } }
 
 import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
   const plaque = (req.query.plaque || '').replace(/[-\s]/g, '').toUpperCase();
+  const vin    = (req.query.vin    || '').replace(/[-\s]/g, '').toUpperCase();
 
-  if (!plaque || plaque.length < 5) {
+  if (!plaque && !vin) {
+    return res.status(400).json({ error: 'Plaque ou VIN requis.' });
+  }
+  if (plaque && plaque.length < 5) {
     return res.status(400).json({ error: 'Plaque invalide.' });
+  }
+  if (vin && vin.length < 11) {
+    return res.status(400).json({ error: 'VIN invalide.' });
   }
 
   const token = process.env.PLAQUE_API_TOKEN;
@@ -22,7 +29,10 @@ export default async function handler(req, res) {
     return res.status(200).json({ error: 'Clé API SIV non configurée.' });
   }
 
-  const url = `https://api.apiplaqueimmatriculation.com/plaque?immatriculation=${encodeURIComponent(plaque)}&token=${token}&pays=FR`;
+  // Recherche par VIN ou par plaque
+  const url = vin
+    ? `https://api.apiplaqueimmatriculation.com/plaque?vin=${encodeURIComponent(vin)}&token=${token}&pays=FR`
+    : `https://api.apiplaqueimmatriculation.com/plaque?immatriculation=${encodeURIComponent(plaque)}&token=${token}&pays=FR`;
 
   let json;
   try {
@@ -54,10 +64,10 @@ export default async function handler(req, res) {
   // ── Extraction directe — pas de calcul nécessaire, tout est fourni ──
   const marque   = (d.marque      || '').toUpperCase().trim();
   const modele   = (d.modele      || '').trim();
-  const version  = (d.sra_commercial || d.version || '').trim();  // ex: "1.9 DCI 130 XV DE FRANCE"
-  const puissCH  = parseInt(d.puisFiscReelCH) || null;             // ex: "131 CH" → 131
-  const puissKW  = parseInt(d.puisFiscReelKW) || null;             // ex: "96 KW"  → 96
-  const dateMEC  = (d.date1erCir_fr || '').replace(/-/g, '/');     // "18-04-2009" → "18/04/2009"
+  const version  = (d.sra_commercial || d.version || '').trim();
+  const puissCH  = parseInt(d.puisFiscReelCH) || null;
+  const puissKW  = parseInt(d.puisFiscReelKW) || null;
+  const dateMEC  = (d.date1erCir_fr || '').replace(/-/g, '/');
   const annee    = d.date1erCir_us ? d.date1erCir_us.slice(0, 4) : '';
 
   // Énergie
@@ -121,6 +131,6 @@ export default async function handler(req, res) {
     AWN_photo_modele: d.photo_modele  || '',
   };
 
-  console.log(`[SIV] ✓ ${marque} ${modele} — ${puissCH}ch ${energie}`);
+  console.log(`[SIV] ✓ ${marque} ${modele} — ${puissCH}ch ${energie}${vin ? ' (VIN)' : ' (plaque)'}`);
   return res.status(200).json({ data: result });
 }
