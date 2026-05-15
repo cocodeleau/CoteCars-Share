@@ -3148,35 +3148,6 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
           let resultData = { veh, nom, ads, stats, finition, peuResultats, marque, modele, kmUser, anneeUser, chUser, fuelCode, gearbox, finitionsList: finitionsList2 };
           if (veh.AWN_energie_SUSPECT) {
-            // Relancer par VIN pour obtenir des données plus précises (puissance, cylindrée, version)
-            const vinCode = veh.AWN_vin;
-            if (vinCode) {
-              try {
-                const vinRes = await fetch(`/api/rapid-api-requests?vin=${vinCode}`);
-                if (vinRes.ok) {
-                  const vinData = await vinRes.json();
-                  const vehVin = vinData.data;
-                  if (vehVin && !vehVin.error) {
-                    // Garder les deux valeurs énergie contradictoires pour le modal
-                    vehVin.AWN_energie_SUSPECT = true;
-                    vehVin.AWN_energie_SUSPECT_valeurs = veh.AWN_energie_SUSPECT_valeurs;
-                    const nomVin = [vehVin.AWN_marque, vehVin.AWN_modele, vehVin.AWN_date_mise_en_circulation?.slice(-4)].filter(Boolean).join(" ");
-                    const chVin = vehVin.AWN_puissance_CH || chUser;
-                    resultData = {
-                      ...resultData,
-                      veh: vehVin,
-                      nom: nomVin,
-                      chUser: chVin,
-                      marque: vehVin.AWN_marque || marque,
-                      modele: vehVin.AWN_modele || modele,
-                      anneeUser: vehVin.AWN_date_mise_en_circulation ? parseInt(vehVin.AWN_date_mise_en_circulation.slice(-4)) : anneeUser,
-                    };
-                  }
-                }
-              } catch(e) {
-                console.warn('[VIN] Recherche VIN échouée, on garde les données plaque', e.message);
-              }
-            }
             setPendingResult(resultData);
             setShowEnergieConfirm(true);
             setState("home");
@@ -3319,10 +3290,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                           const r = {...pendingResult, veh: {...pendingResult.veh}};
                           r.veh.AWN_energie = val;
                           r.fuelCode = chosenFuelCode;
-                          // Utiliser chUser du pendingResult (données VIN si disponible)
+                          // Utiliser chUser du pendingResult
                           const chFinal = r.chUser || r.veh.AWN_puissance_CH;
                           const anneeFinal = r.anneeUser || (r.veh.AWN_date_mise_en_circulation ? parseInt(r.veh.AWN_date_mise_en_circulation.slice(-4)) : null);
-                          // Relancer Leboncoin avec le bon carburant et les bonnes données VIN
+                          // Relancer Leboncoin avec le bon carburant choisi
                           const lbcParams = new URLSearchParams({ marque: r.marque, modele: r.modele });
                           if (r.kmUser)        lbcParams.set("km", r.kmUser);
                           if (anneeFinal)      lbcParams.set("annee", anneeFinal);
