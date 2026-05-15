@@ -1,10 +1,10 @@
 // api/rapid-api-requests.js
 //
-// SIV via apiplaqueimmatriculation.com
-// Endpoint : POST https://api.apiplaqueimmatriculation.com/plaque
-// Token    : variable d'env PLAQUE_API_TOKEN (Vercel)
+// SIV via API SIV Autoways (RapidAPI)
+// Endpoint : GET https://api-siv-systeme-d-immatriculation-des-vehicules.p.rapidapi.com/{plaque}
+// Clés     : RAPIDAPI_KEY et RAPIDAPI_HOST dans les variables d'env Vercel
 //
-// Reçoit : GET ?plaque=AB123CD  ou  GET ?vin=WP1ZZZ9PZ4LA51880
+// Reçoit : GET ?plaque=AB123CD
 // Renvoie : { data: { AWN_marque, AWN_modele, ... } }
 
 const fetch = require("node-fetch");
@@ -20,33 +20,30 @@ module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
 
   const plaque = (req.query.plaque || "").replace(/[-\s]/g, "").toUpperCase();
-  const vin    = (req.query.vin    || "").replace(/[-\s]/g, "").toUpperCase();
 
-  if (!plaque && !vin) {
-    return res.status(400).json({ error: "Plaque ou VIN requis." });
-  }
-  if (plaque && plaque.length < 5) {
+  if (!plaque || plaque.length < 5) {
     return res.status(400).json({ error: "Plaque invalide." });
   }
-  if (vin && vin.length < 11) {
-    return res.status(400).json({ error: "VIN invalide." });
-  }
 
-  const token = process.env.PLAQUE_API_TOKEN;
-  if (!token) {
-    console.error("[SIV] Variable PLAQUE_API_TOKEN manquante dans Vercel.");
+  const apiKey  = process.env.RAPIDAPI_KEY;
+  const apiHost = process.env.RAPIDAPI_HOST;
+
+  if (!apiKey || !apiHost) {
+    console.error("[SIV] Variables RAPIDAPI_KEY ou RAPIDAPI_HOST manquantes dans Vercel.");
     return res.status(200).json({ error: "Clé API SIV non configurée." });
   }
 
-  const url = vin
-    ? `https://api.apiplaqueimmatriculation.com/vin?vin=${encodeURIComponent(vin)}&token=${token}`
-    : `https://api.apiplaqueimmatriculation.com/plaque?immatriculation=${encodeURIComponent(plaque)}&token=${token}&pays=FR`;
+  const url = `https://${apiHost}/${encodeURIComponent(plaque)}`;
 
   let json;
   try {
     const response = await fetch(url, {
-      method:  "POST",
-      headers: { "Accept": "application/json" },
+      method: "GET",
+      headers: {
+        "Content-Type":    "application/json",
+        "x-rapidapi-host": apiHost,
+        "x-rapidapi-key":  apiKey,
+      },
     });
     const text = await response.text();
     console.log(`[SIV] HTTP ${response.status} | ${text.slice(0, 300)}`);
@@ -56,45 +53,49 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ error: "API injoignable : " + e.message });
   }
 
-  if (json.code_erreur !== 200 || (json.data?.erreur && json.data.erreur !== "")) {
-    const msg = json.data?.erreur || json.message || "Erreur inconnue";
+  if (json.error || json.code !== 200) {
+    const msg = json.message || "Erreur inconnue";
     console.warn("[SIV] Erreur API :", msg);
     return res.status(200).json({ error: msg });
   }
 
   const d = json.data;
-  if (!d?.marque) {
+  if (!d?.AWN_marque) {
     return res.status(200).json({ error: "Véhicule non trouvé." });
   }
 
-  const marque   = (d.marque          || "").toUpperCase().trim();
-  const modele   = (d.modele          || "").trim();
-  const version  = (d.sra_commercial  || d.version || "").trim();
-  const puissCH  = parseInt(d.puisFiscReelCH) || null;
-  const puissKW  = parseInt(d.puisFiscReelKW) || null;
-  const dateMEC  = (d.date1erCir_fr   || "").replace(/-/g, "/");
-  const annee    = d.date1erCir_us ? d.date1erCir_us.slice(0, 4) : "";
+  // ── Extraction — les champs sont déjà au format AWN_ ──
+  const marque  = (d.AWN_marque  || "").toUpperCase().trim();
+  const modele  = (d.AWN_modele  || "").trim();
+  const version = (d.AWN_version || d.AWN_finition || "").trim();
+  const puissCH = parseInt(d.AWN_puissance_chevaux) || null;
+  const puissKW = parseInt(d.AWN_puissance_KW)      || null;
+  const dateMEC = (d.AWN_date_mise_en_circulation   || "").replace(/-/g, "/");
+  const annee   = d.AWN_date_mise_en_circulation_us
+    ? d.AWN_date_mise_en_circulation_us.slice(0, 4)
+    : "";
 
-  const energieNGC = (d.energieNGC  || "").toUpperCase();
-  const typeMoteur = (d.type_moteur || "").toUpperCase();
-
+  // Énergie
   function toEnergie(raw) {
     if (!raw) return null;
-    if (raw.includes("DIESEL") || raw.includes("GAZOLE")) return "GAZOLE";
-    if (raw.includes("ELECT"))  return "ELECTRIQUE";
-    if (raw.includes("HYBRID")) return "HYBRIDE";
-    if (raw.includes("GPL"))    return "GPL";
-    if (raw.includes("ESSENCE") || raw.includes("ESSENC")) return "ESSENCE";
+    const r = raw.toUpperCase();
+    if (r.includes("DIESEL") || r.includes("GAZOLE") || r === "GO") return "GAZOLE";
+    if (r.includes("ELECT"))  return "ELECTRIQUE";
+    if (r.includes("HYBRID")) return "HYBRIDE";
+    if (r.includes("GPL"))    return "GPL";
+    if (r.includes("ESSENCE") || r.includes("ESSENC") || r === "SP") return "ESSENCE";
     return null;
   }
 
-  const energieA = toEnergie(energieNGC);
-  const energieB = toEnergie(typeMoteur);
+  const energieA = toEnergie(d.AWN_energie);
+  const energieB = toEnergie(d.AWN_energie_description);
   const energieSuspect = !!(energieA && energieB && energieA !== energieB);
-  const energie = energieA || energieB || "ESSENCE";
+  const energie  = energieA || energieB || "ESSENCE";
 
-  const boite = d.boite_vitesse === "A" ? "Automatique"
-    : d.boite_vitesse === "M" ? "Manuelle" : "";
+  // Boîte
+  const boiteRaw = (d.AWN_type_boite_vites || "").toUpperCase();
+  const boite = boiteRaw.includes("AUTO") ? "Automatique"
+    : boiteRaw.includes("MAN")  ? "Manuelle" : "";
 
   const result = {
     marque, modele,
@@ -109,26 +110,26 @@ module.exports = async function handler(req, res) {
     AWN_puissance_CH:             puissCH,
     AWN_puissance_KW:             puissKW,
     AWN_version:                  version,
-    AWN_label:                    `${marque} ${modele}`.trim(),
+    AWN_label:                    d.AWN_label || `${marque} ${modele}`.trim(),
     AWN_boite:                    boite,
-    AWN_nb_portes:                parseInt(d.nb_portes)    || null,
-    AWN_passagers:                parseInt(d.nr_passagers) || null,
-    AWN_cylindres:                parseInt(d.cylindres)    || null,
+    AWN_nb_portes:                parseInt(d.AWN_nbr_portes)    || null,
+    AWN_passagers:                parseInt(d.AWN_nbr_de_places) || null,
+    AWN_cylindres:                parseInt(d.AWN_nbr_cylindres) || null,
     AWN_puissance_SUSPECT:        puissCH ? puissCH > 500 : false,
     AWN_energie_SUSPECT:          energieSuspect,
     AWN_energie_SUSPECT_valeurs:  energieSuspect ? [energieA, energieB] : [],
 
-    AWN_couleur:      d.couleur      || "",
-    AWN_carrosserie:  d.carrosserie  || "",
-    AWN_poids:        d.poids        || "",
-    AWN_vin:          d.vin          || "",
-    AWN_co2:          d.co2          || "",
-    AWN_code_moteur:  d.code_moteur  || "",
-    AWN_k_type:       d.k_type       || "",
-    AWN_logo_marque:  d.logo_marque  || "",
-    AWN_photo_modele: d.photo_modele || "",
+    AWN_couleur:      d.AWN_couleur      || "",
+    AWN_carrosserie:  d.AWN_carrosserie  || "",
+    AWN_poids:        d.AWN_PTAC        ? `${d.AWN_PTAC} KG` : "",
+    AWN_vin:          d.AWN_VIN         || "",
+    AWN_co2:          d.AWN_emission_co_2 ? `${d.AWN_emission_co_2} g/km` : "",
+    AWN_code_moteur:  d.AWN_code_moteur  || "",
+    AWN_k_type:       d.AWN_k_type       || "",
+    AWN_logo_marque:  d.AWN_marque_image || "",
+    AWN_photo_modele: d.AWN_model_image  || "",
   };
 
-  console.log(`[SIV] ✓ ${marque} ${modele} — ${puissCH}ch ${energie}${vin ? " (VIN)" : " (plaque)"}`);
+  console.log(`[SIV] ✓ ${marque} ${modele} — ${puissCH}ch ${energie}`);
   return res.status(200).json({ data: result });
 };
