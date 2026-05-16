@@ -119,6 +119,9 @@ module.exports = async function handler(req, res) {
     AWN_energie_SUSPECT:          energieSuspect,
     AWN_energie_SUSPECT_valeurs:  energieSuspect ? [energieA, energieB] : [],
 
+    AWN_nom_commercial: d.AWN_nom_commercial || "",
+    AWN_modele_prf:     d.AWN_modele_prf    || "",
+
     AWN_couleur:      d.AWN_couleur      || "",
     AWN_carrosserie:  d.AWN_carrosserie  || "",
     AWN_poids:        d.AWN_PTAC        ? `${d.AWN_PTAC} KG` : "",
