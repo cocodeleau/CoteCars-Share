@@ -3512,26 +3512,16 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <div>
                     <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6, display:"block" }}>Plaque d&apos;immatriculation</label>
                     <div style={{ marginBottom:12 }}><LicensePlate value={plate} onChange={handlePlateChange} /></div>
-                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
-                      <div>
+                    <div style={{ marginBottom:12 }}>
                         <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5, display:"block" }}>Kilométrage</label>
                         <div style={{ display:"flex", alignItems:"center", background:"rgba(255,255,255,0.1)", borderRadius:10, border:"1px solid rgba(255,255,255,0.18)", height:42, overflow:"hidden" }}>
                           <input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="85 000"
                             style={{ flex:1, padding:"0 10px", fontSize:14, fontWeight:600, border:"none", outline:"none", background:"transparent", color:"white" }} inputMode="numeric" />
                           <span style={{ padding:"0 10px", color:"rgba(255,255,255,0.5)", fontSize:12 }}>km</span>
                         </div>
-                      </div>
-                      <div>
-                        <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5, display:"block" }}>Finition</label>
-                        <select value={finition} onChange={e => setFinition(e.target.value)}
-                          style={{ width:"100%", height:42, padding:"0 10px", fontSize:13, fontWeight:600, color: finition ? "white" : "rgba(255,255,255,0.5)", border:"1px solid rgba(255,255,255,0.18)", borderRadius:10, background:"rgba(255,255,255,0.1)", cursor:"pointer", outline:"none" }}>
-                          <option value="" style={{color:"#333"}}>Toutes</option>
-                          {finitionsList.map(f => <option key={f} value={f} style={{color:"#333"}}>{f}</option>)}
-                        </select>
-                      </div>
                     </div>
                     <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6, display:"block" }}>Boîte de vitesse</label>
-                    <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+                    <div style={{ display:"flex", gap:8, marginBottom:12 }}>
                       {[{ val:"1", label:"🔧 Manuelle" }, { val:"2", label:"⚙️ Automatique" }].map(opt => (
                         <button key={opt.val} onClick={() => setGearbox(opt.val)}
                           style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1.5px solid ${gearbox === opt.val ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.2)"}`, background: gearbox === opt.val ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)", color: gearbox === opt.val ? "white" : "rgba(255,255,255,0.45)", fontWeight:600, fontSize:13, cursor:"pointer" }}>
@@ -3539,6 +3529,16 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                         </button>
                       ))}
                     </div>
+                    {finitionsList.length > 0 && (
+                      <div style={{ marginBottom:12 }}>
+                        <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5, display:"block" }}>Finition</label>
+                        <select value={finition} onChange={e => setFinition(e.target.value)}
+                          style={{ width:"100%", height:42, padding:"0 10px", fontSize:13, fontWeight:600, color: finition ? "white" : "rgba(255,255,255,0.5)", border:"1px solid rgba(255,255,255,0.18)", borderRadius:10, background:"rgba(255,255,255,0.1)", cursor:"pointer", outline:"none" }}>
+                          <option value="" style={{color:"#333"}}>Toutes les finitions</option>
+                          {finitionsList.map(f => <option key={f} value={f} style={{color:"#333"}}>{f}</option>)}
+                        </select>
+                      </div>
+                    )}
                     {err && <p style={{ color:"#fca5a5", fontSize:12, margin:"0 0 10px" }}>{err}</p>}
                     <button onClick={handleAnalyze} style={{ width:"100%", background:"white", color:"#1a3fdb", fontWeight:700, fontSize:14, borderRadius:12, padding:"13px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 20px rgba(0,0,0,0.18)" }}>
                       Analyser le marché →
