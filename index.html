@@ -3376,6 +3376,17 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <span style={{ padding:"0 14px", color:"#8fa0b8", fontWeight:600, fontSize:13 }}>km</span>
                 </div>
               </div>
+              <div style={{ marginBottom:16 }}>
+                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>Boîte de vitesse</label>
+                <div style={{ display:"flex", gap:8 }}>
+                  {[{ val:"1", label:"🔧 Manuelle" }, { val:"2", label:"⚙️ Automatique" }].map(opt => (
+                    <button key={opt.val} onClick={() => setGearbox(opt.val)}
+                      style={{ flex:1, padding:"12px 0", borderRadius:11, border:`1.5px solid ${gearbox === opt.val ? "#1a3fdb" : "#e2e8f5"}`, background: gearbox === opt.val ? "#eff4ff" : "white", color: gearbox === opt.val ? "#1a3fdb" : "#8fa0b8", fontWeight:700, fontSize:13, cursor:"pointer", transition:"all 0.2s" }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {finitionsList.length > 0 && (
                 <div style={{ marginBottom:14 }}>
                   <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>
@@ -3389,17 +3400,6 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <p style={{ margin:"6px 0 0", fontSize:11, color:"#f59e0b" }}>💡 Pour une analyse plus précise, sélectionnez la finition.</p>
                 </div>
               )}
-              <div style={{ marginBottom:16 }}>
-                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>Boîte de vitesse</label>
-                <div style={{ display:"flex", gap:8 }}>
-                  {[{ val:"1", label:"🔧 Manuelle" }, { val:"2", label:"⚙️ Automatique" }].map(opt => (
-                    <button key={opt.val} onClick={() => setGearbox(opt.val)}
-                      style={{ flex:1, padding:"12px 0", borderRadius:11, border:`1.5px solid ${gearbox === opt.val ? "#1a3fdb" : "#e2e8f5"}`, background: gearbox === opt.val ? "#eff4ff" : "white", color: gearbox === opt.val ? "#1a3fdb" : "#8fa0b8", fontWeight:700, fontSize:13, cursor:"pointer", transition:"all 0.2s" }}>
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
               {err && <p style={{ color:"#ef4444", fontSize:13, textAlign:"center", margin:"0 0 10px" }}>{err}</p>}
               <button onClick={handleAnalyze} style={{ width:"100%", background:"linear-gradient(135deg,#1a3fdb,#0f28a8)", color:"white", fontWeight:700, fontSize:16, borderRadius:14, padding:"16px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 16px rgba(26,63,219,0.35)" }}>
                 Analyser le marché 🚀
