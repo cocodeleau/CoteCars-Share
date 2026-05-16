@@ -3077,10 +3077,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           const sivData = await sivRes.json();
           const veh = sivData.data || sivData.données || {};
           const marque = veh.AWN_marque || "";
-          const modele = veh.AWN_modele || "";
-          const fins = getFinitions(marque, modele);
+          const modeleRaw = (veh.AWN_nom_commercial || veh.AWN_modele || "").replace(/_/g, " ");
+          const fins = getFinitions(marque, modeleRaw);
           setFinitionsList(fins);
-          setVehicleInfo({ marque, modele });
+          setVehicleInfo({ marque, modele: modeleRaw });
           setFinition("");
         } catch(e) {}
         setFinLoaded(true);
@@ -3099,8 +3099,8 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           const sivData = await sivRes.json();
           const veh = sivData.data || sivData.données || {};
           const marque = veh.AWN_marque || "";
-          const modele = veh.AWN_modele || "";
-          const nom = [marque, modele, veh.AWN_date_mise_en_circulation?.slice(6)].filter(Boolean).join(" ");
+          const modele = (veh.AWN_nom_commercial || veh.AWN_modele || "").replace(/_/g, " ");
+          const nom = [marque, veh.AWN_modele, veh.AWN_date_mise_en_circulation?.slice(6)].filter(Boolean).join(" ");
           if (!marque || !modele) throw new Error("Véhicule non identifié.");
 
           const kmUser = km ? parseInt(km) : null;
