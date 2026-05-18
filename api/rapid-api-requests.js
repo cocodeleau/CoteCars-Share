@@ -78,7 +78,7 @@ module.exports = async function handler(req, res) {
   // Énergie
   function toEnergie(raw) {
     if (!raw) return null;
-    const r = raw.toUpperCase();
+    const r = raw.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     if (r.includes("DIESEL") || r.includes("GAZOLE") || r === "GO") return "GAZOLE";
     if (r.includes("ELECT"))  return "ELECTRIQUE";
     if (r.includes("HYBRID")) return "HYBRIDE";
