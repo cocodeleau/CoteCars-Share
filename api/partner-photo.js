@@ -75,7 +75,7 @@ module.exports = async function handler(req, res) {
     const photoroomForm = new FormData();
     photoroomForm.append("imageFile",           imageBuffer, { filename: "car.jpg", contentType: mimeType });
     photoroomForm.append("format",              "jpeg");
-    photoroomForm.append("outputSize",          "preset:output_size_a");   // 1500×1000 landscape
+    photoroomForm.append("outputSize",          "originalImage");           // conserve les dimensions d'origine
     photoroomForm.append("padding",             "0.05");
     photoroomForm.append("background.prompt",   PHOTOROOM_PROMPT);
     photoroomForm.append("background.seed",     String(PHOTOROOM_SEED));
