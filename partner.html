@@ -27,7 +27,6 @@
     @keyframes spin    { to { transform: rotate(360deg); } }
     @keyframes fadeIn  { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.5} }
-    @keyframes barMove { 0%{width:0%} 70%{width:85%} 100%{width:85%} }
     .spinner { width: 20px; height: 20px; border: 2px solid rgba(141,198,63,0.3); border-top-color: #8dc63f; border-radius: 50%; animation: spin 0.8s linear infinite; }
     .fade-in { animation: fadeIn 0.3s ease; }
     .photo-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
@@ -37,14 +36,14 @@
     .btn-ae:disabled { background: #4a5568; color: #718096; cursor: not-allowed; }
     .btn-outline { background: transparent; border: 1.5px solid #2d3448; color: #94a3b8; border-radius: 8px; cursor: pointer; font-family: inherit; }
     .btn-outline:hover { border-color: #8dc63f; color: #8dc63f; }
+    .btn-retry { background: #fff7ed; border: 1.5px solid #fed7aa; color: #c2410c; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 600; }
+    .btn-retry:hover { background: #ffedd5; }
     input, select { font-family: inherit; }
   </style>
 </head>
 <body>
   <div id="root"></div>
 
-  <!-- Firebase initialisé de manière asynchrone depuis /api/firebase-config -->
-  <!-- Aucune clé n'est exposée dans ce fichier HTML -->
   <script>
     window.__firebaseReady = fetch("/api/firebase-config")
       .then(r => r.json())
@@ -67,8 +66,6 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // ── Firebase — chargé via /api/firebase-config ────────────────
-    // Aucune clé n'est stockée dans ce fichier HTML.
     let auth, db, storage, googleProvider;
 
     // ── Emails autorisés ──────────────────────────────────────────
@@ -77,13 +74,18 @@
     ];
 
     // ── Pipeline principal ────────────────────────────────────────
-    // Photoroom → PNG transparent
-    // Replicate → inpainting ombres de contact (logerfo/sdxl-controlnet-inpaint-background)
-    // Gemini    → détection plaque pixels absolus
-    // Sharp     → bandeau AUTOEASY
+    // 1. Compression canvas (max 1500px, JPEG 0.8)
+    // 2. POST /api/partner-photo → Photoroom (détourage + fond gris studio IA)
+    //                            → Gemini (détection plaque)
+    //                            → Sharp (bandeau AUTOEASY)
     async function processPartnerImage(file, onProgress) {
 
-      // 1. Compression canvas (max 1500px, JPEG 0.8)
+      // Vérification taille avant compression
+      if (file.size > 20 * 1024 * 1024) {
+        throw new Error("Image trop volumineuse (max 20 Mo). Compresse la photo avant de l'envoyer.");
+      }
+
+      // 1. Compression canvas
       onProgress("Compression de la photo...", 8);
       const base64 = await new Promise((res, rej) => {
         const img = new Image();
@@ -96,34 +98,32 @@
           canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
           res(canvas.toDataURL("image/jpeg", 0.8));
         };
-        img.onerror = rej;
+        img.onerror = () => rej(new Error("Impossible de lire l'image."));
         img.src = URL.createObjectURL(file);
       });
 
-      // 2. Envoi au backend + progression animée pendant la génération Replicate (~45s)
+      // 2. Envoi au backend + progression animée pendant Photoroom (~15s)
       onProgress("Envoi vers le serveur...", 12);
 
-      // Simule l'avancement toutes les 600ms pour ne pas paraître bloqué
       let currentPct = 15;
       const progressTimer = setInterval(() => {
         if (currentPct < 82) {
           currentPct += 1;
           const msg =
-            currentPct < 25  ? "Détourage Photoroom en cours..." :
-            currentPct < 45  ? "⏳ Génération de l'ombre IA en cours (~45s)..." :
-            currentPct < 70  ? "⏳ Génération de l'ombre IA en cours, patience..." :
-                                "Finalisation du montage...";
+            currentPct < 25 ? "Détourage de la carrosserie..." :
+            currentPct < 55 ? "⏳ Génération du fond studio IA..." :
+            currentPct < 75 ? "⏳ Génération du fond studio IA, patience..." :
+                               "Finalisation du montage...";
           onProgress(msg, currentPct);
         }
-      }, 600);
+      }, 300);
 
       let response;
       try {
-        // AbortController à 120s (bien au-delà des ~45s de Replicate)
         const controller = new AbortController();
-        const timeoutId  = setTimeout(() => controller.abort(), 120000);
+        const timeoutId  = setTimeout(() => controller.abort(), 45000);
 
-        response = await fetch("/api/partner-analyze", {
+        response = await fetch("/api/partner-photo", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
           body:    JSON.stringify({ image: base64 }),
@@ -134,7 +134,7 @@
       } catch (fetchErr) {
         clearInterval(progressTimer);
         if (fetchErr.name === "AbortError") {
-          throw new Error("Timeout : la génération a dépassé 120s. Réessaie.");
+          throw new Error("Timeout : la génération a dépassé 45s. Réessaie.");
         }
         throw fetchErr;
       }
@@ -145,7 +145,7 @@
         throw new Error("Erreur serveur : " + response.status);
       }
 
-      onProgress("Détection de la plaque...", 88);
+      onProgress("Détection de la plaque...", 90);
       const data = await response.json();
 
       if (!data.success) {
@@ -157,7 +157,7 @@
       }
 
       onProgress("Terminé !", 100);
-      return { dataUrl: data.result };
+      return { dataUrl: data.result, plateDetected: data.plateDetected };
     }
 
     // ── Page Connexion ────────────────────────────────────────────
@@ -206,6 +206,7 @@
 
       return (
         <div style={{ minHeight:"100vh", display:"grid", gridTemplateColumns:"1fr 1fr" }}>
+          {/* Panneau gauche */}
           <div style={{ background:"#1a1a2e", padding:"48px 40px", display:"flex", flexDirection:"column", justifyContent:"center", gap:20, position:"relative", overflow:"hidden" }}>
             <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:"#8dc63f" }} />
             <div style={{ position:"absolute", bottom:-60, right:-60, width:200, height:200, borderRadius:"50%", background:"rgba(141,198,63,0.05)" }} />
@@ -222,12 +223,12 @@
               Studio Photo<br/><span style={{color:"#8dc63f"}}>Professionnel</span>
             </div>
             <div style={{ fontSize:13, color:"rgba(255,255,255,0.5)", lineHeight:1.7 }}>
-              Traitement automatique des photos véhicule. Détection plaque, ombres IA, export Leboncoin ready.
+              Traitement automatique des photos véhicule. Détourage, fond studio IA, bandeau AUTOEASY.
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:8 }}>
               {[
                 "Détourage professionnel via Photoroom",
-                "Ombres de contact réalistes (IA Replicate)",
+                "Fond gris studio IA cohérent sur tout le lot",
                 "Bandeau AUTOEASY sur la plaque (Gemini)",
                 "Export JPG Leboncoin ready",
               ].map((item, i) => (
@@ -242,6 +243,7 @@
             </div>
           </div>
 
+          {/* Panneau droit */}
           <div style={{ background:"white", padding:"48px 40px", display:"flex", flexDirection:"column", justifyContent:"center" }}>
             <div style={{ maxWidth:340, width:"100%" }}>
               <h1 style={{ fontSize:22, fontWeight:700, color:"#111", marginBottom:6 }}>Connexion</h1>
@@ -257,7 +259,11 @@
                   <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" required
                     style={{ width:"100%", padding:"12px 14px", border:"1.5px solid #e2e8f0", borderRadius:10, fontSize:14, outline:"none", color:"#111" }} />
                 </div>
-                {error && <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:8, padding:"10px 14px", fontSize:13, color:"#ef4444" }}>{error}</div>}
+                {error && (
+                  <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:8, padding:"10px 14px", fontSize:13, color:"#ef4444" }}>
+                    {error}
+                  </div>
+                )}
                 <button type="submit" disabled={loading} className="btn-ae" style={{ padding:"13px", fontSize:15, borderRadius:10, marginTop:4 }}>
                   {loading ? "Connexion..." : "Se connecter"}
                 </button>
@@ -292,7 +298,10 @@
           .orderBy("createdAt", "desc")
           .limit(20)
           .get()
-          .then(snap => { setSessions(snap.docs.map(d => ({ id: d.id, ...d.data() }))); setLoading(false); })
+          .then(snap => {
+            setSessions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            setLoading(false);
+          })
           .catch(() => setLoading(false));
       }, []);
 
@@ -312,6 +321,7 @@
 
       return (
         <div style={{ minHeight:"100vh", background:"#f5f5f7", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+          {/* Header */}
           <div style={{ background:"#1a1a2e", borderBottom:"2px solid #8dc63f", padding:"0 28px", height:52, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:14 }}>
               <a href="/" title="Retour à CoteCars" style={{ display:"flex", alignItems:"center", gap:10, textDecoration:"none", cursor:"pointer" }}>
@@ -335,6 +345,7 @@
           </div>
 
           <div style={{ padding:"24px 28px", maxWidth:1200, margin:"0 auto" }}>
+            {/* Stats */}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:20 }}>
               {[
                 { label:"Véhicules traités",  value: sessions.length, sub:"Total" },
@@ -349,12 +360,17 @@
               ))}
             </div>
 
+            {/* Historique */}
             <div style={{ background:"white", borderRadius:14, border:"0.5px solid #e2e8f0", overflow:"hidden" }}>
               <div style={{ padding:"14px 18px", borderBottom:"0.5px solid #e2e8f0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <span style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em" }}>Historique des sessions</span>
                 <span style={{ fontSize:12, color:"#9ca3af" }}>{sessions.length} session{sessions.length > 1 ? "s" : ""}</span>
               </div>
-              {loading && <div style={{ padding:40, textAlign:"center" }}><div className="spinner" style={{ margin:"0 auto" }} /></div>}
+              {loading && (
+                <div style={{ padding:40, textAlign:"center" }}>
+                  <div className="spinner" style={{ margin:"0 auto" }} />
+                </div>
+              )}
               {!loading && sessions.length === 0 && (
                 <div style={{ padding:"60px 20px", textAlign:"center" }}>
                   <div style={{ fontSize:40, marginBottom:12 }}>📷</div>
@@ -401,49 +417,93 @@
       const [files,       setFiles]       = useState([]);
       const [vehicleName, setVehicleName] = useState("");
       const [processed,   setProcessed]   = useState([]);
+      const [failed,      setFailed]      = useState([]);   // index des photos en erreur
       const [progress,    setProgress]    = useState({ msg:"", pct:0 });
       const [currentIdx,  setCurrentIdx]  = useState(0);
+      const [photoStatus, setPhotoStatus] = useState([]);   // "waiting" | "processing" | "done" | "error"
       const [saving,      setSaving]      = useState(false);
       const [saved,       setSaved]       = useState(false);
       const fileInputRef = useRef();
 
       function handleFiles(e) {
-        const newFiles = Array.from(e.target.files).slice(0, 5 - files.length);
-        setFiles(prev => [...prev, ...newFiles].slice(0, 5));
+        const newFiles = Array.from(e.target.files).filter(f => f.type.startsWith("image/"));
+        setFiles(prev => [...prev, ...newFiles].slice(0, 6));
       }
 
       function removeFile(i) {
         setFiles(prev => prev.filter((_, idx) => idx !== i));
       }
 
-      async function handleProcess() {
-        if (!files.length) return;
-        setStep(2);
-        const results = [];
+      async function handleProcess(filesToProcess = null, startIdx = 0) {
+        const sourceFiles = filesToProcess || files;
+        if (!sourceFiles.length) return;
 
-        for (let i = 0; i < files.length; i++) {
-          setCurrentIdx(i);
-          setProgress({ msg: `Photo ${i+1}/${files.length} — démarrage...`, pct: 0 });
+        if (!filesToProcess) {
+          // Premier lancement : init complète
+          setStep(2);
+          setProcessed([]);
+          setFailed([]);
+          setPhotoStatus(sourceFiles.map(() => "waiting"));
+        }
+
+        const results  = filesToProcess ? [...processed] : [];
+        const failedIdx = [];
+
+        for (let i = 0; i < sourceFiles.length; i++) {
+          const globalIdx = filesToProcess ? failed[i] : i;
+          setCurrentIdx(globalIdx);
+          setPhotoStatus(prev => {
+            const next = [...prev];
+            next[globalIdx] = "processing";
+            return next;
+          });
+          setProgress({ msg: `Photo ${globalIdx+1}/${files.length} — démarrage...`, pct: 0 });
+
           try {
             const result = await processPartnerImage(
-              files[i],
-              (msg, pct) => setProgress({ msg: `Photo ${i+1}/${files.length} — ${msg}`, pct })
+              sourceFiles[i],
+              (msg, pct) => setProgress({ msg: `Photo ${globalIdx+1}/${files.length} — ${msg}`, pct })
             );
-            results.push({ dataUrl: result.dataUrl, file: files[i] });
+            results[globalIdx] = { dataUrl: result.dataUrl, plateDetected: result.plateDetected };
+            setPhotoStatus(prev => {
+              const next = [...prev];
+              next[globalIdx] = "done";
+              return next;
+            });
           } catch(err) {
-            console.error("Erreur photo", i, err);
-            results.push(null);
+            console.error(`Erreur photo ${globalIdx+1} :`, err);
+            results[globalIdx] = null;
+            failedIdx.push(globalIdx);
+            setPhotoStatus(prev => {
+              const next = [...prev];
+              next[globalIdx] = "error";
+              return next;
+            });
           }
         }
 
-        setProcessed(results.filter(Boolean));
+        setProcessed(results);
+        setFailed(failedIdx);
         setStep(3);
+      }
+
+      async function retryFailed() {
+        if (!failed.length) return;
+        const failedFiles = failed.map(i => files[i]);
+        setStep(2);
+        setPhotoStatus(prev => {
+          const next = [...prev];
+          failed.forEach(i => { next[i] = "waiting"; });
+          return next;
+        });
+        await handleProcess(failedFiles, failed[0]);
       }
 
       async function handleSave() {
         setSaving(true);
         try {
-          const photoUrls = await Promise.all(processed.map(async (p, i) => {
+          const successPhotos = processed.filter(Boolean);
+          const photoUrls = await Promise.all(successPhotos.map(async (p, i) => {
             const res  = await fetch(p.dataUrl);
             const blob = await res.blob();
             const ref  = storage.ref(`partner_photos/${user.uid}/${Date.now()}_${i}.jpg`);
@@ -451,10 +511,12 @@
             return ref.getDownloadURL();
           }));
           await db.collection("partner_sessions").add({
-            uid: user.uid, userEmail: user.email,
+            uid:         user.uid,
+            userEmail:   user.email,
             vehicleName: vehicleName || "Véhicule",
-            photoCount: photoUrls.length, photos: photoUrls,
-            createdAt: new Date().toISOString(),
+            photoCount:  photoUrls.length,
+            photos:      photoUrls,
+            createdAt:   new Date().toISOString(),
           });
           setSaved(true);
         } catch(err) {
@@ -464,7 +526,7 @@
       }
 
       function downloadAll() {
-        processed.forEach((p, i) => {
+        processed.filter(Boolean).forEach((p, i) => {
           const a = document.createElement("a");
           a.href = p.dataUrl;
           a.download = `${vehicleName?.replace(/\s/g,"_") || "vehicule"}_photo_${i+1}.jpg`;
@@ -472,8 +534,12 @@
         });
       }
 
+      const successCount = processed.filter(Boolean).length;
+      const failCount    = failed.length;
+
       return (
         <div style={{ minHeight:"100vh", background:"#f5f5f7", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+          {/* Header */}
           <div style={{ background:"#1a1a2e", borderBottom:"2px solid #8dc63f", padding:"0 28px", height:52, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ display:"flex", alignItems:"center", gap:14 }}>
               <a href="/" title="Retour à CoteCars" style={{ display:"flex", alignItems:"center", gap:10, textDecoration:"none", cursor:"pointer" }}>
@@ -488,7 +554,8 @@
           </div>
 
           <div style={{ padding:"24px 28px", maxWidth:1000, margin:"0 auto" }}>
-            {/* Steps */}
+
+            {/* Stepper */}
             <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:"14px 20px", marginBottom:20, display:"flex", alignItems:"center", gap:0 }}>
               {[{ n:1, label:"Upload photos" }, { n:2, label:"Traitement IA" }, { n:3, label:"Export" }].map((s, i) => (
                 <React.Fragment key={s.n}>
@@ -514,17 +581,23 @@
                   <label style={{ fontSize:11, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Nom du véhicule</label>
                   <input type="text" value={vehicleName} onChange={e=>setVehicleName(e.target.value)} placeholder="Ex: Renault Clio 2018"
                     style={{ width:"100%", padding:"11px 14px", border:"1.5px solid #e2e8f0", borderRadius:8, fontSize:14, outline:"none", marginBottom:16, color:"#111" }} />
+
                   <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:10 }}>
-                    Photos ({files.length}/5)
+                    Photos ({files.length}/6)
                   </div>
                   <label style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:"2px dashed #e2e8f0", borderRadius:12, padding:"24px 16px", cursor:"pointer", background:"#fafafa", marginBottom:12 }}
                     onDragOver={e => e.preventDefault()}
-                    onDrop={e => { e.preventDefault(); const f = Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith("image/")); setFiles(prev=>[...prev,...f].slice(0,5)); }}>
+                    onDrop={e => {
+                      e.preventDefault();
+                      const f = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("image/"));
+                      setFiles(prev => [...prev, ...f].slice(0, 6));
+                    }}>
                     <span style={{ fontSize:28, marginBottom:8 }}>📸</span>
                     <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Glissez ou cliquez pour ajouter</span>
-                    <span style={{ fontSize:11, color:"#9ca3af", marginTop:4 }}>JPG, PNG · Max 5 photos</span>
+                    <span style={{ fontSize:11, color:"#9ca3af", marginTop:4 }}>JPG, PNG · Max 6 photos · Max 20 Mo/photo</span>
                     <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFiles} style={{ display:"none" }} />
                   </label>
+
                   {files.length > 0 && (
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:14 }}>
                       {files.map((f, i) => (
@@ -537,7 +610,8 @@
                       ))}
                     </div>
                   )}
-                  <button onClick={handleProcess} disabled={files.length === 0} className="btn-ae" style={{ width:"100%", padding:"13px", fontSize:14 }}>
+
+                  <button onClick={() => handleProcess()} disabled={files.length === 0} className="btn-ae" style={{ width:"100%", padding:"13px", fontSize:14 }}>
                     Traiter {files.length} photo{files.length > 1 ? "s" : ""} →
                   </button>
                 </div>
@@ -545,10 +619,10 @@
                 <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:18 }}>
                   <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:14 }}>Ce qui sera fait</div>
                   {[
-                    { icon:"✂️", title:"Détourage Photoroom",         desc:"Suppression du fond — carrosserie 100% intacte." },
-                    { icon:"🤖", title:"Inpainting IA (Replicate ~45s)", desc:"Ombres de contact et reflets réalistes générés sous les pneus." },
-                    { icon:"🔍", title:"Détection plaque (Gemini)",    desc:"Localisation automatique de la plaque d'immatriculation." },
-                    { icon:"⬛", title:"Bandeau AUTOEASY",             desc:"Incrustation du bandeau sur la plaque." },
+                    { icon:"✂️", title:"Détourage Photoroom",          desc:"Suppression du fond d'origine — carrosserie 100% intacte." },
+                    { icon:"🎨", title:"Fond gris studio IA",           desc:"Fond cohérent généré pour tout le lot (seed fixe 42)." },
+                    { icon:"🔍", title:"Détection plaque (Gemini)",     desc:"Localisation automatique de la plaque d'immatriculation." },
+                    { icon:"⬛", title:"Bandeau AUTOEASY",              desc:"Incrustation du bandeau sur la plaque." },
                   ].map((item, i) => (
                     <div key={i} style={{ display:"flex", gap:12, marginBottom:16, alignItems:"flex-start" }}>
                       <div style={{ width:36, height:36, borderRadius:8, background:"#f5f5f7", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{item.icon}</div>
@@ -558,8 +632,8 @@
                       </div>
                     </div>
                   ))}
-                  <div style={{ background:"#fffbeb", border:"1px solid #fde68a", borderRadius:8, padding:"10px 14px", fontSize:12, color:"#92400e" }}>
-                    ⏱ La génération IA prend environ <strong>45 secondes</strong>. Une barre de progression te tient informé.
+                  <div style={{ background:"#f0fdf4", border:"1px solid #86efac", borderRadius:8, padding:"10px 14px", fontSize:12, color:"#166534" }}>
+                    ⚡ Traitement Photoroom nettement plus rapide — environ <strong>10–20 secondes</strong> par photo.
                   </div>
                 </div>
               </div>
@@ -574,7 +648,7 @@
                   <div style={{ fontSize:13, color:"#6b7280", minHeight:20 }}>{progress.msg}</div>
                   <div style={{ width:320 }}>
                     <div style={{ background:"#f3f4f6", borderRadius:99, overflow:"hidden", height:8, marginBottom:8 }}>
-                      <div style={{ height:"100%", background:"#8dc63f", borderRadius:99, width:`${progress.pct}%`, transition:"width 0.6s ease" }} />
+                      <div style={{ height:"100%", background:"#8dc63f", borderRadius:99, width:`${progress.pct}%`, transition:"width 0.4s ease" }} />
                     </div>
                     <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#9ca3af" }}>
                       <span>Photo {currentIdx+1}/{files.length}</span>
@@ -582,18 +656,31 @@
                     </div>
                   </div>
                   <div style={{ display:"grid", gridTemplateColumns:`repeat(${files.length},1fr)`, gap:8, marginTop:8 }}>
-                    {files.map((f, i) => (
-                      <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
-                        <div style={{ width:60, height:44, borderRadius:6, overflow:"hidden",
-                          border: i < currentIdx ? "2px solid #8dc63f" : i === currentIdx ? "2px solid #f59e0b" : "1px solid #e2e8f0",
-                          opacity: i > currentIdx ? 0.4 : 1 }}>
-                          <img src={URL.createObjectURL(f)} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                    {files.map((f, i) => {
+                      const status = photoStatus[i] || "waiting";
+                      return (
+                        <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+                          <div style={{ width:60, height:44, borderRadius:6, overflow:"hidden",
+                            border: status === "done"       ? "2px solid #8dc63f" :
+                                    status === "processing" ? "2px solid #f59e0b" :
+                                    status === "error"      ? "2px solid #ef4444" :
+                                                              "1px solid #e2e8f0",
+                            opacity: status === "waiting" ? 0.4 : 1 }}>
+                            <img src={URL.createObjectURL(f)} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                          </div>
+                          <div style={{ fontSize:9, fontWeight:600,
+                            color: status === "done"       ? "#8dc63f" :
+                                   status === "processing" ? "#f59e0b" :
+                                   status === "error"      ? "#ef4444" :
+                                                             "#9ca3af" }}>
+                            {status === "done"       ? "✓ OK"      :
+                             status === "processing" ? "⏳ En cours" :
+                             status === "error"      ? "✗ Erreur"  :
+                                                       "En attente"}
+                          </div>
                         </div>
-                        <div style={{ fontSize:9, fontWeight:600, color: i < currentIdx ? "#8dc63f" : i === currentIdx ? "#f59e0b" : "#9ca3af" }}>
-                          {i < currentIdx ? "✓ OK" : i === currentIdx ? "⏳ En cours" : "En attente"}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -602,44 +689,94 @@
             {/* ─── ÉTAPE 3 : Export ─── */}
             {step === 3 && (
               <div className="fade-in">
-                <div style={{ background:"#f0fdf4", border:"1px solid #86efac", borderRadius:12, padding:"16px 20px", marginBottom:16, display:"flex", alignItems:"center", gap:12 }}>
-                  <span style={{ fontSize:24 }}>✅</span>
-                  <div>
-                    <div style={{ fontSize:14, fontWeight:700, color:"#166534" }}>{processed.length} photo{processed.length>1?"s":""} traitée{processed.length>1?"s":""} avec succès !</div>
-                    <div style={{ fontSize:12, color:"#15803d" }}>Photoroom · Replicate · Gemini · AUTOEASY</div>
-                  </div>
-                  <div style={{ marginLeft:"auto", display:"flex", gap:10 }}>
-                    <button onClick={downloadAll} className="btn-ae" style={{ padding:"9px 18px", fontSize:13 }}>
-                      Télécharger tout ({processed.length} JPG)
-                    </button>
-                    {!saved && (
-                      <button onClick={handleSave} disabled={saving} className="btn-outline" style={{ padding:"9px 18px", fontSize:13 }}>
-                        {saving ? "Sauvegarde..." : "💾 Sauvegarder"}
+
+                {/* Bannière succès / erreurs partielles */}
+                {failCount === 0 ? (
+                  <div style={{ background:"#f0fdf4", border:"1px solid #86efac", borderRadius:12, padding:"16px 20px", marginBottom:16, display:"flex", alignItems:"center", gap:12 }}>
+                    <span style={{ fontSize:24 }}>✅</span>
+                    <div>
+                      <div style={{ fontSize:14, fontWeight:700, color:"#166534" }}>{successCount} photo{successCount>1?"s":""} traitée{successCount>1?"s":""} avec succès !</div>
+                      <div style={{ fontSize:12, color:"#15803d" }}>Photoroom · Gemini · AUTOEASY</div>
+                    </div>
+                    <div style={{ marginLeft:"auto", display:"flex", gap:10 }}>
+                      <button onClick={downloadAll} className="btn-ae" style={{ padding:"9px 18px", fontSize:13 }}>
+                        Télécharger tout ({successCount} JPG)
                       </button>
-                    )}
-                    {saved && <div style={{ padding:"9px 14px", fontSize:12, color:"#8dc63f", fontWeight:600 }}>✓ Sauvegardé</div>}
-                  </div>
-                </div>
-                <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", overflow:"hidden" }}>
-                  <div style={{ padding:"12px 18px", borderBottom:"0.5px solid #e2e8f0" }}>
-                    <span style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em" }}>Photos traitées</span>
-                  </div>
-                  <div style={{ display:"grid", gridTemplateColumns:`repeat(${Math.min(processed.length, 3)},1fr)`, gap:12, padding:16 }}>
-                    {processed.map((p, i) => (
-                      <div key={i} style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                        <img src={p.dataUrl} alt="" style={{ width:"100%", borderRadius:8, border:"0.5px solid #e2e8f0" }} />
-                        <button onClick={() => {
-                          const a = document.createElement("a");
-                          a.href = p.dataUrl;
-                          a.download = `${vehicleName?.replace(/\s/g,"_")||"vehicule"}_photo_${i+1}.jpg`;
-                          a.click();
-                        }} className="btn-outline" style={{ width:"100%", padding:"7px", fontSize:11 }}>
-                          📥 photo_{i+1}.jpg
+                      {!saved && (
+                        <button onClick={handleSave} disabled={saving} className="btn-outline" style={{ padding:"9px 18px", fontSize:13 }}>
+                          {saving ? "Sauvegarde..." : "💾 Sauvegarder"}
                         </button>
-                      </div>
-                    ))}
+                      )}
+                      {saved && <div style={{ padding:"9px 14px", fontSize:12, color:"#8dc63f", fontWeight:600 }}>✓ Sauvegardé</div>}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:16 }}>
+                    {successCount > 0 && (
+                      <div style={{ background:"#f0fdf4", border:"1px solid #86efac", borderRadius:12, padding:"14px 18px", display:"flex", alignItems:"center", gap:12 }}>
+                        <span style={{ fontSize:20 }}>✅</span>
+                        <div style={{ fontSize:13, fontWeight:600, color:"#166534" }}>{successCount} photo{successCount>1?"s":""} traitée{successCount>1?"s":""} avec succès</div>
+                        <div style={{ marginLeft:"auto", display:"flex", gap:10 }}>
+                          <button onClick={downloadAll} className="btn-ae" style={{ padding:"7px 14px", fontSize:12 }}>
+                            Télécharger ({successCount} JPG)
+                          </button>
+                          {!saved && (
+                            <button onClick={handleSave} disabled={saving} className="btn-outline" style={{ padding:"7px 14px", fontSize:12 }}>
+                              {saving ? "Sauvegarde..." : "💾 Sauvegarder"}
+                            </button>
+                          )}
+                          {saved && <div style={{ padding:"7px 12px", fontSize:12, color:"#8dc63f", fontWeight:600 }}>✓ Sauvegardé</div>}
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:12, padding:"14px 18px", display:"flex", alignItems:"center", gap:12 }}>
+                      <span style={{ fontSize:20 }}>⚠️</span>
+                      <div>
+                        <div style={{ fontSize:13, fontWeight:700, color:"#991b1b" }}>{failCount} photo{failCount>1?"s":""} en erreur</div>
+                        <div style={{ fontSize:12, color:"#b91c1c" }}>
+                          Photo{failCount>1?"s":""} {failed.map(i => i+1).join(", ")} — réseau ou timeout
+                        </div>
+                      </div>
+                      <button onClick={retryFailed} className="btn-retry" style={{ marginLeft:"auto", padding:"7px 14px", fontSize:12 }}>
+                        🔄 Relancer {failCount} photo{failCount>1?"s":""}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Grille des photos traitées */}
+                {successCount > 0 && (
+                  <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", overflow:"hidden" }}>
+                    <div style={{ padding:"12px 18px", borderBottom:"0.5px solid #e2e8f0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <span style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em" }}>Photos traitées</span>
+                      {failCount > 0 && (
+                        <span style={{ fontSize:11, color:"#ef4444" }}>{failCount} photo{failCount>1?"s":""} manquante{failCount>1?"s":""}</span>
+                      )}
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:`repeat(${Math.min(successCount, 3)},1fr)`, gap:12, padding:16 }}>
+                      {processed.map((p, i) => p && (
+                        <div key={i} style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                          <div style={{ position:"relative" }}>
+                            <img src={p.dataUrl} alt="" style={{ width:"100%", borderRadius:8, border:"0.5px solid #e2e8f0" }} />
+                            {!p.plateDetected && (
+                              <div style={{ position:"absolute", top:6, right:6, background:"rgba(245,158,11,0.9)", borderRadius:4, padding:"2px 6px", fontSize:9, fontWeight:700, color:"white" }}>
+                                Plaque non détectée
+                              </div>
+                            )}
+                          </div>
+                          <button onClick={() => {
+                            const a = document.createElement("a");
+                            a.href = p.dataUrl;
+                            a.download = `${vehicleName?.replace(/\s/g,"_") || "vehicule"}_photo_${i+1}.jpg`;
+                            a.click();
+                          }} className="btn-outline" style={{ width:"100%", padding:"7px", fontSize:11 }}>
+                            📥 photo_{i+1}.jpg
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -681,7 +818,6 @@
       return <Dashboard user={user} onNewSession={() => setView("studio")} />;
     }
 
-    // On attend que Firebase soit prêt avant de monter l'app React
     window.__firebaseReady.then(() => {
       auth           = window.__firebase.auth;
       db             = window.__firebase.db;
