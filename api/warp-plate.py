@@ -205,24 +205,14 @@ def compute_dst(bbox: dict, img_width: int) -> tuple[np.ndarray, str]:
     cx  = (xmin + xmax) / 2.0
     mid = img_width / 2.0
 
-    # Activation du trapèze uniquement si la plaque est suffisamment
-    # excentrée par rapport au centre de l'image (vue de face → rectangle plat)
-    offset_ratio = abs(cx - mid) / mid   # 0 = centré, 1 = bord de l'image
-
-    if offset_ratio < BIAIS_MIN:
-        # Plaque centrée → vue de face → rectangle plat
-        dst  = np.float32([[x1,y1],[x2,y1],[x2,y2],[x1,y2]])
-        side = "face→rectangle plat"
-    elif cx < mid:
-        # Plaque à gauche → côté GAUCHE vers le point de fuite → écrasé
-        dst  = np.float32([[x1,y1+d],[x2,y1],[x2,y2],[x1,y2-d]])
-        side = "gauche→côté gauche écrasé"
-    else:
-        # Plaque à droite → côté DROIT vers le point de fuite → écrasé
-        dst  = np.float32([[x1,y1],[x2,y1+d],[x2,y2-d],[x1,y2]])
-        side = "droite→côté droit écrasé"
-
-    print(f"[warp-plate] inset={ix:.1f}×{iy:.1f}px | d={d:.1f}px | {side}")
+    # MODE TEST — rectangle exact bbox, zéro Fake3D, zéro inset
+    # Permet de valider la précision de PlateRecognizer
+    dst  = np.float32([
+        [xmin, ymin], [xmax, ymin],
+        [xmax, ymax], [xmin, ymax],
+    ])
+    side = "test→bbox exacte"
+    print(f"[warp-plate] MODE TEST bbox exacte — {xmin:.0f},{ymin:.0f} → {xmax:.0f},{ymax:.0f}")
     return dst, side
 
 
