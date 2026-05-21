@@ -2,8 +2,9 @@
 //
 // Pipeline par photo :
 //   1. Photoroom v2       → détourage + fond #F2F2F2 + ombre portée ai.soft
-//   2. PlateRecognizer    → bounding box plaque (xmin,ymin,xmax,ymax,angle)
-//   3. Sharp              → overlay SVG pleine taille (bandeau AUTOEASY + rotation)
+//   2. PlateRecognizer    → bounding box + polygone 4 coins (mmc=true)
+//   3. /api/warp-plate    → warp perspective OpenCV (Python) + bandeau AUTOEASY
+//      └─ fallback SVG    → rectangle plat si warp échoue
 //
 // Reçoit : POST JSON { image: "data:image/jpeg;base64,..." }
 // Renvoie : { success: true, result: "data:image/jpeg;base64,...", plateDetected: bool }
@@ -12,6 +13,7 @@
 // Variables d'env Vercel requises :
 //   PHOTOROOM_API_KEY
 //   PLATERECOGNIZER_TOKEN
+//   VERCEL_URL  (injecté automatiquement par Vercel)
 
 const FormData = require("form-data");
 const fetch    = require("node-fetch");
@@ -71,15 +73,16 @@ async function runPhotoroom(imageBuffer, mimeType) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ÉTAPE 2 — PLATERECOGNIZER
-// Retourne { box, angle } ou null si aucune plaque ou erreur.
-// NE THROW JAMAIS — une absence de plaque n'est pas bloquante.
+// mmc=true active le retour du polygone 4 coins réels.
+// Retourne { box, angle, polygon } ou null — NE THROW JAMAIS.
 // ─────────────────────────────────────────────────────────────────────────────
 async function detectPlate(imageBuffer) {
   try {
     const form = new FormData();
     form.append("upload",  imageBuffer, { filename: "car.jpg", contentType: "image/jpeg" });
-    form.append("regions", "fr");  // France métropolitaine
-    form.append("regions", "re");  // Réunion (DOM)
+    form.append("regions", "fr");    // France métropolitaine
+    form.append("regions", "re");    // Réunion (DOM)
+    form.append("mmc",     "true");  // active le polygone 4 coins
 
     const res = await withRetry(() =>
       fetch("https://api.platerecognizer.com/v1/plate-reader/", {
@@ -99,7 +102,6 @@ async function detectPlate(imageBuffer) {
 
     const data = await res.json();
 
-    // Aucune plaque détectée (vue de profil, intérieur, etc.) → normal
     if (!data.results?.length) {
       console.log("[PlateRecognizer] Aucune plaque détectée");
       return null;
@@ -110,11 +112,20 @@ async function detectPlate(imageBuffer) {
       (b.score ?? 0) > (a.score ?? 0) ? b : a
     );
 
-    console.log(`[PlateRecognizer] OK — score: ${best.score} | box: ${JSON.stringify(best.box)}`);
+    // Extraction du polygone — PlateRecognizer le retourne dans
+    // candidates[0].polygon quand mmc=true
+    const polygon = best.candidates?.[0]?.polygon ?? null;
+
+    console.log(
+      `[PlateRecognizer] OK — score: ${best.score}` +
+      ` | polygon: ${polygon ? "oui" : "non (fallback bbox)"}` +
+      ` | box: ${JSON.stringify(best.box)}`
+    );
 
     return {
-      box:   best.box,      // { xmin, ymin, xmax, ymax }
-      angle: best.angle ?? 0,
+      box:     best.box,       // { xmin, ymin, xmax, ymax }
+      angle:   best.angle ?? 0,
+      polygon: polygon,        // [{ x, y }×4] ou null
     };
 
   } catch (err) {
@@ -124,55 +135,78 @@ async function detectPlate(imageBuffer) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ÉTAPE 3 — SHARP : bandeau AUTOEASY sur la plaque
-// SVG pleine taille + transform rotate pour gérer les photos de biais.
-// Si pas de plaque → retourne l'image Photoroom telle quelle.
+// ÉTAPE 3A — WARP PERSPECTIVE via /api/warp-plate (Python)
+// Appel fetch interne Vercel — même domaine, pas de CORS.
 // ─────────────────────────────────────────────────────────────────────────────
 async function applyPlateMask(imageBuffer, plateResult, imgW, imgH) {
 
+  // Aucune plaque détectée → image Photoroom telle quelle
   if (!plateResult) {
     return sharp(imageBuffer).jpeg({ quality: 92 }).toBuffer();
   }
 
+  try {
+    // VERCEL_URL est injecté automatiquement par Vercel en production
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000";
+
+    const response = await fetch(`${baseUrl}/api/warp-plate`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        car_image: imageBuffer.toString("base64"),
+        polygon:   plateResult.polygon ?? null,
+        bbox:      plateResult.box,
+        // logo_image: ajouter ici si logo PNG en base64
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`warp-plate HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    console.log("[applyPlateMask] Warp perspective OK");
+    return Buffer.from(data.result, "base64");
+
+  } catch (err) {
+    // Fallback SVG plat — ne bloque jamais le lot
+    console.warn("[applyPlateMask] Warp échoué, fallback SVG plat :", err.message);
+    return applyFlatMask(imageBuffer, plateResult, imgW, imgH);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ÉTAPE 3B — FALLBACK : rectangle SVG plat (si warp-plate échoue)
+// ─────────────────────────────────────────────────────────────────────────────
+async function applyFlatMask(imageBuffer, plateResult, imgW, imgH) {
   const { xmin, ymin, xmax, ymax } = plateResult.box;
-  const angle = plateResult.angle;
-
-  const px = xmin;
-  const py = ymin;
-  const pw = xmax - xmin;
-  const ph = ymax - ymin;
-
-  // Centre de la plaque — point de pivot pour la rotation
-  const cx = px + pw / 2;
-  const cy = py + ph / 2;
-
+  const pw     = xmax - xmin;
+  const ph     = ymax - ymin;
+  const cx     = xmin + pw / 2;
+  const cy     = ymin + ph / 2;
+  const angle  = plateResult.angle ?? 0;
   const fontSize = Math.max(10, Math.round(ph * 0.48));
 
-  // SVG transparent pleine taille — seul le rectangle est visible
-  const overlaySvg = `<svg
-    width="${imgW}"
-    height="${imgH}"
-    xmlns="http://www.w3.org/2000/svg">
+  const svg = `<svg width="${imgW}" height="${imgH}" xmlns="http://www.w3.org/2000/svg">
     <g transform="rotate(${angle}, ${cx}, ${cy})">
-      <rect
-        x="${px}" y="${py}"
-        width="${pw}" height="${ph}"
-        fill="#111111"
-        rx="3" ry="3"/>
-      <text
-        x="${cx}" y="${cy}"
-        dominant-baseline="middle"
-        text-anchor="middle"
-        fill="#FFFFFF"
-        font-family="Arial Black, Arial, sans-serif"
-        font-weight="900"
-        font-size="${fontSize}"
-        letter-spacing="1">AUTOEASY</text>
+      <rect x="${xmin}" y="${ymin}" width="${pw}" height="${ph}"
+        fill="#111111" rx="3"/>
+      <text x="${cx}" y="${cy}"
+        dominant-baseline="middle" text-anchor="middle"
+        fill="#FFFFFF" font-family="Arial Black, Arial, sans-serif"
+        font-weight="900" font-size="${fontSize}" letter-spacing="1">AUTOEASY</text>
     </g>
   </svg>`;
 
   return sharp(imageBuffer)
-    .composite([{ input: Buffer.from(overlaySvg), top: 0, left: 0 }])
+    .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
     .jpeg({ quality: 92 })
     .toBuffer();
 }
@@ -217,7 +251,7 @@ module.exports = async function handler(req, res) {
     console.log("[Pipeline] Étape 2 — PlateRecognizer...");
     const plateResult = await detectPlate(photoroomBuffer);
 
-    // ── 3. Sharp — masque AUTOEASY ───────────────────────────────
+    // ── 3. Warp perspective ou fallback SVG ──────────────────────
     console.log("[Pipeline] Étape 3 — Masque plaque...");
     const finalBuffer = await applyPlateMask(photoroomBuffer, plateResult, imgW, imgH);
 

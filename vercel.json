@@ -1,16 +1,18 @@
 {
   "rewrites": [
-    { "source": "/api/firebase-config",      "destination": "/api/firebase-config.js" },
-    { "source": "/api/brevo-form-requests",  "destination": "/api/brevo-form-requests.js" },
-    { "source": "/api/gemini",               "destination": "/api/gemini.js" },
-    { "source": "/api/lbc-finitions",        "destination": "/api/lbc-finitions-requests.js" },
-    { "source": "/api/leboncoin",            "destination": "/api/lbc-piloterr-requests.js" },
-    { "source": "/api/lbc-marques-codes",    "destination": "/api/lbc-marques-codes.js" },
-    { "source": "/api/rapid-api-requests",   "destination": "/api/rapid-api-requests.js" },
-    { "source": "/api/partner-photo",        "destination": "/api/partner-photo.js" },
-    { "source": "/style.css",                "destination": "/style.css" }
+    { "source": "/api/firebase-config",     "destination": "/api/firebase-config.js" },
+    { "source": "/api/brevo-form-requests", "destination": "/api/brevo-form-requests.js" },
+    { "source": "/api/gemini",              "destination": "/api/gemini.js" },
+    { "source": "/api/lbc-finitions",       "destination": "/api/lbc-finitions-requests.js" },
+    { "source": "/api/leboncoin",           "destination": "/api/lbc-piloterr-requests.js" },
+    { "source": "/api/lbc-marques-codes",   "destination": "/api/lbc-marques-codes.js" },
+    { "source": "/api/rapid-api-requests",  "destination": "/api/rapid-api-requests.js" },
+    { "source": "/api/partner-photo",       "destination": "/api/partner-photo.js" },
+    { "source": "/api/warp-plate",          "destination": "/api/warp-plate.py" },
+    { "source": "/style.css",               "destination": "/style.css" }
   ],
   "functions": {
-    "api/partner-photo.js": { "maxDuration": 60 }
+    "api/partner-photo.js": { "maxDuration": 60 },
+    "api/warp-plate.py":    { "maxDuration": 30 }
   }
 }
