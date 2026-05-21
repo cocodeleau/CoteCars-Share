@@ -18,7 +18,6 @@
 const FormData = require("form-data");
 const fetch    = require("node-fetch");
 const sharp    = require("sharp");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const BACKGROUND_COLOR = "#F2F2F2";
 
@@ -77,66 +76,54 @@ async function runPhotoroom(imageBuffer, mimeType) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ÉTAPE 2 — GEMINI VISION
-// Détecte la plaque et retourne ses coordonnées pixel-perfect.
-// Retourne { box } ou null — NE THROW JAMAIS.
+// ÉTAPE 2 — WATERMARKLY BLUR API
+// Détecte ET floute la plaque automatiquement — retourne l'image floutée.
+// NE THROW JAMAIS — si erreur, retourne null (image sans flou).
 // ─────────────────────────────────────────────────────────────────────────────
-async function detectPlate(imageBuffer, imgW = null, imgH = null) {
+async function blurPlateWatermarkly(imageBuffer) {
   try {
-    const genAI  = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model  = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const API_URL = "https://blur-api-eu1.watermarkly.com/blur/";
+    const API_KEY = process.env.WATERMARKLY_API_KEY;
 
-    const b64    = imageBuffer.toString("base64");
-    if (!imgW || !imgH) {
-      const meta = await sharp(imageBuffer).metadata();
-      imgW = meta.width;
-      imgH = meta.height;
-    }
+    // Logo AutoEasy — URL publique Cloudinary (évite les data URL trop longues)
+    // Si pas d'URL logo configurée → flou simple sans logo
+    const logoUrl = process.env.AUTOEASY_LOGO_URL || "";
 
-    const prompt = `Image size: ${imgW}x${imgH} pixels. ` +
-      `Find the vehicle license plate (the rectangular sign with letters and numbers like AB-123-CD). ` +
-      `Return the bounding box of the license plate text area. ` +
-      `Respond with ONLY this exact JSON, no markdown, no explanation: ` +
-      `{"xmin":INT,"ymin":INT,"xmax":INT,"ymax":INT} ` +
-      `If no plate found: {"xmin":null,"ymin":null,"xmax":null,"ymax":null}`;
-
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [
-        { inlineData: { mimeType: "image/jpeg", data: b64 } },
-        { text: prompt },
-      ]}],
-      generationConfig: { maxOutputTokens: 256 },
+    const params = new URLSearchParams({
+      blur_intensity:       "10",
+      format:               "jpeg",
+      blur_padding:         "5",
+      detection_threshold:  "0.2",
     });
 
-    const raw = result.response.text();
-    console.log("[Gemini] Réponse :", raw.substring(0, 200));
-
-    // Extrait le JSON même entouré de texte ou backticks markdown
-    // Cherche le pattern {"xmin":...} n'importe où dans la réponse
-    const jsonMatch = raw.match(/\{"xmin"\s*:\s*(-?\d+|null)[\s\S]*?\}/);
-    if (!jsonMatch) {
-      console.warn("[Gemini] JSON non trouvé dans :", raw.substring(0, 100));
-      return null;
-    }
-    console.log("[Gemini] JSON extrait :", jsonMatch[0]);
-    const parsed = JSON.parse(jsonMatch[0]);
-    if (!parsed.xmin) {
-      console.log("[Gemini] Aucune plaque détectée");
-      return null;
+    if (logoUrl) {
+      params.set("logo_url",  logoUrl);
+      params.set("logo_size", "0.9");
     }
 
-    const box = {
-      xmin: Math.round(parsed.xmin),
-      ymin: Math.round(parsed.ymin),
-      xmax: Math.round(parsed.xmax),
-      ymax: Math.round(parsed.ymax),
-    };
+    const res = await withRetry(() =>
+      fetch(`${API_URL}?${params.toString()}`, {
+        method:  "POST",
+        headers: {
+          "x-api-key":    API_KEY,
+          "Content-Type": "application/octet-stream",
+        },
+        body: imageBuffer,
+      })
+    );
 
-    console.log(`[Gemini] Plaque détectée — box: ${JSON.stringify(box)}`);
-    return { box, angle: 0, polygon: null };
+    if (!res.ok) {
+      const err = await res.text().catch(() => "");
+      console.warn(`[Watermarkly] Erreur ${res.status} : ${err}`);
+      return null;
+    }
+
+    const resultBuffer = Buffer.from(await res.arrayBuffer());
+    console.log(`[Watermarkly] OK — ${resultBuffer.length} octets | logo: ${!!logoUrl}`);
+    return resultBuffer;
 
   } catch (err) {
-    console.warn("[Gemini] Erreur — image sans masque :", err.message);
+    console.warn("[Watermarkly] Erreur inattendue :", err.message);
     return null;
   }
 }
@@ -250,38 +237,22 @@ module.exports = async function handler(req, res) {
     const { width: imgW, height: imgH } = await sharp(photoroomBuffer).metadata();
     console.log(`[Pipeline] Photoroom OK — ${imgW}x${imgH}`);
 
-    // ── 2. Gemini — détection sur l'image ORIGINALE (meilleur contraste)
-    console.log("[Pipeline] Étape 2 — Gemini détection plaque (image originale)...");
-    const plateResult = await detectPlate(imageBuffer, imgW, imgH);
+    // ── 2 & 3. Watermarkly — détecte ET floute la plaque en une seule API call
+    console.log("[Pipeline] Étape 2 — Watermarkly blur plaque...");
+    const watermarklyResult = await blurPlateWatermarkly(photoroomBuffer);
 
-    // ── 3. Masque plaque ─────────────────────────────────────────
-    // Recalcule les coordonnées Gemini dans l'espace de l'image Photoroom
-    console.log("[Pipeline] Étape 3 — Masque plaque...");
-    let scaledResult = plateResult;
-    if (plateResult) {
-      const origMeta  = await sharp(imageBuffer).metadata();
-      const scaleX    = imgW / origMeta.width;
-      const scaleY    = imgH / origMeta.height;
-      scaledResult = {
-        ...plateResult,
-        box: {
-          xmin: Math.round(plateResult.box.xmin * scaleX),
-          ymin: Math.round(plateResult.box.ymin * scaleY),
-          xmax: Math.round(plateResult.box.xmax * scaleX),
-          ymax: Math.round(plateResult.box.ymax * scaleY),
-        }
-      };
-      console.log(`[Pipeline] Scale: ${origMeta.width}x${origMeta.height} → ${imgW}x${imgH} | scaleX:${scaleX.toFixed(2)} scaleY:${scaleY.toFixed(2)}`);
-      console.log(`[Pipeline] Box originale: ${JSON.stringify(plateResult.box)} → Box scalée: ${JSON.stringify(scaledResult.box)}`);
+    // Si Watermarkly échoue → image Photoroom telle quelle
+    const finalBuffer = watermarklyResult ?? photoroomBuffer;
+    if (!watermarklyResult) {
+      console.warn("[Pipeline] Watermarkly échoué — image sans masque plaque");
     }
-    const finalBuffer = await applyPlateMask(photoroomBuffer, scaledResult, imgW, imgH);
 
-    console.log(`[Pipeline] Terminé — ${finalBuffer.length} octets | plaque: ${!!plateResult}`);
+    console.log(`[Pipeline] Terminé — ${finalBuffer.length} octets | plaque floutée: ${!!watermarklyResult}`);
 
     return res.status(200).json({
       success:       true,
       result:        "data:image/jpeg;base64," + finalBuffer.toString("base64"),
-      plateDetected: !!plateResult,
+      plateDetected: !!watermarklyResult,
     });
 
   } catch (error) {
