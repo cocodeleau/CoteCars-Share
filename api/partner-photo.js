@@ -56,8 +56,9 @@ async function runPhotoroom(imageBuffer, mimeType) {
   form.append("format",           "jpeg");
   form.append("outputSize",       "originalImage");
   form.append("padding",          "0.05");
-  form.append("background.color", BACKGROUND_COLOR);
-  form.append("shadow.mode",      "ai.soft");
+  form.append("background.color",        BACKGROUND_COLOR);
+  form.append("shadow.mode",             "ai.soft");
+  form.append("anonymize.licensePlate",  "true");
 
   const res = await withRetry(() =>
     fetch("https://image-api.photoroom.com/v2/edit", {
