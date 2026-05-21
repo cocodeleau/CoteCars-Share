@@ -155,9 +155,10 @@ async function applyPlateMask(imageBuffer, plateResult, imgW, imgH) {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        car_image: imageBuffer.toString("base64"),
-        polygon:   plateResult.polygon ?? null,
-        bbox:      plateResult.box,
+        car_image:  imageBuffer.toString("base64"),
+        polygon:    plateResult.polygon ?? null,
+        bbox:       plateResult.box,
+        img_width:  imgW,   // largeur image pour calcul côté fuyant Fake3D
         // logo_image: ajouter ici si logo PNG en base64
       }),
     });
