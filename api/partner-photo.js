@@ -254,12 +254,12 @@ module.exports = async function handler(req, res) {
     const { width: imgW, height: imgH } = await sharp(photoroomBuffer).metadata();
     console.log(`[Pipeline] Photoroom OK — ${imgW}x${imgH}`);
 
-    // ── 2. PlateRecognizer ────────────────────────────────────────
-    console.log("[Pipeline] Étape 2 — PlateRecognizer...");
-    const plateResult = await detectPlate(photoroomBuffer);
+    // ── 2. PlateRecognizer — DÉSACTIVÉ pour test anonymize.licensePlate Photoroom
+    console.log("[Pipeline] Étape 2 — PlateRecognizer désactivé (test Photoroom anonymize)");
+    const plateResult = null;
 
-    // ── 3. Warp perspective ou fallback SVG ──────────────────────
-    console.log("[Pipeline] Étape 3 — Masque plaque...");
+    // ── 3. Masque plaque — skippé (plateResult = null)
+    console.log("[Pipeline] Étape 3 — Masque skippé (test Photoroom anonymize)");
     const finalBuffer = await applyPlateMask(photoroomBuffer, plateResult, imgW, imgH);
 
     console.log(`[Pipeline] Terminé — ${finalBuffer.length} octets | plaque: ${!!plateResult}`);
