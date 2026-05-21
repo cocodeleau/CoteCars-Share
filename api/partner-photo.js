@@ -107,8 +107,17 @@ async function detectPlate(imageBuffer) {
       generationConfig: { responseMimeType: "application/json", maxOutputTokens: 256 },
     });
 
-    const raw  = result.response.text().trim();
-    console.log("[Gemini] Réponse :", raw);
+    let raw = result.response.text().trim();
+    console.log("[Gemini] Réponse brute :", raw);
+
+    // Nettoie les caractères parasites que Gemini peut ajouter
+    // Ex: "{"xmin":128,...}}" → on extrait le premier objet JSON valide
+    const jsonMatch = raw.match(/\{[^{}]*\}/);
+    if (!jsonMatch) {
+      console.warn("[Gemini] Aucun objet JSON trouvé dans la réponse");
+      return null;
+    }
+    raw = jsonMatch[0];
 
     const parsed = JSON.parse(raw);
     if (!parsed.xmin) {
