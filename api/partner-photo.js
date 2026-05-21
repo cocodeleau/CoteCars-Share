@@ -92,13 +92,10 @@ async function detectPlate(imageBuffer) {
     const imgH   = meta.height;
 
     const prompt = `Image size: ${imgW}x${imgH} pixels. ` +
-      `Find the rectangular license plate sign on the vehicle. ` +
-      `The license plate contains alphanumeric characters (letters and numbers). ` +
-      `Do NOT detect the bumper, the plate holder, or the area around the plate. ` +
-      `Detect ONLY the plate rectangle itself with the text on it. ` +
-      `Respond with ONLY this exact JSON, nothing else, no markdown, no backticks, no explanation: ` +
+      `Find the vehicle license plate (the rectangular sign with letters and numbers like AB-123-CD). ` +
+      `Return the bounding box of the license plate text area. ` +
+      `Respond with ONLY this exact JSON, no markdown, no explanation: ` +
       `{"xmin":INT,"ymin":INT,"xmax":INT,"ymax":INT} ` +
-      `Replace INT with the absolute pixel coordinates of the license plate rectangle. ` +
       `If no plate found: {"xmin":null,"ymin":null,"xmax":null,"ymax":null}`;
 
     const result = await model.generateContent({
@@ -153,35 +150,37 @@ async function applyPlateMask(imageBuffer, plateResult, imgW, imgH) {
     return sharp(imageBuffer).jpeg({ quality: 92 }).toBuffer();
   }
 
+  const { xmin, ymin, xmax, ymax } = plateResult.box;
+  const pw = xmax - xmin;
+  const ph = ymax - ymin;
+
+  // Sécurité : coordonnées dans les limites de l'image
+  const sx = Math.max(0, xmin);
+  const sy = Math.max(0, ymin);
+  const sw = Math.min(pw, imgW - sx);
+  const sh = Math.min(ph, imgH - sy);
+
+  console.log(`[applyPlateMask] Flou gaussien — left:${sx} top:${sy} w:${sw} h:${sh}`);
+
   try {
-    // URL fixe — évite les problèmes avec VERCEL_URL qui change à chaque déploiement
-    const warpUrl = process.env.WARP_PLATE_URL || "https://cotecars-test.vercel.app/api/warp-plate";
+    // 1. Extrait la zone de la plaque
+    const plateZone = await sharp(imageBuffer)
+      .extract({ left: sx, top: sy, width: sw, height: sh })
+      .blur(12)           // flou gaussien fort
+      .toBuffer();
 
-    const response = await fetch(warpUrl, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        car_image:  imageBuffer.toString("base64"),
-        polygon:    plateResult.polygon ?? null,
-        bbox:       plateResult.box,
-        img_width:  imgW,
-        logo_image: AUTOEASY_LOGO_B64,
-      }),
-    });
+    // 2. Recompose sur l'image complète
+    const result = await sharp(imageBuffer)
+      .composite([{ input: plateZone, left: sx, top: sy }])
+      .jpeg({ quality: 92 })
+      .toBuffer();
 
-    if (!response.ok) {
-      throw new Error(`warp-plate HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    if (data.error) throw new Error(data.error);
-
-    console.log(`[applyPlateMask] Warp OK — méthode: ${data.method}`);
-    return Buffer.from(data.result, "base64");
+    console.log("[applyPlateMask] Flou OK");
+    return result;
 
   } catch (err) {
-    console.warn("[applyPlateMask] Warp échoué, fallback SVG plat :", err.message);
-    return applyFlatMask(imageBuffer, plateResult, imgW, imgH);
+    console.warn("[applyPlateMask] Flou échoué :", err.message);
+    return sharp(imageBuffer).jpeg({ quality: 92 }).toBuffer();
   }
 }
 
