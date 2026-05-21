@@ -158,8 +158,12 @@ async function applyPlateMask(imageBuffer, plateResult, imgW, imgH) {
         car_image:  imageBuffer.toString("base64"),
         polygon:    plateResult.polygon ?? null,
         bbox:       plateResult.box,
-        img_width:  imgW,   // largeur image pour calcul côté fuyant Fake3D
-        // logo_image: ajouter ici si logo PNG en base64
+        img_width:  imgW,
+        // Deux options pour le logo — choisir l'une ou l'autre :
+        // Option A : URL publique (recommandé — pas de surcharge payload)
+        logo_url:   "https://res.cloudinary.com/di3xa7ldg/image/upload/v1779374654/images_1_1_p3zopk.png",
+        // Option B : base64 (si logo stocké localement)
+        // logo_image: AUTOEASY_LOGO_B64,
       }),
     });
 
