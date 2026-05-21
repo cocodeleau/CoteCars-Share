@@ -158,8 +158,8 @@ async function applyPlateMask(imageBuffer, plateResult, imgW, imgH) {
     const response = await fetch(`${baseUrl}/api/warp-plate`, {
       method:  "POST",
       headers: {
-        "Content-Type":  "application/json",
-        "Authorization": `Bearer ${process.env.WARP_PLATE_SECRET}`,
+        "Content-Type":               "application/json",
+        "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET ?? "",
       },
       body: JSON.stringify({
         car_image:  imageBuffer.toString("base64"),
