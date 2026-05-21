@@ -1,9 +1,9 @@
 // api/partner-photo.js
 //
-// Pipeline :
-//   1. Photoroom v2  → détourage + fond uni gris clair (#F2F2F2) + ombre portée IA
-//   2. Gemini        → coordonnées plaque (pixels absolus)
-//   3. Sharp         → bandeau AUTOEASY sur la plaque
+// Pipeline par photo :
+//   1. Photoroom v2       → détourage + fond #F2F2F2 + ombre portée ai.soft
+//   2. PlateRecognizer    → bounding box plaque (xmin,ymin,xmax,ymax,angle)
+//   3. Sharp              → overlay SVG pleine taille (bandeau AUTOEASY + rotation)
 //
 // Reçoit : POST JSON { image: "data:image/jpeg;base64,..." }
 // Renvoie : { success: true, result: "data:image/jpeg;base64,...", plateDetected: bool }
@@ -11,17 +11,17 @@
 //
 // Variables d'env Vercel requises :
 //   PHOTOROOM_API_KEY
-//   GEMINI_API_KEY
+//   PLATERECOGNIZER_TOKEN
 
 const FormData = require("form-data");
 const fetch    = require("node-fetch");
 const sharp    = require("sharp");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// Fond uni studio — gris clair professionnel
-const BACKGROUND_COLOR = "#F2F2F2";  // changer en "#FFFFFF" pour blanc pur
+const BACKGROUND_COLOR = "#F2F2F2";
 
-// Retry helper — tente jusqu'à maxAttempts fois avec backoff exponentiel
+// ─────────────────────────────────────────────────────────────────────────────
+// RETRY HELPER
+// ─────────────────────────────────────────────────────────────────────────────
 async function withRetry(fn, maxAttempts = 3, backoffMs = [0, 2000, 4000]) {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (backoffMs[attempt] > 0) {
@@ -32,142 +32,201 @@ async function withRetry(fn, maxAttempts = 3, backoffMs = [0, 2000, 4000]) {
     } catch (err) {
       const msg         = err.message || "";
       const isRetryable = msg.includes("503") || msg.includes("429") ||
-                          msg.includes("Service Unavailable") || msg.includes("Too Many Requests");
-      console.warn(`[retry] Tentative ${attempt + 1}/${maxAttempts} échouée — ${msg}`);
+                          msg.includes("Service Unavailable") ||
+                          msg.includes("Too Many Requests");
+      console.warn(`[retry] Tentative ${attempt + 1}/${maxAttempts} — ${msg}`);
       if (!isRetryable || attempt === maxAttempts - 1) throw err;
     }
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ÉTAPE 1 — PHOTOROOM
+// Détourage + fond uni gris clair + ombre portée réaliste
+// ─────────────────────────────────────────────────────────────────────────────
+async function runPhotoroom(imageBuffer, mimeType) {
+  const form = new FormData();
+  form.append("imageFile",        imageBuffer, { filename: "car.jpg", contentType: mimeType });
+  form.append("format",           "jpeg");
+  form.append("outputSize",       "originalImage");
+  form.append("padding",          "0.05");
+  form.append("background.color", BACKGROUND_COLOR);
+  form.append("shadow.mode",      "ai.soft");
+
+  const res = await withRetry(() =>
+    fetch("https://image-api.photoroom.com/v2/edit", {
+      method:  "POST",
+      headers: { "x-api-key": process.env.PHOTOROOM_API_KEY, ...form.getHeaders() },
+      body:    form,
+    })
+  );
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Photoroom erreur ${res.status} : ${errText}`);
+  }
+
+  return Buffer.from(await res.arrayBuffer());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ÉTAPE 2 — PLATERECOGNIZER
+// Retourne { box, angle } ou null si aucune plaque ou erreur.
+// NE THROW JAMAIS — une absence de plaque n'est pas bloquante.
+// ─────────────────────────────────────────────────────────────────────────────
+async function detectPlate(imageBuffer) {
+  try {
+    const form = new FormData();
+    form.append("upload",  imageBuffer, { filename: "car.jpg", contentType: "image/jpeg" });
+    form.append("regions", "fr");  // France métropolitaine
+    form.append("regions", "re");  // Réunion (DOM)
+
+    const res = await withRetry(() =>
+      fetch("https://api.platerecognizer.com/v1/plate-reader/", {
+        method:  "POST",
+        headers: {
+          "Authorization": `Token ${process.env.PLATERECOGNIZER_TOKEN}`,
+          ...form.getHeaders(),
+        },
+        body: form,
+      })
+    );
+
+    if (!res.ok) {
+      console.warn(`[PlateRecognizer] Erreur ${res.status} — image sans masque`);
+      return null;
+    }
+
+    const data = await res.json();
+
+    // Aucune plaque détectée (vue de profil, intérieur, etc.) → normal
+    if (!data.results?.length) {
+      console.log("[PlateRecognizer] Aucune plaque détectée");
+      return null;
+    }
+
+    // Meilleur résultat par score de confiance
+    const best = data.results.reduce((a, b) =>
+      (b.score ?? 0) > (a.score ?? 0) ? b : a
+    );
+
+    console.log(`[PlateRecognizer] OK — score: ${best.score} | box: ${JSON.stringify(best.box)}`);
+
+    return {
+      box:   best.box,      // { xmin, ymin, xmax, ymax }
+      angle: best.angle ?? 0,
+    };
+
+  } catch (err) {
+    console.warn("[PlateRecognizer] Erreur inattendue — image sans masque :", err.message);
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ÉTAPE 3 — SHARP : bandeau AUTOEASY sur la plaque
+// SVG pleine taille + transform rotate pour gérer les photos de biais.
+// Si pas de plaque → retourne l'image Photoroom telle quelle.
+// ─────────────────────────────────────────────────────────────────────────────
+async function applyPlateMask(imageBuffer, plateResult, imgW, imgH) {
+
+  if (!plateResult) {
+    return sharp(imageBuffer).jpeg({ quality: 92 }).toBuffer();
+  }
+
+  const { xmin, ymin, xmax, ymax } = plateResult.box;
+  const angle = plateResult.angle;
+
+  const px = xmin;
+  const py = ymin;
+  const pw = xmax - xmin;
+  const ph = ymax - ymin;
+
+  // Centre de la plaque — point de pivot pour la rotation
+  const cx = px + pw / 2;
+  const cy = py + ph / 2;
+
+  const fontSize = Math.max(10, Math.round(ph * 0.48));
+
+  // SVG transparent pleine taille — seul le rectangle est visible
+  const overlaySvg = `<svg
+    width="${imgW}"
+    height="${imgH}"
+    xmlns="http://www.w3.org/2000/svg">
+    <g transform="rotate(${angle}, ${cx}, ${cy})">
+      <rect
+        x="${px}" y="${py}"
+        width="${pw}" height="${ph}"
+        fill="#111111"
+        rx="3" ry="3"/>
+      <text
+        x="${cx}" y="${cy}"
+        dominant-baseline="middle"
+        text-anchor="middle"
+        fill="#FFFFFF"
+        font-family="Arial Black, Arial, sans-serif"
+        font-weight="900"
+        font-size="${fontSize}"
+        letter-spacing="1">AUTOEASY</text>
+    </g>
+  </svg>`;
+
+  return sharp(imageBuffer)
+    .composite([{ input: Buffer.from(overlaySvg), top: 0, left: 0 }])
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HANDLER PRINCIPAL
+// ─────────────────────────────────────────────────────────────────────────────
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ success: false, error: "Method not allowed" });
   }
 
   try {
-    // ── 0. Lecture du base64 ──────────────────────────────────────
     const { image } = req.body;
     if (!image) {
       return res.status(200).json({ success: false, error: 'Champ "image" manquant.' });
     }
 
     const base64Data  = image.includes(",") ? image.split(",")[1] : image;
-    const mimeType    = image.includes("data:") ? image.split(";")[0].split(":")[1] : "image/jpeg";
+    const mimeType    = image.includes("data:")
+      ? image.split(";")[0].split(":")[1]
+      : "image/jpeg";
     const imageBuffer = Buffer.from(base64Data, "base64");
 
-    // Vérification taille (limite 20 Mo)
     if (imageBuffer.length > 20 * 1024 * 1024) {
       return res.status(200).json({ success: false, error: "Image trop volumineuse (max 20 Mo)." });
     }
 
-    // ── 1. Photoroom v2 → détourage + fond uni + ombre portée ────
-    console.log("[Photoroom] Envoi de la requête...");
-
-    const photoroomForm = new FormData();
-    photoroomForm.append("imageFile",          imageBuffer, { filename: "car.jpg", contentType: mimeType });
-    photoroomForm.append("format",             "jpeg");
-    photoroomForm.append("outputSize",         "originalImage");  // conserve les dimensions d'origine
-    photoroomForm.append("padding",            "0.05");           // 5% de marge — évite que l'ombre soit coupée
-    photoroomForm.append("background.color",   BACKGROUND_COLOR); // fond uni gris clair
-    photoroomForm.append("shadow.mode",        "ai.soft");        // ombre portée IA réaliste sous la voiture
-
-    let prRes;
+    // ── 1. Photoroom ─────────────────────────────────────────────
+    console.log("[Pipeline] Étape 1 — Photoroom...");
+    let photoroomBuffer;
     try {
-      prRes = await withRetry(() =>
-        fetch("https://image-api.photoroom.com/v2/edit", {
-          method:  "POST",
-          headers: {
-            "x-api-key": process.env.PHOTOROOM_API_KEY,
-            ...photoroomForm.getHeaders(),
-          },
-          body: photoroomForm,
-        })
-      );
-    } catch (e) {
-      return res.status(200).json({ success: false, error: "Photoroom injoignable : " + e.message });
-    }
-
-    if (!prRes.ok) {
-      const errText = await prRes.text().catch(() => "");
-      console.error(`[Photoroom] Erreur ${prRes.status} :`, errText);
-      return res.status(200).json({
-        success: false,
-        error:   `Photoroom erreur ${prRes.status} : ${errText}`,
-      });
-    }
-
-    const photoroomBuffer = Buffer.from(await prRes.arrayBuffer());
-    const { width: imgW, height: imgH } = await sharp(photoroomBuffer).metadata();
-    console.log(`[Photoroom] OK — ${imgW}x${imgH}`);
-
-    // ── 2. Gemini → pixels absolus de la plaque ──────────────────
-    const genAI  = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const gModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const b64Photo = photoroomBuffer.toString("base64");
-
-    const geminiPrompt = `The image size is ${imgW} pixels wide and ${imgH} pixels high. ` +
-      `Find the license plate on the car. ` +
-      `Return ONLY a valid JSON object with absolute pixel coordinates (integers): ` +
-      `{"license_plate": {"x": int, "y": int, "width": int, "height": int}} ` +
-      `where x and y are the top-left corner. ` +
-      `If no plate is visible, return: {"license_plate": null} ` +
-      `No explanation, no markdown.`;
-
-    let plateCoords   = null;
-    let geminiSuccess = false;
-
-    try {
-      await withRetry(async () => {
-        const result  = await gModel.generateContent({
-          contents: [{ role: "user", parts: [
-            { inlineData: { mimeType: "image/jpeg", data: b64Photo } },
-            { text: geminiPrompt },
-          ]}],
-          generationConfig: { responseMimeType: "application/json", maxOutputTokens: 256 },
-        });
-        const rawText = result.response.text();
-        console.log("[Gemini]", rawText);
-        plateCoords   = JSON.parse(rawText).license_plate;
-        geminiSuccess = true;
-      });
+      photoroomBuffer = await runPhotoroom(imageBuffer, mimeType);
     } catch (err) {
-      console.warn("[Gemini] Échec définitif :", err.message);
-      // On continue sans bandeau plutôt que de bloquer toute la photo
+      return res.status(200).json({ success: false, error: err.message });
     }
 
-    // ── 3. Sharp → bandeau AUTOEASY sur la plaque ────────────────
-    let finalBuffer;
+    const { width: imgW, height: imgH } = await sharp(photoroomBuffer).metadata();
+    console.log(`[Pipeline] Photoroom OK — ${imgW}x${imgH}`);
 
-    if (plateCoords && geminiSuccess) {
-      const { x, y, width, height } = plateCoords;
-      const sx = Math.max(0, Math.min(x,      imgW - 1));
-      const sy = Math.max(0, Math.min(y,      imgH - 1));
-      const sw = Math.min(width,  imgW - sx);
-      const sh = Math.min(height, imgH - sy);
-      console.log(`[Sharp] Bandeau → left:${sx} top:${sy} w:${sw} h:${sh}`);
+    // ── 2. PlateRecognizer ────────────────────────────────────────
+    console.log("[Pipeline] Étape 2 — PlateRecognizer...");
+    const plateResult = await detectPlate(photoroomBuffer);
 
-      const fontSize  = Math.round(sh * 0.52);
-      const bannerSvg = `<svg width="${sw}" height="${sh}" xmlns="http://www.w3.org/2000/svg">
-  <rect width="${sw}" height="${sh}" fill="#111111" rx="3"/>
-  <text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle"
-    fill="#FFFFFF" font-family="Arial Black, Arial, sans-serif"
-    font-weight="900" font-size="${fontSize}" letter-spacing="1">AUTOEASY</text>
-</svg>`;
+    // ── 3. Sharp — masque AUTOEASY ───────────────────────────────
+    console.log("[Pipeline] Étape 3 — Masque plaque...");
+    const finalBuffer = await applyPlateMask(photoroomBuffer, plateResult, imgW, imgH);
 
-      finalBuffer = await sharp(photoroomBuffer)
-        .composite([{ input: Buffer.from(bannerSvg), left: sx, top: sy }])
-        .jpeg({ quality: 92 })
-        .toBuffer();
-    } else {
-      console.warn("[Sharp] Plaque non détectée — image sans bandeau.");
-      finalBuffer = await sharp(photoroomBuffer).jpeg({ quality: 92 }).toBuffer();
-    }
+    console.log(`[Pipeline] Terminé — ${finalBuffer.length} octets | plaque: ${!!plateResult}`);
 
-    console.log(`[partner-photo] Terminé — ${finalBuffer.length} octets`);
     return res.status(200).json({
       success:       true,
       result:        "data:image/jpeg;base64," + finalBuffer.toString("base64"),
-      plateDetected: !!(plateCoords && geminiSuccess),
+      plateDetected: !!plateResult,
     });
 
   } catch (error) {
@@ -175,7 +234,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       success: false,
       error:   error.message || "Erreur serveur inconnue.",
-      stack:   error.stack   || "",
     });
   }
 };
