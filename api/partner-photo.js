@@ -18,6 +18,7 @@
 const FormData = require("form-data");
 const fetch    = require("node-fetch");
 const sharp    = require("sharp");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const BACKGROUND_COLOR = "#F2F2F2";
 
@@ -58,7 +59,6 @@ async function runPhotoroom(imageBuffer, mimeType) {
   form.append("padding",          "0.05");
   form.append("background.color",        BACKGROUND_COLOR);
   form.append("shadow.mode",             "ai.soft");
-  form.append("anonymize.licensePlate",  "true");
 
   const res = await withRetry(() =>
     fetch("https://image-api.photoroom.com/v2/edit", {
@@ -77,71 +77,57 @@ async function runPhotoroom(imageBuffer, mimeType) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ÉTAPE 2 — PLATERECOGNIZER
-// mmc=true active le retour du polygone 4 coins réels.
-// Retourne { box, angle, polygon } ou null — NE THROW JAMAIS.
+// ÉTAPE 2 — GEMINI VISION
+// Détecte la plaque et retourne ses coordonnées pixel-perfect.
+// Retourne { box } ou null — NE THROW JAMAIS.
 // ─────────────────────────────────────────────────────────────────────────────
 async function detectPlate(imageBuffer) {
   try {
-    const form = new FormData();
-    form.append("upload",  imageBuffer, { filename: "car.jpg", contentType: "image/jpeg" });
-    form.append("regions", "fr");    // France métropolitaine
-    form.append("regions", "re");    // Réunion (DOM)
-    form.append("mmc",     "true");  // active le polygone 4 coins
+    const genAI  = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model  = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const res = await withRetry(() =>
-      fetch("https://api.platerecognizer.com/v1/plate-reader/", {
-        method:  "POST",
-        headers: {
-          "Authorization": `Token ${process.env.PLATERECOGNIZER_TOKEN}`,
-          ...form.getHeaders(),
-        },
-        body: form,
-      })
-    );
+    const b64    = imageBuffer.toString("base64");
+    const meta   = await sharp(imageBuffer).metadata();
+    const imgW   = meta.width;
+    const imgH   = meta.height;
 
-    if (!res.ok) {
-      console.warn(`[PlateRecognizer] Erreur ${res.status} — image sans masque`);
+    const prompt = `The image is ${imgW}x${imgH} pixels. ` +
+      `Find the license plate on the car. ` +
+      `Return ONLY a valid JSON object with absolute pixel coordinates (integers): ` +
+      `{"xmin": int, "ymin": int, "xmax": int, "ymax": int} ` +
+      `where xmin/ymin is the top-left corner and xmax/ymax is the bottom-right corner. ` +
+      `If no plate is visible, return: {"xmin": null} ` +
+      `No explanation, no markdown, no code block.`;
+
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [
+        { inlineData: { mimeType: "image/jpeg", data: b64 } },
+        { text: prompt },
+      ]}],
+      generationConfig: { responseMimeType: "application/json", maxOutputTokens: 256 },
+    });
+
+    const raw  = result.response.text().trim();
+    console.log("[Gemini] Réponse :", raw);
+
+    const parsed = JSON.parse(raw);
+    if (!parsed.xmin) {
+      console.log("[Gemini] Aucune plaque détectée");
       return null;
     }
 
-    const data = await res.json();
-
-    if (!data.results?.length) {
-      console.log("[PlateRecognizer] Aucune plaque détectée");
-      return null;
-    }
-
-    // Meilleur résultat par score de confiance
-    const best = data.results.reduce((a, b) =>
-      (b.score ?? 0) > (a.score ?? 0) ? b : a
-    );
-
-    // Extraction du polygone — PlateRecognizer peut le retourner à plusieurs endroits
-    // On cherche dans tous les emplacements possibles
-    const polygon =
-      best.polygon                    ??   // niveau racine du résultat
-      best.candidates?.[0]?.polygon   ??   // dans candidates[0]
-      best.vehicle?.polygon           ??   // dans vehicle
-      null;
-
-    // Log complet pour debug — affiche candidates[0] pour voir la structure polygon
-    console.log(
-      `[PlateRecognizer] OK — score: ${best.score}` +
-      ` | polygon: ${polygon ? "oui (" + polygon.length + " pts)" : "non (fallback bbox)"}` +
-      ` | box: ${JSON.stringify(best.box)}` +
-      ` | raw keys: ${Object.keys(best).join(",")}` +
-      ` | candidates[0]: ${JSON.stringify(best.candidates?.[0])}`
-    );
-
-    return {
-      box:     best.box,
-      angle:   best.angle ?? 0,
-      polygon: polygon,
+    const box = {
+      xmin: Math.round(parsed.xmin),
+      ymin: Math.round(parsed.ymin),
+      xmax: Math.round(parsed.xmax),
+      ymax: Math.round(parsed.ymax),
     };
 
+    console.log(`[Gemini] Plaque détectée — box: ${JSON.stringify(box)}`);
+    return { box, angle: 0, polygon: null };
+
   } catch (err) {
-    console.warn("[PlateRecognizer] Erreur inattendue — image sans masque :", err.message);
+    console.warn("[Gemini] Erreur — image sans masque :", err.message);
     return null;
   }
 }
@@ -254,12 +240,12 @@ module.exports = async function handler(req, res) {
     const { width: imgW, height: imgH } = await sharp(photoroomBuffer).metadata();
     console.log(`[Pipeline] Photoroom OK — ${imgW}x${imgH}`);
 
-    // ── 2. PlateRecognizer — DÉSACTIVÉ pour test anonymize.licensePlate Photoroom
-    console.log("[Pipeline] Étape 2 — PlateRecognizer désactivé (test Photoroom anonymize)");
-    const plateResult = null;
+    // ── 2. PlateRecognizer ────────────────────────────────────────
+    console.log("[Pipeline] Étape 2 — PlateRecognizer...");
+    const plateResult = await detectPlate(photoroomBuffer);
 
-    // ── 3. Masque plaque — skippé (plateResult = null)
-    console.log("[Pipeline] Étape 3 — Masque skippé (test Photoroom anonymize)");
+    // ── 3. Warp perspective ou fallback SVG ──────────────────────
+    console.log("[Pipeline] Étape 3 — Masque plaque...");
     const finalBuffer = await applyPlateMask(photoroomBuffer, plateResult, imgW, imgH);
 
     console.log(`[Pipeline] Terminé — ${finalBuffer.length} octets | plaque: ${!!plateResult}`);
