@@ -23,8 +23,9 @@ from http.server import BaseHTTPRequestHandler
 INSET_RATIO    = 0.02   # retrait 2% — cache proche des dimensions réelles
 FEATHER_PX     = 2      # flou bords (pixels)
 OVERLAY_ALPHA  = 0.96   # opacité globale du cache
-SHRINK_3D      = 0.28   # déformation trapèze — légèrement réduite pour éviter l'excès
-LOGO_MARGIN    = 0.10   # marge interne logo (10%) — logo plus grand et lisible
+SHRINK_3D      = 0.12   # déformation trapèze subtile
+BIAIS_MIN      = 0.15   # distance min du centre (ratio) pour activer le trapèze
+LOGO_MARGIN    = 0.10   # marge interne logo (10%)
 
 # Couleurs dégradé fond : #D9D9D9 → #F5F5F5 (gauche → droite)
 BG_LEFT  = np.array([217, 217, 217], dtype=np.float32)  # BGR
@@ -204,7 +205,15 @@ def compute_dst(bbox: dict, img_width: int) -> tuple[np.ndarray, str]:
     cx  = (xmin + xmax) / 2.0
     mid = img_width / 2.0
 
-    if cx < mid:
+    # Activation du trapèze uniquement si la plaque est suffisamment
+    # excentrée par rapport au centre de l'image (vue de face → rectangle plat)
+    offset_ratio = abs(cx - mid) / mid   # 0 = centré, 1 = bord de l'image
+
+    if offset_ratio < BIAIS_MIN:
+        # Plaque centrée → vue de face → rectangle plat
+        dst  = np.float32([[x1,y1],[x2,y1],[x2,y2],[x1,y2]])
+        side = "face→rectangle plat"
+    elif cx < mid:
         # Plaque à gauche → côté GAUCHE vers le point de fuite → écrasé
         dst  = np.float32([[x1,y1+d],[x2,y1],[x2,y2],[x1,y2-d]])
         side = "gauche→côté gauche écrasé"
