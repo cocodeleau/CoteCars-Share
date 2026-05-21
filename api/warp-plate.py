@@ -1,23 +1,7 @@
 # api/warp-plate.py
 #
 # Serverless Function Python — Vercel Pro
-#
-# Logique unique : Fake3D déterministe basé sur la bounding box.
-# Zéro détection OpenCV (Canny, Hough, findContours supprimés).
-#
-# Cascade :
-#   1. polygon  — fourni par PlateRecognizer (mmc=true)  → warp direct
-#   2. fake3d   — ratio bbox < seuil → trapèze mathématique
-#   3. bbox     — plaque frontale (ratio OK) → rectangle plat
-#
-# Reçoit : POST JSON {
-#   "car_image":  "base64 JPEG",
-#   "logo_image": "base64 PNG transparent"  (optionnel),
-#   "polygon":    [{"x":…,"y":…}, …4 points…]  (optionnel),
-#   "bbox":       {"xmin":…,"ymin":…,"xmax":…,"ymax":…}  (requis),
-#   "img_width":  int  (optionnel — largeur image pour calcul côté fuyant)
-# }
-# Renvoie : { "result": "base64 JPEG", "method": "polygon|fake3d|bbox" }
+# Fake3D FORCÉ — trapèze 30% sans condition, pour validation visuelle.
 
 import json
 import base64
@@ -25,27 +9,20 @@ import numpy as np
 import cv2
 from http.server import BaseHTTPRequestHandler
 
-# ── Constantes ───────────────────────────────────────────────────────────────
-PLATE_REAL_RATIO  = 520.0 / 110.0  # 4.727 — ratio SIV français
-BIAIS_THRESHOLD   = 4.20           # en dessous → plaque vue de biais
-SHRINK_NEAR_SIDE  = 0.18           # réduction hauteur côté fuyant (18%)
-
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TEMPLATE AUTOEASY — généré en mémoire, BGRA (height, width, 4)
+# TEMPLATE AUTOEASY — BGRA (height, width, 4)
 # ─────────────────────────────────────────────────────────────────────────────
 def build_autoeasy_template(width: int = 520, height: int = 110) -> np.ndarray:
     tpl = np.zeros((height, width, 4), dtype=np.uint8)
     tpl[:, :] = [17, 17, 17, 255]
 
-    # Dégradé vertical : +20 brightness en haut → 0 en bas
     for y in range(height):
         b = int(20 * (1.0 - y / height))
         tpl[y, :, 0] = min(255, 17 + b)
         tpl[y, :, 1] = min(255, 17 + b)
         tpl[y, :, 2] = min(255, 17 + b)
 
-    # Ombre interne basse (15% inférieurs)
     shadow_h = max(2, height // 7)
     for y in range(height - shadow_h, height):
         factor   = (y - (height - shadow_h)) / shadow_h
@@ -54,7 +31,6 @@ def build_autoeasy_template(width: int = 520, height: int = 110) -> np.ndarray:
         tpl[y, :, 1] = max(0, int(tpl[y, 0, 1]) - darkness)
         tpl[y, :, 2] = max(0, int(tpl[y, 0, 2]) - darkness)
 
-    # Texte AUTOEASY centré
     font       = cv2.FONT_HERSHEY_DUPLEX
     text       = "AUTOEASY"
     font_scale = height / 45.0
@@ -67,90 +43,50 @@ def build_autoeasy_template(width: int = 520, height: int = 110) -> np.ndarray:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# FAKE 3D — trapèze déterministe
+# COMPUTE DST — trapèze 30% FORCÉ, sans condition
 #
-# Principe :
-#   - ratio bbox = largeur / hauteur
-#   - si ratio < BIAIS_THRESHOLD → plaque de biais → trapèze
-#   - le côté "fuyant" (vers le point de fuite) est le côté
-#     le plus proche du centre horizontal de l'image
-#   - on réduit l'écartement vertical de ce côté de SHRINK_NEAR_SIDE
+# Centre image → détermine quel côté de la plaque est le point de fuite.
 #
-#  Vue de 3/4 gauche :          Vue de 3/4 droit :
+# CAS A — plaque à GAUCHE du centre (côté droit = point de fuite) :
+#   tl = [xmin, ymin]                        tr = [xmax, ymin + h*0.3]
+#   bl = [xmin, ymax]                        br = [xmax, ymax - h*0.3]
 #
-#   tl ──────────── tr            tl ──────────── tr
-#   |                |             |                |
-#   bl ──────────── br            bl ──────────── br
-#   ↑ côté gauche = fuyant         côté droit = fuyant ↑
-#   (proche centre)                (proche centre)
-#
-#  Résultat (trapèze) :          Résultat (trapèze) :
-#
-#   tl' ─────────── tr            tl ──────────── tr'
-#    |               |             |                |
-#   bl' ─────────── br            bl ──────────── br'
-#
+# CAS B — plaque à DROITE du centre (côté gauche = point de fuite) :
+#   tl = [xmin, ymin + h*0.3]               tr = [xmax, ymin]
+#   bl = [xmin, ymax - h*0.3]               br = [xmax, ymax]
 # ─────────────────────────────────────────────────────────────────────────────
-def compute_destination_points(
-    bbox:      dict,
-    img_width: int,
-) -> tuple[np.ndarray, str]:
-    """
-    Retourne (dst_pts [4,2] float32, method_label).
-    Garantit toujours un résultat — jamais None.
-    """
+def compute_dst(bbox: dict, img_width: int, shrink: float = 0.30) -> tuple[np.ndarray, str]:
     xmin = float(bbox["xmin"])
     ymin = float(bbox["ymin"])
     xmax = float(bbox["xmax"])
     ymax = float(bbox["ymax"])
+    h    = ymax - ymin
+    cx   = (xmin + xmax) / 2.0
+    mid  = img_width / 2.0
+    d    = h * shrink
 
-    bbox_w = xmax - xmin
-    bbox_h = ymax - ymin
-
-    if bbox_h < 1:
-        # Dégénéré → rectangle plat
-        return np.float32([
-            [xmin, ymin], [xmax, ymin],
-            [xmax, ymax], [xmin, ymax],
-        ]), "bbox"
-
-    ratio = bbox_w / bbox_h
-    print(f"[Fake3D] ratio bbox = {ratio:.3f} | seuil = {BIAIS_THRESHOLD}")
-
-    if ratio >= BIAIS_THRESHOLD:
-        # Plaque quasi-frontale → rectangle plat correct
-        print("[Fake3D] Plaque frontale — rectangle plat")
-        return np.float32([
-            [xmin, ymin], [xmax, ymin],
-            [xmax, ymax], [xmin, ymax],
-        ]), "bbox"
-
-    # ── Plaque de biais → trapèze ────────────────────────────────
-    shrink = bbox_h * SHRINK_NEAR_SIDE   # pixels à retirer de chaque côté
-
-    # Le côté fuyant est le plus proche du centre de l'image
-    cx_img     = img_width / 2.0
-    dist_left  = abs(xmin - cx_img)
-    dist_right = abs(xmax - cx_img)
-
-    if dist_left <= dist_right:
-        # Côté GAUCHE vers le point de fuite → on rétrécit à gauche
-        tl = [xmin, ymin + shrink]   # haut-gauche remonté
-        bl = [xmin, ymax - shrink]   # bas-gauche  descendu
-        tr = [xmax, ymin]            # haut-droit  inchangé
-        br = [xmax, ymax]            # bas-droit   inchangé
-        side = "gauche"
+    if cx < mid:
+        # CAS A — plaque à gauche → côté droit écrasé
+        dst = np.float32([
+            [xmin, ymin      ],   # tl — inchangé
+            [xmax, ymin + d  ],   # tr — descendu
+            [xmax, ymax - d  ],   # br — remonté
+            [xmin, ymax      ],   # bl — inchangé
+        ])
+        side = "A (plaque gauche, côté droit écrasé)"
     else:
-        # Côté DROIT vers le point de fuite → on rétrécit à droite
-        tl = [xmin, ymin]            # haut-gauche inchangé
-        bl = [xmin, ymax]            # bas-gauche  inchangé
-        tr = [xmax, ymin + shrink]   # haut-droit  remonté
-        br = [xmax, ymax - shrink]   # bas-droit   descendu
-        side = "droit"
+        # CAS B — plaque à droite → côté gauche écrasé
+        dst = np.float32([
+            [xmin, ymin + d  ],   # tl — descendu
+            [xmax, ymin      ],   # tr — inchangé
+            [xmax, ymax      ],   # br — inchangé
+            [xmin, ymax - d  ],   # bl — remonté
+        ])
+        side = "B (plaque droite, côté gauche écrasé)"
 
-    print(f"[Fake3D] trapèze — côté fuyant: {side} | shrink: {shrink:.1f}px")
-    # Ordre : haut-gauche, haut-droit, bas-droit, bas-gauche
-    return np.float32([tl, tr, br, bl]), "fake3d"
+    print(f"[warp-plate] CAS {side} | h={h:.1f} | d={d:.1f} | cx={cx:.1f} | mid={mid:.1f}")
+    print(f"[warp-plate] dst_pts = {dst.tolist()}")
+    return dst, side
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -163,20 +99,17 @@ def warp_and_composite(
     bbox:      dict,
     img_width: int | None,
 ) -> tuple[str, str]:
-    """Retourne (base64_jpeg, method)"""
 
-    # ── Décode l'image voiture ───────────────────────────────────
+    # Décode voiture
     car_bytes = base64.b64decode(car_b64)
     car_arr   = np.frombuffer(car_bytes, dtype=np.uint8)
     car_bgr   = cv2.imdecode(car_arr, cv2.IMREAD_COLOR)
     if car_bgr is None:
         raise ValueError("Impossible de décoder l'image voiture")
     car_h, car_w = car_bgr.shape[:2]
-
-    # img_width fourni par Node.js (plus fiable que de le déduire)
     iw = img_width if img_width else car_w
 
-    # ── Template ─────────────────────────────────────────────────
+    # Template BGRA
     if logo_b64:
         logo_bytes = base64.b64decode(logo_b64)
         logo_arr   = np.frombuffer(logo_bytes, dtype=np.uint8)
@@ -184,27 +117,28 @@ def warp_and_composite(
         if template is None:
             raise ValueError("Impossible de décoder le logo")
         if template.shape[2] == 3:
-            alpha    = np.full(
-                (template.shape[0], template.shape[1], 1), 255, dtype=np.uint8)
+            alpha    = np.full((template.shape[0], template.shape[1], 1), 255, dtype=np.uint8)
             template = np.concatenate([template, alpha], axis=2)
     else:
         template = build_autoeasy_template(520, 110)
 
     tpl_h, tpl_w = template.shape[:2]
 
-    # Coins source (template plat 520×110)
+    # Coins source — template plat rectangulaire
+    # Ordre : tl, tr, br, bl  (sens horaire)
     src_pts = np.float32([
-        [0,     0    ],   # haut-gauche
-        [tpl_w, 0    ],   # haut-droit
-        [tpl_w, tpl_h],   # bas-droit
-        [0,     tpl_h],   # bas-gauche
+        [0,     0    ],   # tl
+        [tpl_w, 0    ],   # tr
+        [tpl_w, tpl_h],   # br
+        [0,     tpl_h],   # bl
     ])
 
     # ── Priorité 1 : polygon PlateRecognizer ─────────────────────
-    method  = "bbox"
+    method  = None
     dst_pts = None
 
     if polygon and len(polygon) == 4:
+        # PlateRecognizer retourne : tl, tr, br, bl (sens horaire)
         dst_pts = np.float32([
             [polygon[0]["x"], polygon[0]["y"]],
             [polygon[1]["x"], polygon[1]["y"]],
@@ -214,35 +148,43 @@ def warp_and_composite(
         method = "polygon"
         print("[warp-plate] Méthode : polygon PlateRecognizer")
 
-    # ── Priorités 2 & 3 : Fake3D ou bbox (garanti non-None) ──────
+    # ── Priorité 2 : Fake3D FORCÉ ────────────────────────────────
     if dst_pts is None:
-        dst_pts, method = compute_destination_points(bbox, iw)
-        print(f"[warp-plate] Méthode : {method}")
+        dst_pts, side = compute_dst(bbox, iw, shrink=0.30)
+        method = "fake3d"
 
     # ── Homographie ───────────────────────────────────────────────
     H = cv2.getPerspectiveTransform(src_pts, dst_pts)
 
-    # Warp sur canvas pleine taille (transparent hors plaque)
-    warped = cv2.warpPerspective(
-        template, H, (car_w, car_h),
+    # Warp BGRA sur canvas pleine taille
+    # BORDER_CONSTANT + borderValue=(0,0,0,0) → alpha=0 hors zone = transparent
+    warped_bgra = cv2.warpPerspective(
+        template,
+        H,
+        (car_w, car_h),
         flags=cv2.INTER_LINEAR,
         borderMode=cv2.BORDER_CONSTANT,
-        borderValue=(0, 0, 0, 0),
+        borderValue=(0, 0, 0, 0),   # ← BGRA : transparent hors trapèze
     )
 
-    # ── Alpha compositing ─────────────────────────────────────────
-    alpha_ch  = warped[:, :, 3].astype(np.float32) / 255.0
-    alpha_3ch = np.stack([alpha_ch] * 3, axis=-1)
+    # ── Alpha compositing propre ──────────────────────────────────
+    # Canal alpha du template warpé (0 = transparent, 255 = opaque)
+    alpha_raw = warped_bgra[:, :, 3].astype(np.float32) / 255.0  # [0.0, 1.0]
+    alpha_3ch = np.stack([alpha_raw] * 3, axis=-1)                # broadcast RGB
 
-    composite = (warped[:, :, :3].astype(np.float32) * alpha_3ch
-                 + car_bgr.astype(np.float32)         * (1.0 - alpha_3ch))
-    composite = np.clip(composite, 0, 255).astype(np.uint8)
+    warped_rgb = warped_bgra[:, :, :3].astype(np.float32)
+    car_float  = car_bgr.astype(np.float32)
 
-    # ── Encode JPEG ───────────────────────────────────────────────
+    # out = alpha * template + (1 - alpha) * voiture
+    composite  = warped_rgb * alpha_3ch + car_float * (1.0 - alpha_3ch)
+    composite  = np.clip(composite, 0, 255).astype(np.uint8)
+
+    # Encode JPEG
     ok, buf = cv2.imencode(".jpg", composite, [cv2.IMWRITE_JPEG_QUALITY, 92])
     if not ok:
         raise ValueError("Échec encodage JPEG")
 
+    print(f"[warp-plate] Rendu OK — {len(buf)} octets | méthode: {method}")
     return base64.b64encode(buf.tobytes()).decode("utf-8"), method
 
 
