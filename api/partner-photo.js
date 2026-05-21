@@ -116,20 +116,26 @@ async function detectPlate(imageBuffer) {
       (b.score ?? 0) > (a.score ?? 0) ? b : a
     );
 
-    // Extraction du polygone — PlateRecognizer le retourne dans
-    // candidates[0].polygon quand mmc=true
-    const polygon = best.candidates?.[0]?.polygon ?? null;
+    // Extraction du polygone — PlateRecognizer peut le retourner à plusieurs endroits
+    // On cherche dans tous les emplacements possibles
+    const polygon =
+      best.polygon                    ??   // niveau racine du résultat
+      best.candidates?.[0]?.polygon   ??   // dans candidates[0]
+      best.vehicle?.polygon           ??   // dans vehicle
+      null;
 
+    // Log complet pour debug
     console.log(
       `[PlateRecognizer] OK — score: ${best.score}` +
-      ` | polygon: ${polygon ? "oui" : "non (fallback bbox)"}` +
-      ` | box: ${JSON.stringify(best.box)}`
+      ` | polygon: ${polygon ? "oui (" + polygon.length + " pts)" : "non (fallback bbox)"}` +
+      ` | box: ${JSON.stringify(best.box)}` +
+      ` | raw keys: ${Object.keys(best).join(",")}`
     );
 
     return {
-      box:     best.box,       // { xmin, ymin, xmax, ymax }
+      box:     best.box,
       angle:   best.angle ?? 0,
-      polygon: polygon,        // [{ x, y }×4] ou null
+      polygon: polygon,
     };
 
   } catch (err) {
