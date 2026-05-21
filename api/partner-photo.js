@@ -91,13 +91,12 @@ async function detectPlate(imageBuffer) {
     const imgW   = meta.width;
     const imgH   = meta.height;
 
-    const prompt = `The image is ${imgW}x${imgH} pixels. ` +
-      `Find the license plate on the car. ` +
-      `Return ONLY a valid JSON object with absolute pixel coordinates (integers): ` +
-      `{"xmin": int, "ymin": int, "xmax": int, "ymax": int} ` +
-      `where xmin/ymin is the top-left corner and xmax/ymax is the bottom-right corner. ` +
-      `If no plate is visible, return: {"xmin": null} ` +
-      `No explanation, no markdown, no code block.`;
+    const prompt = `Image size: ${imgW}x${imgH} pixels. ` +
+      `Locate the vehicle license plate. ` +
+      `Respond with ONLY this exact JSON, nothing else, no markdown, no backticks, no explanation: ` +
+      `{"xmin":INT,"ymin":INT,"xmax":INT,"ymax":INT} ` +
+      `Replace INT with the absolute pixel coordinates of the plate bounding box. ` +
+      `If no plate found: {"xmin":null,"ymin":null,"xmax":null,"ymax":null}`;
 
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [
@@ -110,16 +109,17 @@ async function detectPlate(imageBuffer) {
     let raw = result.response.text().trim();
     console.log("[Gemini] Réponse brute :", raw);
 
-    // Nettoie les caractères parasites que Gemini peut ajouter
-    // Ex: "{"xmin":128,...}}" → on extrait le premier objet JSON valide
-    const jsonMatch = raw.match(/\{[^{}]*\}/);
+    // Nettoie la réponse Gemini — peut contenir markdown, texte, backticks
+    // Stratégie : chercher le premier {...} dans la réponse complète
+    const jsonMatch = raw.match(/\{[\s\S]*?\}/);
     if (!jsonMatch) {
       console.warn("[Gemini] Aucun objet JSON trouvé dans la réponse");
       return null;
     }
-    raw = jsonMatch[0];
+    const cleaned = jsonMatch[0];
+    console.log("[Gemini] JSON extrait :", cleaned);
 
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(cleaned);
     if (!parsed.xmin) {
       console.log("[Gemini] Aucune plaque détectée");
       return null;
