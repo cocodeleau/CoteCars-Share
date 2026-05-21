@@ -310,3 +310,35 @@ class handler(BaseHTTPRequestHandler):
 
     def log_message(self, *args):
         pass
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# POINT D'ENTRÉE CLI — appelé via child_process depuis partner-photo.js
+# Lit le payload JSON depuis stdin, écrit le résultat JSON sur stdout
+# ─────────────────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    import sys
+    try:
+        payload    = json.loads(sys.stdin.read())
+        car_b64    = payload.get("car_image")
+        logo_b64   = payload.get("logo_image")
+        logo_url   = payload.get("logo_url")
+        polygon    = payload.get("polygon")
+        bbox       = payload.get("bbox")
+        img_width  = payload.get("img_width")
+
+        if not car_b64 or not bbox:
+            print(json.dumps({"error": "car_image et bbox sont requis"}))
+            sys.exit(1)
+
+        logo_bgra  = decode_logo(logo_b64, logo_url)
+        result_b64, method = warp_and_composite(
+            car_b64, logo_bgra, polygon, bbox, img_width
+        )
+        print(json.dumps({"result": result_b64, "method": method}))
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        print(json.dumps({"error": str(e)}))
+        sys.exit(1)
