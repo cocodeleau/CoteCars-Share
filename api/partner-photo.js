@@ -1,7 +1,7 @@
 // api/partner-photo.js
 //
 // Pipeline :
-//   1. Photoroom v2  → détourage + fond gris studio IA (prompt + seed fixe 42)
+//   1. Photoroom v2  → détourage + fond uni gris clair (#F2F2F2) + ombre portée IA
 //   2. Gemini        → coordonnées plaque (pixels absolus)
 //   3. Sharp         → bandeau AUTOEASY sur la plaque
 //
@@ -18,17 +18,8 @@ const fetch    = require("node-fetch");
 const sharp    = require("sharp");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// Fond gris studio neutre — seed fixe pour cohérence entre tous les lots
-const PHOTOROOM_PROMPT = [
-  "Professional car photography studio.",
-  "Smooth light grey concrete floor with subtle reflections.",
-  "Light grey studio wall in background.",
-  "Soft diffused studio lighting, no harsh shadows.",
-  "Clean, minimal, premium automotive dealership atmosphere.",
-  "Photorealistic, 8K.",
-].join(" ");
-
-const PHOTOROOM_SEED = 42;
+// Fond uni studio — gris clair professionnel
+const BACKGROUND_COLOR = "#F2F2F2";  // changer en "#FFFFFF" pour blanc pur
 
 // Retry helper — tente jusqu'à maxAttempts fois avec backoff exponentiel
 async function withRetry(fn, maxAttempts = 3, backoffMs = [0, 2000, 4000]) {
@@ -69,16 +60,16 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: false, error: "Image trop volumineuse (max 20 Mo)." });
     }
 
-    // ── 1. Photoroom v2 → détourage + fond gris studio ───────────
+    // ── 1. Photoroom v2 → détourage + fond uni + ombre portée ────
     console.log("[Photoroom] Envoi de la requête...");
 
     const photoroomForm = new FormData();
-    photoroomForm.append("imageFile",           imageBuffer, { filename: "car.jpg", contentType: mimeType });
-    photoroomForm.append("format",              "jpeg");
-    photoroomForm.append("outputSize",          "originalImage");           // conserve les dimensions d'origine
-    photoroomForm.append("padding",             "0.05");
-    photoroomForm.append("background.prompt",   PHOTOROOM_PROMPT);
-    photoroomForm.append("background.seed",     String(PHOTOROOM_SEED));
+    photoroomForm.append("imageFile",          imageBuffer, { filename: "car.jpg", contentType: mimeType });
+    photoroomForm.append("format",             "jpeg");
+    photoroomForm.append("outputSize",         "originalImage");  // conserve les dimensions d'origine
+    photoroomForm.append("padding",            "0.05");           // 5% de marge — évite que l'ombre soit coupée
+    photoroomForm.append("background.color",   BACKGROUND_COLOR); // fond uni gris clair
+    photoroomForm.append("shadow.mode",        "ai.soft");        // ombre portée IA réaliste sous la voiture
 
     let prRes;
     try {
