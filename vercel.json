@@ -12,7 +12,7 @@
     { "source": "/style.css",               "destination": "/style.css" }
   ],
   "functions": {
-    "api/partner-photo.js": { "maxDuration": 60 },
+    "api/partner-photo.js": { "maxDuration": 90 },
     "api/warp-plate.py":    { "maxDuration": 30 }
   }
 }

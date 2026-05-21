@@ -111,7 +111,7 @@
           currentPct += 1;
           const msg =
             currentPct < 25 ? "Détourage de la carrosserie..." :
-            currentPct < 55 ? "⏳ Génération du fond studio IA..." :
+            currentPct < 55 ? "⏳ Traitement en cours (~60s)..." :
             currentPct < 75 ? "⏳ Génération du fond studio IA, patience..." :
                                "Finalisation du montage...";
           onProgress(msg, currentPct);
@@ -121,7 +121,7 @@
       let response;
       try {
         const controller = new AbortController();
-        const timeoutId  = setTimeout(() => controller.abort(), 45000);
+        const timeoutId  = setTimeout(() => controller.abort(), 90000);
 
         response = await fetch("/api/partner-photo", {
           method:  "POST",
@@ -134,7 +134,7 @@
       } catch (fetchErr) {
         clearInterval(progressTimer);
         if (fetchErr.name === "AbortError") {
-          throw new Error("Timeout : la génération a dépassé 45s. Réessaie.");
+          throw new Error("Timeout : la génération a dépassé 90s. Réessaie.");
         }
         throw fetchErr;
       }
