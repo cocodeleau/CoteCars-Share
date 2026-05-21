@@ -124,12 +124,13 @@ async function detectPlate(imageBuffer) {
       best.vehicle?.polygon           ??   // dans vehicle
       null;
 
-    // Log complet pour debug
+    // Log complet pour debug — affiche candidates[0] pour voir la structure polygon
     console.log(
       `[PlateRecognizer] OK — score: ${best.score}` +
       ` | polygon: ${polygon ? "oui (" + polygon.length + " pts)" : "non (fallback bbox)"}` +
       ` | box: ${JSON.stringify(best.box)}` +
-      ` | raw keys: ${Object.keys(best).join(",")}`
+      ` | raw keys: ${Object.keys(best).join(",")}` +
+      ` | candidates[0]: ${JSON.stringify(best.candidates?.[0])}`
     );
 
     return {
