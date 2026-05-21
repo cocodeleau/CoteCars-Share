@@ -2,38 +2,53 @@
 #
 # Serverless Function Python — Vercel Pro
 #
+# Pipeline de détection des 4 coins (ordre de priorité) :
+#   1. polygon      fourni par PlateRecognizer (mmc=true)
+#   2. hough        lignes de fuite HoughLinesP → intersections avec bbox
+#   3. fake3d       trapèze mathématique basé sur le ratio bbox vs ratio réel plaque FR
+#   4. bbox         fallback plat garanti (ne doit jamais être atteint en pratique)
+#
 # Reçoit : POST JSON {
 #   "car_image":  "base64 JPEG",
 #   "logo_image": "base64 PNG transparent"  (optionnel),
-#   "polygon":    [{"x":…,"y":…}, …4 points…]  (optionnel — prioritaire),
+#   "polygon":    [{"x":…,"y":…}, …4 points…]  (optionnel),
 #   "bbox":       {"xmin":…,"ymin":…,"xmax":…,"ymax":…}  (requis)
 # }
 # Renvoie : {
-#   "result":    "base64 JPEG",
-#   "method":    "polygon|contour|bbox",
-#   "debug_roi": "base64 PNG"  (seulement si method == "bbox" — image binarisée pour diagnostic)
+#   "result": "base64 JPEG",
+#   "method": "polygon|hough|fake3d|bbox"
 # }
 
 import json
 import base64
+import math
 import numpy as np
 import cv2
 from http.server import BaseHTTPRequestHandler
 
+# Ratio réel d'une plaque SIV française : 520mm / 110mm
+PLATE_REAL_RATIO = 520.0 / 110.0   # ≈ 4.727
+# En dessous de ce ratio bbox, on considère que la plaque est vue de biais
+PERSPECTIVE_RATIO_THRESHOLD = 4.2
+# Réduction de hauteur du côté vers le point de fuite (15%)
+FAKE3D_SHRINK = 0.15
+
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TEMPLATE AUTOEASY
+# TEMPLATE AUTOEASY — généré en mémoire, BGRA
 # ─────────────────────────────────────────────────────────────────────────────
 def build_autoeasy_template(width: int = 520, height: int = 110) -> np.ndarray:
     tpl = np.zeros((height, width, 4), dtype=np.uint8)
     tpl[:, :] = [17, 17, 17, 255]
 
+    # Dégradé lumineux vertical (effet 3D)
     for y in range(height):
         b = int(20 * (1.0 - y / height))
         tpl[y, :, 0] = min(255, 17 + b)
         tpl[y, :, 1] = min(255, 17 + b)
         tpl[y, :, 2] = min(255, 17 + b)
 
+    # Ombre interne basse
     shadow_h = max(2, height // 7)
     for y in range(height - shadow_h, height):
         factor   = (y - (height - shadow_h)) / shadow_h
@@ -47,30 +62,31 @@ def build_autoeasy_template(width: int = 520, height: int = 110) -> np.ndarray:
     font_scale = height / 45.0
     thickness  = max(1, int(height / 22))
     (tw, th), _ = cv2.getTextSize(text, font, font_scale, thickness)
-    tx = (width  - tw) // 2
-    ty = (height + th) // 2
-    cv2.putText(tpl, text, (tx, ty), font, font_scale,
-                (255, 255, 255, 255), thickness, cv2.LINE_AA)
+    cv2.putText(tpl, text,
+                ((width - tw) // 2, (height + th) // 2),
+                font, font_scale, (255, 255, 255, 255), thickness, cv2.LINE_AA)
     return tpl
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DÉTECTION DE CONTOURS — pipeline renforcé
+# MÉTHODE 2 — HOUGH LINES
 #
-# Retourne (pts_4coins, debug_stages) où :
-#   pts_4coins  = np.float32[4,2] ou None
-#   debug_stages = dict d'images intermédiaires base64 PNG pour diagnostic
+# Stratégie :
+#   1. ROI + Canny
+#   2. HoughLinesP → segments quasi-horizontaux seulement
+#   3. Clustering : 2 groupes (haut / bas) par médiane Y
+#   4. Régression linéaire sur chaque groupe → droite ax + b
+#   5. Intersection de chaque droite avec x=xmin et x=xmax de la bbox
+#      → 4 coins en perspective
 # ─────────────────────────────────────────────────────────────────────────────
-def detect_plate_corners_from_contour(
+def detect_corners_hough(
     car_bgr: np.ndarray,
     bbox: dict,
-    margin: int = 15,
-) -> tuple[np.ndarray | None, dict]:
+    margin: int = 20,
+) -> np.ndarray | None:
 
     car_h, car_w = car_bgr.shape[:2]
-    debug = {}
 
-    # ── 1. Découpe ROI avec marge ────────────────────────────────
     x1 = max(0,     bbox["xmin"] - margin)
     y1 = max(0,     bbox["ymin"] - margin)
     x2 = min(car_w, bbox["xmax"] + margin)
@@ -78,89 +94,168 @@ def detect_plate_corners_from_contour(
 
     roi = car_bgr[y1:y2, x1:x2]
     if roi.size == 0:
-        return None, debug
+        return None
 
-    # ── 2. Grayscale ─────────────────────────────────────────────
-    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-    debug["1_gray"] = _b64png(gray)
-
-    # ── 3. Flou puissant — kernel 7×7 pour gommer le texte ───────
-    blurred = cv2.GaussianBlur(gray, (7, 7), 0)
-    debug["2_blurred"] = _b64png(blurred)
-
-    # ── 4. Fermeture morphologique — fusionne la plaque en bloc ──
-    # Kernel rectangulaire large pour combler lettres + visserie
     roi_h, roi_w = roi.shape[:2]
-    kw = max(5, roi_w // 8)   # ~12% de la largeur du ROI
-    kh = max(3, roi_h // 4)   # ~25% de la hauteur du ROI
-    kernel  = cv2.getStructuringElement(cv2.MORPH_RECT, (kw, kh))
-    closed  = cv2.morphologyEx(blurred, cv2.MORPH_CLOSE, kernel, iterations=2)
-    debug["3_closed"] = _b64png(closed)
 
-    # ── 5. Seuillage binaire Otsu ────────────────────────────────
-    _, binary = cv2.threshold(closed, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    debug["4_binary"] = _b64png(binary)
+    # Preprocessing Canny
+    gray    = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    median  = float(np.median(blurred))
+    sigma   = 0.4
+    edges   = cv2.Canny(
+        blurred,
+        int(max(0,   (1.0 - sigma) * median)),
+        int(min(255, (1.0 + sigma) * median)),
+    )
 
-    # ── 6. Dilatation finale pour souder les bords fragmentés ────
-    kernel2 = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-    dilated = cv2.dilate(binary, kernel2, iterations=2)
-    debug["5_dilated"] = _b64png(dilated)
+    # HoughLinesP — paramètres calibrés pour des plaques ~100-500px de large
+    min_length = max(roi_w * 0.25, 20)
+    lines = cv2.HoughLinesP(
+        edges,
+        rho=1,
+        theta=np.pi / 180,
+        threshold=25,
+        minLineLength=min_length,
+        maxLineGap=roi_w * 0.15,
+    )
 
-    # ── 7. findContours — on garde le plus grand ─────────────────
-    contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if not contours:
-        print("[warp-plate] findContours : aucun contour trouvé")
-        return None, debug
+    if lines is None:
+        print("[Hough] Aucune ligne détectée")
+        return None
 
-    largest = max(contours, key=cv2.contourArea)
-    area    = cv2.contourArea(largest)
-    print(f"[warp-plate] Plus grand contour : {area:.0f}px²  (ROI {roi_w}×{roi_h})")
+    # Filtre : on garde uniquement les lignes quasi-horizontales
+    # angle ≤ 25° par rapport à l'horizontale
+    horizontal = []
+    for line in lines:
+        x_a, y_a, x_b, y_b = line[0]
+        angle = abs(math.degrees(math.atan2(y_b - y_a, x_b - x_a)))
+        if angle <= 25 or angle >= 155:
+            horizontal.append((x_a, y_a, x_b, y_b))
 
-    # Sanity check : le contour doit couvrir au moins 20% du ROI
-    if area < roi_w * roi_h * 0.20:
-        print("[warp-plate] Contour trop petit — fallback bbox")
-        return None, debug
+    if len(horizontal) < 2:
+        print(f"[Hough] Trop peu de lignes horizontales : {len(horizontal)}")
+        return None
 
-    # ── 8. approxPolyDP — epsilon souple à 5% du périmètre ───────
-    peri   = cv2.arcLength(largest, True)
-    approx = cv2.approxPolyDP(largest, 0.05 * peri, True)
-    print(f"[warp-plate] approxPolyDP : {len(approx)} côtés")
+    # Coordonnées dans l'espace global
+    segs_global = []
+    for (x_a, y_a, x_b, y_b) in horizontal:
+        segs_global.append((x_a + x1, y_a + y1, x_b + x1, y_b + y1))
 
-    # Debug : contour dessiné sur le ROI original
-    roi_debug = roi.copy()
-    cv2.drawContours(roi_debug, [approx], -1, (0, 255, 0), 2)
-    debug["6_contour"] = _b64png(roi_debug)
+    # Clustering haut/bas par médiane Y du segment
+    ys = [(s[1] + s[3]) / 2 for s in segs_global]
+    y_median = float(np.median(ys))
 
-    if len(approx) != 4:
-        print(f"[warp-plate] Polygone à {len(approx)} côtés (attendu 4) — fallback bbox")
-        return None, debug
+    top_segs = [s for s, y in zip(segs_global, ys) if y <= y_median]
+    bot_segs = [s for s, y in zip(segs_global, ys) if y >  y_median]
 
-    # ── 9. Réajustement + tri dans l'espace global ───────────────
-    pts_global = approx.reshape(4, 2).astype(np.float32)
-    pts_global[:, 0] += x1
-    pts_global[:, 1] += y1
+    if not top_segs or not bot_segs:
+        print("[Hough] Impossible de séparer haut/bas")
+        return None
 
-    pts_sorted = sort_quad_points(pts_global)
-    return pts_sorted, debug
+    # Régression linéaire sur chaque groupe → droite y = a*x + b
+    def fit_line(segs):
+        pts = []
+        for (x_a, y_a, x_b, y_b) in segs:
+            pts.append((x_a, y_a))
+            pts.append((x_b, y_b))
+        pts = np.array(pts, dtype=np.float32)
+        # np.polyfit : y = a*x + b
+        if len(pts) < 2 or np.ptp(pts[:, 0]) < 1:
+            return None
+        a, b = np.polyfit(pts[:, 0], pts[:, 1], 1)
+        return float(a), float(b)
 
+    top_line = fit_line(top_segs)
+    bot_line = fit_line(bot_segs)
 
-def sort_quad_points(pts: np.ndarray) -> np.ndarray:
-    """Trie 4 points : haut-gauche, haut-droit, bas-droit, bas-gauche."""
-    s    = pts.sum(axis=1)
-    diff = np.diff(pts, axis=1)
-    tl = pts[np.argmin(s)]
-    br = pts[np.argmax(s)]
-    tr = pts[np.argmin(diff)]
-    bl = pts[np.argmax(diff)]
+    if top_line is None or bot_line is None:
+        print("[Hough] Régression linéaire échouée")
+        return None
+
+    a_top, b_top = top_line
+    a_bot, b_bot = bot_line
+
+    # Intersections avec x = xmin et x = xmax de la bbox
+    xl = float(bbox["xmin"])
+    xr = float(bbox["xmax"])
+
+    tl = [xl, a_top * xl + b_top]  # haut-gauche
+    tr = [xr, a_top * xr + b_top]  # haut-droit
+    br = [xr, a_bot * xr + b_bot]  # bas-droit
+    bl = [xl, a_bot * xl + b_bot]  # bas-gauche
+
+    # Sanity check : les coins doivent rester proches de la bbox
+    margin_sanity = max(roi_h, roi_w) * 0.5
+    for pt in [tl, tr, br, bl]:
+        if (pt[1] < bbox["ymin"] - margin_sanity or
+                pt[1] > bbox["ymax"] + margin_sanity):
+            print(f"[Hough] Coin hors limites {pt} — annulé")
+            return None
+
+    print(f"[Hough] OK — top: a={a_top:.3f} | bot: a={a_bot:.3f}")
     return np.float32([tl, tr, br, bl])
 
 
-def _b64png(img: np.ndarray) -> str:
-    """Encode un ndarray OpenCV en base64 PNG."""
-    ok, buf = cv2.imencode(".png", img)
-    if not ok:
-        return ""
-    return base64.b64encode(buf.tobytes()).decode("utf-8")
+# ─────────────────────────────────────────────────────────────────────────────
+# MÉTHODE 3 — FAKE 3D MATHÉMATIQUE
+#
+# Si ratio(bbox) < PERSPECTIVE_RATIO_THRESHOLD  → plaque vue de biais.
+# On crée un trapèze en réduisant la hauteur du côté vers le point de fuite.
+# Le point de fuite est le côté (gauche ou droit) le plus proche du centre
+# de l'image — c'est le côté qui s'éloigne vers l'horizon.
+# ─────────────────────────────────────────────────────────────────────────────
+def fake3d_trapeze(
+    car_w: int,
+    car_h: int,
+    bbox: dict,
+) -> tuple[np.ndarray | None, str]:
+    """
+    Retourne (pts_4coins, raison) ou (None, raison)
+    """
+    xmin = float(bbox["xmin"])
+    ymin = float(bbox["ymin"])
+    xmax = float(bbox["xmax"])
+    ymax = float(bbox["ymax"])
+
+    bbox_w = xmax - xmin
+    bbox_h = ymax - ymin
+
+    if bbox_h < 1:
+        return None, "bbox_h nul"
+
+    ratio = bbox_w / bbox_h
+    print(f"[Fake3D] ratio bbox={ratio:.2f} | seuil={PERSPECTIVE_RATIO_THRESHOLD}")
+
+    if ratio >= PERSPECTIVE_RATIO_THRESHOLD:
+        # Plaque quasi-frontale → rectangle plat suffisant, pas de trapèze
+        return None, f"ratio {ratio:.2f} ≥ {PERSPECTIVE_RATIO_THRESHOLD} (plaque frontale)"
+
+    # Détermine le côté vers le point de fuite :
+    # C'est le côté (xmin ou xmax) le plus proche du centre horizontal
+    cx_img   = car_w / 2.0
+    dist_left  = abs(xmin - cx_img)
+    dist_right = abs(xmax - cx_img)
+
+    shrink_px = bbox_h * FAKE3D_SHRINK  # pixels à retirer en haut ET en bas du côté fuyant
+
+    if dist_left < dist_right:
+        # Le côté gauche est vers le point de fuite → on rétrécit à gauche
+        tl = [xmin, ymin + shrink_px]
+        bl = [xmin, ymax - shrink_px]
+        tr = [xmax, ymin]
+        br = [xmax, ymax]
+        side = "gauche"
+    else:
+        # Le côté droit est vers le point de fuite → on rétrécit à droite
+        tl = [xmin, ymin]
+        bl = [xmin, ymax]
+        tr = [xmax, ymin + shrink_px]
+        br = [xmax, ymax - shrink_px]
+        side = "droit"
+
+    print(f"[Fake3D] trapèze — côté fuyant: {side} | shrink: {shrink_px:.1f}px")
+    return np.float32([tl, tr, br, bl]), f"trapèze côté {side}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -171,10 +266,9 @@ def warp_and_composite(
     logo_b64: str | None,
     polygon:  list | None,
     bbox:     dict,
-) -> tuple[str, str, dict]:
-    """Retourne (base64_jpeg, method, debug_dict)"""
+) -> tuple[str, str]:
 
-    # ── Décode voiture ───────────────────────────────────────────
+    # Décode voiture
     car_bytes = base64.b64decode(car_b64)
     car_arr   = np.frombuffer(car_bytes, dtype=np.uint8)
     car_bgr   = cv2.imdecode(car_arr, cv2.IMREAD_COLOR)
@@ -182,7 +276,7 @@ def warp_and_composite(
         raise ValueError("Impossible de décoder l'image voiture")
     car_h, car_w = car_bgr.shape[:2]
 
-    # ── Template ─────────────────────────────────────────────────
+    # Template
     if logo_b64:
         logo_bytes = base64.b64decode(logo_b64)
         logo_arr   = np.frombuffer(logo_bytes, dtype=np.uint8)
@@ -204,12 +298,11 @@ def warp_and_composite(
         [0,     tpl_h],
     ])
 
-    # ── Détermination des 4 coins destination ────────────────────
-    method    = "bbox"
-    dst_pts   = None
-    debug_out = {}
+    # ── Cascade de détection ─────────────────────────────────────
+    method  = "bbox"
+    dst_pts = None
 
-    # Priorité 1 : polygon PlateRecognizer (mmc=true)
+    # 1. Polygon PlateRecognizer
     if polygon and len(polygon) == 4:
         dst_pts = np.float32([
             [polygon[0]["x"], polygon[0]["y"]],
@@ -220,22 +313,31 @@ def warp_and_composite(
         method = "polygon"
         print("[warp-plate] Méthode : polygon PlateRecognizer")
 
-    # Priorité 2 : détection contours OpenCV
+    # 2. Hough Lines
     if dst_pts is None:
         try:
-            contour_pts, debug_stages = detect_plate_corners_from_contour(car_bgr, bbox)
-            if contour_pts is not None:
-                dst_pts    = contour_pts
-                method     = "contour"
-                print("[warp-plate] Méthode : contour OpenCV")
-            else:
-                # Retourne les images de debug pour diagnostic
-                debug_out  = debug_stages
-                print("[warp-plate] Contour introuvable — fallback bbox + debug envoyé")
+            hough_pts = detect_corners_hough(car_bgr, bbox)
+            if hough_pts is not None:
+                dst_pts = hough_pts
+                method  = "hough"
+                print("[warp-plate] Méthode : Hough Lines")
         except Exception as e:
-            print(f"[warp-plate] Erreur contour : {e} — fallback bbox")
+            print(f"[warp-plate] Hough erreur : {e}")
 
-    # Priorité 3 : bounding box droite (fallback garanti)
+    # 3. Fake 3D trapèze mathématique
+    if dst_pts is None:
+        try:
+            fake_pts, reason = fake3d_trapeze(car_w, car_h, bbox)
+            if fake_pts is not None:
+                dst_pts = fake_pts
+                method  = "fake3d"
+                print(f"[warp-plate] Méthode : Fake3D ({reason})")
+            else:
+                print(f"[warp-plate] Fake3D non applicable : {reason} → bbox plat")
+        except Exception as e:
+            print(f"[warp-plate] Fake3D erreur : {e}")
+
+    # 4. Fallback bbox plat (plaque frontale ou tous échouent)
     if dst_pts is None:
         xmin = bbox["xmin"]; ymin = bbox["ymin"]
         xmax = bbox["xmax"]; ymax = bbox["ymax"]
@@ -244,7 +346,7 @@ def warp_and_composite(
             [xmax, ymax], [xmin, ymax],
         ])
         method = "bbox"
-        print("[warp-plate] Méthode : fallback bbox")
+        print("[warp-plate] Méthode : bbox plat (plaque frontale)")
 
     # ── Homographie + Warp ───────────────────────────────────────
     H = cv2.getPerspectiveTransform(src_pts, dst_pts)
@@ -259,15 +361,15 @@ def warp_and_composite(
     # ── Alpha compositing ─────────────────────────────────────────
     alpha_ch  = warped[:, :, 3].astype(np.float32) / 255.0
     alpha_3ch = np.stack([alpha_ch] * 3, axis=-1)
-    composite = warped[:, :, :3].astype(np.float32) * alpha_3ch \
-              + car_bgr.astype(np.float32)             * (1.0 - alpha_3ch)
+    composite = (warped[:, :, :3].astype(np.float32) * alpha_3ch
+                 + car_bgr.astype(np.float32)         * (1.0 - alpha_3ch))
     composite = np.clip(composite, 0, 255).astype(np.uint8)
 
     ok, buf = cv2.imencode(".jpg", composite, [cv2.IMWRITE_JPEG_QUALITY, 92])
     if not ok:
         raise ValueError("Échec encodage JPEG")
 
-    return base64.b64encode(buf.tobytes()).decode("utf-8"), method, debug_out
+    return base64.b64encode(buf.tobytes()).decode("utf-8"), method
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -290,17 +392,8 @@ class handler(BaseHTTPRequestHandler):
                 self._json(400, {"error": "car_image et bbox sont requis"})
                 return
 
-            result_b64, method, debug_out = warp_and_composite(
-                car_b64, logo_b64, polygon, bbox
-            )
-
-            response = {"result": result_b64, "method": method}
-
-            # Renvoie les étapes de debug uniquement si fallback bbox
-            if method == "bbox" and debug_out:
-                response["debug"] = debug_out
-
-            self._json(200, response)
+            result_b64, method = warp_and_composite(car_b64, logo_b64, polygon, bbox)
+            self._json(200, {"result": result_b64, "method": method})
 
         except Exception as e:
             import traceback

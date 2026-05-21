@@ -173,17 +173,6 @@ async function applyPlateMask(imageBuffer, plateResult, imgW, imgH) {
     }
 
     console.log(`[applyPlateMask] Warp OK — méthode: ${data.method}`);
-
-    // Si fallback bbox → log les étapes de debug pour diagnostic
-    if (data.method === "bbox" && data.debug) {
-      const stages = Object.keys(data.debug);
-      console.warn(`[applyPlateMask] DEBUG contour — étapes: ${stages.join(", ")}`);
-      // Chaque valeur est un base64 PNG — colle dans https://base64.guru/converter/decode/image
-      for (const [stage, b64] of Object.entries(data.debug)) {
-        console.warn(`[DEBUG:${stage}] data:image/png;base64,${b64.substring(0, 100)}...`);
-      }
-    }
-
     return Buffer.from(data.result, "base64");
 
   } catch (err) {
