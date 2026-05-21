@@ -20,11 +20,11 @@ import cv2
 from http.server import BaseHTTPRequestHandler
 
 # ── Constantes ───────────────────────────────────────────────────────────────
-INSET_RATIO    = 0.04   # retrait 4% — cache légèrement plus petit que la bbox
+INSET_RATIO    = 0.02   # retrait 2% — cache proche des dimensions réelles
 FEATHER_PX     = 2      # flou bords (pixels)
-OVERLAY_ALPHA  = 0.95   # opacité globale du cache
-SHRINK_3D      = 0.32   # déformation trapèze plus prononcée (était 0.22)
-LOGO_MARGIN    = 0.12   # marge interne logo (12%)
+OVERLAY_ALPHA  = 0.96   # opacité globale du cache
+SHRINK_3D      = 0.28   # déformation trapèze — légèrement réduite pour éviter l'excès
+LOGO_MARGIN    = 0.10   # marge interne logo (10%) — logo plus grand et lisible
 
 # Couleurs dégradé fond : #D9D9D9 → #F5F5F5 (gauche → droite)
 BG_LEFT  = np.array([217, 217, 217], dtype=np.float32)  # BGR
@@ -146,8 +146,31 @@ def decode_logo(logo_b64: str | None, logo_url: str | None) -> np.ndarray | None
     elif logo.shape[2] == 3:
         alpha = np.full((logo.shape[0], logo.shape[1], 1), 255, dtype=np.uint8)
         logo  = np.concatenate([logo, alpha], axis=2)
+    else:
+        logo = logo.copy()
 
-    print(f"[warp-plate] Logo chargé — {logo.shape[1]}×{logo.shape[0]}px")
+    # Suppression du fond noir résiduel
+    # Pixels très sombres (B<20, G<20, R<20) → transparents
+    mask_black = (
+        (logo[:, :, 0].astype(np.int32) < 20) &
+        (logo[:, :, 1].astype(np.int32) < 20) &
+        (logo[:, :, 2].astype(np.int32) < 20)
+    )
+    logo[mask_black, 3] = 0
+
+    # Pixels presque noirs mais pas complètement (20-40) → semi-transparents
+    mask_near = (
+        (logo[:, :, 0].astype(np.int32) < 40) &
+        (logo[:, :, 1].astype(np.int32) < 40) &
+        (logo[:, :, 2].astype(np.int32) < 40) &
+        (logo[:, :, 3] > 0)
+    )
+    # Réduction progressive : plus c'est sombre, plus c'est transparent
+    darkness = np.max(logo[mask_near, :3], axis=1).astype(np.float32)
+    logo[mask_near, 3] = (darkness / 40.0 * 255).astype(np.uint8)
+
+    transparent_pct = 100 * np.sum(logo[:, :, 3] == 0) / (logo.shape[0] * logo.shape[1])
+    print(f"[warp-plate] Logo chargé — {logo.shape[1]}×{logo.shape[0]}px | transparent: {transparent_pct:.0f}%")
     return logo
 
 
