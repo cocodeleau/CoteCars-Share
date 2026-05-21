@@ -8,13 +8,11 @@
 #   "polygon":    [{"x":…,"y":…}, …4 points…]  (optionnel — prioritaire),
 #   "bbox":       {"xmin":…,"ymin":…,"xmax":…,"ymax":…}  (requis)
 # }
-# Renvoie : { "result": "base64 JPEG", "method": "polygon|contour|bbox" }
-#        ou { "error":  "message" }
-#
-# Ordre de priorité pour les 4 coins destination :
-#   1. polygon    fourni par PlateRecognizer (mmc=true)  — le plus précis
-#   2. contour    détecté par OpenCV sur le ROI          — détection locale
-#   3. bbox       bounding box droite                    — fallback garanti
+# Renvoie : {
+#   "result":    "base64 JPEG",
+#   "method":    "polygon|contour|bbox",
+#   "debug_roi": "base64 PNG"  (seulement si method == "bbox" — image binarisée pour diagnostic)
+# }
 
 import json
 import base64
@@ -25,22 +23,17 @@ from http.server import BaseHTTPRequestHandler
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TEMPLATE AUTOEASY
-# Généré en mémoire — retourne ndarray BGRA (height, width, 4)
 # ─────────────────────────────────────────────────────────────────────────────
 def build_autoeasy_template(width: int = 520, height: int = 110) -> np.ndarray:
     tpl = np.zeros((height, width, 4), dtype=np.uint8)
-
-    # Fond #111111 opaque
     tpl[:, :] = [17, 17, 17, 255]
 
-    # Dégradé vertical : +20 brightness en haut → 0 en bas
     for y in range(height):
         b = int(20 * (1.0 - y / height))
         tpl[y, :, 0] = min(255, 17 + b)
         tpl[y, :, 1] = min(255, 17 + b)
         tpl[y, :, 2] = min(255, 17 + b)
 
-    # Ombre interne sur les 15% inférieurs
     shadow_h = max(2, height // 7)
     for y in range(height - shadow_h, height):
         factor   = (y - (height - shadow_h)) / shadow_h
@@ -49,40 +42,33 @@ def build_autoeasy_template(width: int = 520, height: int = 110) -> np.ndarray:
         tpl[y, :, 1] = max(0, int(tpl[y, 0, 1]) - darkness)
         tpl[y, :, 2] = max(0, int(tpl[y, 0, 2]) - darkness)
 
-    # Texte AUTOEASY centré
     font       = cv2.FONT_HERSHEY_DUPLEX
     text       = "AUTOEASY"
     font_scale = height / 45.0
     thickness  = max(1, int(height / 22))
-
     (tw, th), _ = cv2.getTextSize(text, font, font_scale, thickness)
     tx = (width  - tw) // 2
     ty = (height + th) // 2
-
     cv2.putText(tpl, text, (tx, ty), font, font_scale,
                 (255, 255, 255, 255), thickness, cv2.LINE_AA)
-
     return tpl
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DÉTECTION DE CONTOURS — cœur de la nouveauté
+# DÉTECTION DE CONTOURS — pipeline renforcé
 #
-# Stratégie :
-#   1. Découpe le ROI avec marge de 15px autour de la bbox
-#   2. Grayscale → blur léger → Canny edge detection
-#   3. findContours → cherche le plus grand contour à 4 côtés
-#   4. Réajuste les coordonnées dans l'espace de l'image globale
-#   5. Retourne les 4 coins triés (haut-gauche, haut-droit, bas-droit, bas-gauche)
-#      ou None si aucun quadrilatère propre trouvé
+# Retourne (pts_4coins, debug_stages) où :
+#   pts_4coins  = np.float32[4,2] ou None
+#   debug_stages = dict d'images intermédiaires base64 PNG pour diagnostic
 # ─────────────────────────────────────────────────────────────────────────────
 def detect_plate_corners_from_contour(
     car_bgr: np.ndarray,
     bbox: dict,
     margin: int = 15,
-) -> np.ndarray | None:
+) -> tuple[np.ndarray | None, dict]:
 
     car_h, car_w = car_bgr.shape[:2]
+    debug = {}
 
     # ── 1. Découpe ROI avec marge ────────────────────────────────
     x1 = max(0,     bbox["xmin"] - margin)
@@ -92,84 +78,89 @@ def detect_plate_corners_from_contour(
 
     roi = car_bgr[y1:y2, x1:x2]
     if roi.size == 0:
-        return None
+        return None, debug
 
+    # ── 2. Grayscale ─────────────────────────────────────────────
+    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    debug["1_gray"] = _b64png(gray)
+
+    # ── 3. Flou puissant — kernel 7×7 pour gommer le texte ───────
+    blurred = cv2.GaussianBlur(gray, (7, 7), 0)
+    debug["2_blurred"] = _b64png(blurred)
+
+    # ── 4. Fermeture morphologique — fusionne la plaque en bloc ──
+    # Kernel rectangulaire large pour combler lettres + visserie
     roi_h, roi_w = roi.shape[:2]
+    kw = max(5, roi_w // 8)   # ~12% de la largeur du ROI
+    kh = max(3, roi_h // 4)   # ~25% de la hauteur du ROI
+    kernel  = cv2.getStructuringElement(cv2.MORPH_RECT, (kw, kh))
+    closed  = cv2.morphologyEx(blurred, cv2.MORPH_CLOSE, kernel, iterations=2)
+    debug["3_closed"] = _b64png(closed)
 
-    # ── 2. Preprocessing edge detection ─────────────────────────
-    gray    = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    # ── 5. Seuillage binaire Otsu ────────────────────────────────
+    _, binary = cv2.threshold(closed, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    debug["4_binary"] = _b64png(binary)
 
-    # Blur léger pour supprimer le bruit de compression JPEG
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    # ── 6. Dilatation finale pour souder les bords fragmentés ────
+    kernel2 = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    dilated = cv2.dilate(binary, kernel2, iterations=2)
+    debug["5_dilated"] = _b64png(dilated)
 
-    # Canny adaptatif : seuils calculés depuis la médiane
-    median   = float(np.median(blurred))
-    sigma    = 0.33
-    low      = int(max(0,   (1.0 - sigma) * median))
-    high     = int(min(255, (1.0 + sigma) * median))
-    edges    = cv2.Canny(blurred, low, high)
-
-    # Dilatation légère pour fermer les contours ouverts
-    kernel   = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    edges    = cv2.dilate(edges, kernel, iterations=1)
-
-    # ── 3. findContours ──────────────────────────────────────────
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
+    # ── 7. findContours — on garde le plus grand ─────────────────
+    contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
-        return None
+        print("[warp-plate] findContours : aucun contour trouvé")
+        return None, debug
 
-    # Trie par aire décroissante — la plaque est généralement le plus grand
-    # contour rectangulaire dans le ROI
-    contours_sorted = sorted(contours, key=cv2.contourArea, reverse=True)
+    largest = max(contours, key=cv2.contourArea)
+    area    = cv2.contourArea(largest)
+    print(f"[warp-plate] Plus grand contour : {area:.0f}px²  (ROI {roi_w}×{roi_h})")
 
-    best_quad = None
-    best_area = 0
+    # Sanity check : le contour doit couvrir au moins 20% du ROI
+    if area < roi_w * roi_h * 0.20:
+        print("[warp-plate] Contour trop petit — fallback bbox")
+        return None, debug
 
-    for cnt in contours_sorted[:8]:  # on teste seulement les 8 plus grands
-        area = cv2.contourArea(cnt)
+    # ── 8. approxPolyDP — epsilon souple à 5% du périmètre ───────
+    peri   = cv2.arcLength(largest, True)
+    approx = cv2.approxPolyDP(largest, 0.05 * peri, True)
+    print(f"[warp-plate] approxPolyDP : {len(approx)} côtés")
 
-        # Ignore les contours trop petits (bruit)
-        if area < (roi_w * roi_h * 0.05):
-            continue
+    # Debug : contour dessiné sur le ROI original
+    roi_debug = roi.copy()
+    cv2.drawContours(roi_debug, [approx], -1, (0, 255, 0), 2)
+    debug["6_contour"] = _b64png(roi_debug)
 
-        # Approximation polygonale — epsilon = 2% du périmètre
-        peri   = cv2.arcLength(cnt, True)
-        approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
+    if len(approx) != 4:
+        print(f"[warp-plate] Polygone à {len(approx)} côtés (attendu 4) — fallback bbox")
+        return None, debug
 
-        # On cherche un quadrilatère (4 côtés)
-        if len(approx) == 4 and area > best_area:
-            best_quad = approx
-            best_area = area
+    # ── 9. Réajustement + tri dans l'espace global ───────────────
+    pts_global = approx.reshape(4, 2).astype(np.float32)
+    pts_global[:, 0] += x1
+    pts_global[:, 1] += y1
 
-    if best_quad is None:
-        return None
-
-    # ── 4. Réajustement dans l'espace global ─────────────────────
-    # Les coordonnées du contour sont relatives au ROI → on remet dans l'image
-    pts_global = best_quad.reshape(4, 2).astype(np.float32)
-    pts_global[:, 0] += x1   # offset X
-    pts_global[:, 1] += y1   # offset Y
-
-    # ── 5. Tri des 4 coins : haut-gauche, haut-droit, bas-droit, bas-gauche
-    pts = sort_quad_points(pts_global)
-    return pts
+    pts_sorted = sort_quad_points(pts_global)
+    return pts_sorted, debug
 
 
 def sort_quad_points(pts: np.ndarray) -> np.ndarray:
-    """
-    Trie 4 points dans l'ordre : haut-gauche, haut-droit, bas-droit, bas-gauche.
-    Méthode : somme et différence des coordonnées.
-    """
-    s    = pts.sum(axis=1)       # x+y : min = haut-gauche, max = bas-droit
-    diff = np.diff(pts, axis=1)  # y-x : min = haut-droit,  max = bas-gauche
-
-    tl = pts[np.argmin(s)]    # haut-gauche
-    br = pts[np.argmax(s)]    # bas-droit
-    tr = pts[np.argmin(diff)] # haut-droit
-    bl = pts[np.argmax(diff)] # bas-gauche
-
+    """Trie 4 points : haut-gauche, haut-droit, bas-droit, bas-gauche."""
+    s    = pts.sum(axis=1)
+    diff = np.diff(pts, axis=1)
+    tl = pts[np.argmin(s)]
+    br = pts[np.argmax(s)]
+    tr = pts[np.argmin(diff)]
+    bl = pts[np.argmax(diff)]
     return np.float32([tl, tr, br, bl])
+
+
+def _b64png(img: np.ndarray) -> str:
+    """Encode un ndarray OpenCV en base64 PNG."""
+    ok, buf = cv2.imencode(".png", img)
+    if not ok:
+        return ""
+    return base64.b64encode(buf.tobytes()).decode("utf-8")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -180,12 +171,10 @@ def warp_and_composite(
     logo_b64: str | None,
     polygon:  list | None,
     bbox:     dict,
-) -> tuple[str, str]:
-    """
-    Retourne (base64_jpeg, method) où method = "polygon" | "contour" | "bbox"
-    """
+) -> tuple[str, str, dict]:
+    """Retourne (base64_jpeg, method, debug_dict)"""
 
-    # ── Décode l'image voiture ───────────────────────────────────
+    # ── Décode voiture ───────────────────────────────────────────
     car_bytes = base64.b64decode(car_b64)
     car_arr   = np.frombuffer(car_bytes, dtype=np.uint8)
     car_bgr   = cv2.imdecode(car_arr, cv2.IMREAD_COLOR)
@@ -193,7 +182,7 @@ def warp_and_composite(
         raise ValueError("Impossible de décoder l'image voiture")
     car_h, car_w = car_bgr.shape[:2]
 
-    # ── Template : logo fourni ou généré en mémoire ──────────────
+    # ── Template ─────────────────────────────────────────────────
     if logo_b64:
         logo_bytes = base64.b64decode(logo_b64)
         logo_arr   = np.frombuffer(logo_bytes, dtype=np.uint8)
@@ -201,15 +190,13 @@ def warp_and_composite(
         if template is None:
             raise ValueError("Impossible de décoder le logo")
         if template.shape[2] == 3:
-            alpha    = np.full((template.shape[0], template.shape[1], 1),
-                               255, dtype=np.uint8)
+            alpha    = np.full((template.shape[0], template.shape[1], 1), 255, dtype=np.uint8)
             template = np.concatenate([template, alpha], axis=2)
     else:
         template = build_autoeasy_template(520, 110)
 
     tpl_h, tpl_w = template.shape[:2]
 
-    # ── 4 coins source (template plat) ───────────────────────────
     src_pts = np.float32([
         [0,     0    ],
         [tpl_w, 0    ],
@@ -218,10 +205,11 @@ def warp_and_composite(
     ])
 
     # ── Détermination des 4 coins destination ────────────────────
-    # Priorité 1 : polygon fourni par PlateRecognizer (mmc=true)
-    method  = "bbox"
-    dst_pts = None
+    method    = "bbox"
+    dst_pts   = None
+    debug_out = {}
 
+    # Priorité 1 : polygon PlateRecognizer (mmc=true)
     if polygon and len(polygon) == 4:
         dst_pts = np.float32([
             [polygon[0]["x"], polygon[0]["y"]],
@@ -232,16 +220,18 @@ def warp_and_composite(
         method = "polygon"
         print("[warp-plate] Méthode : polygon PlateRecognizer")
 
-    # Priorité 2 : détection de contours OpenCV sur le ROI
+    # Priorité 2 : détection contours OpenCV
     if dst_pts is None:
         try:
-            contour_pts = detect_plate_corners_from_contour(car_bgr, bbox)
+            contour_pts, debug_stages = detect_plate_corners_from_contour(car_bgr, bbox)
             if contour_pts is not None:
-                dst_pts = contour_pts
-                method  = "contour"
+                dst_pts    = contour_pts
+                method     = "contour"
                 print("[warp-plate] Méthode : contour OpenCV")
             else:
-                print("[warp-plate] Contour introuvable — fallback bbox")
+                # Retourne les images de debug pour diagnostic
+                debug_out  = debug_stages
+                print("[warp-plate] Contour introuvable — fallback bbox + debug envoyé")
         except Exception as e:
             print(f"[warp-plate] Erreur contour : {e} — fallback bbox")
 
@@ -256,14 +246,11 @@ def warp_and_composite(
         method = "bbox"
         print("[warp-plate] Méthode : fallback bbox")
 
-    # ── Matrice d'homographie ────────────────────────────────────
+    # ── Homographie + Warp ───────────────────────────────────────
     H = cv2.getPerspectiveTransform(src_pts, dst_pts)
 
-    # ── Warp sur canvas pleine taille ────────────────────────────
     warped = cv2.warpPerspective(
-        template,
-        H,
-        (car_w, car_h),
+        template, H, (car_w, car_h),
         flags=cv2.INTER_LINEAR,
         borderMode=cv2.BORDER_CONSTANT,
         borderValue=(0, 0, 0, 0),
@@ -272,19 +259,15 @@ def warp_and_composite(
     # ── Alpha compositing ─────────────────────────────────────────
     alpha_ch  = warped[:, :, 3].astype(np.float32) / 255.0
     alpha_3ch = np.stack([alpha_ch] * 3, axis=-1)
-
-    warped_bgr = warped[:, :, :3].astype(np.float32)
-    car_float  = car_bgr.astype(np.float32)
-
-    composite = warped_bgr * alpha_3ch + car_float * (1.0 - alpha_3ch)
+    composite = warped[:, :, :3].astype(np.float32) * alpha_3ch \
+              + car_bgr.astype(np.float32)             * (1.0 - alpha_3ch)
     composite = np.clip(composite, 0, 255).astype(np.uint8)
 
-    # ── Encode JPEG base64 ────────────────────────────────────────
     ok, buf = cv2.imencode(".jpg", composite, [cv2.IMWRITE_JPEG_QUALITY, 92])
     if not ok:
         raise ValueError("Échec encodage JPEG")
 
-    return base64.b64encode(buf.tobytes()).decode("utf-8"), method
+    return base64.b64encode(buf.tobytes()).decode("utf-8"), method, debug_out
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -307,8 +290,17 @@ class handler(BaseHTTPRequestHandler):
                 self._json(400, {"error": "car_image et bbox sont requis"})
                 return
 
-            result_b64, method = warp_and_composite(car_b64, logo_b64, polygon, bbox)
-            self._json(200, {"result": result_b64, "method": method})
+            result_b64, method, debug_out = warp_and_composite(
+                car_b64, logo_b64, polygon, bbox
+            )
+
+            response = {"result": result_b64, "method": method}
+
+            # Renvoie les étapes de debug uniquement si fallback bbox
+            if method == "bbox" and debug_out:
+                response["debug"] = debug_out
+
+            self._json(200, response)
 
         except Exception as e:
             import traceback
