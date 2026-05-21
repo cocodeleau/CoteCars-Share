@@ -1,7 +1,7 @@
 # api/warp-plate.py
 #
 # Serverless Function Python — Vercel Pro
-# Fake3D FORCÉ — trapèze 30% sans condition, pour validation visuelle.
+# Rendu raffiné : padding négatif, feathering, dégradé, opacité 92%
 
 import json
 import base64
@@ -9,83 +9,133 @@ import numpy as np
 import cv2
 from http.server import BaseHTTPRequestHandler
 
+# ── Constantes de raffinement ────────────────────────────────────────────────
+INSET_RATIO   = 0.07   # 7% de retrait sur chaque bord (padding négatif)
+FEATHER_PX    = 2      # rayon de flou sur les bords du cache (pixels)
+OVERLAY_ALPHA = 0.92   # opacité globale du cache (92%)
+SHRINK_3D     = 0.22   # déformation trapèze pour les vues de biais
+
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TEMPLATE AUTOEASY — BGRA (height, width, 4)
+# TEMPLATE AUTOEASY RAFFINÉ
+# Dégradé #D9D9D9 → #F5F5F5 + texte centré avec marge interne 18%
+# Retourne BGRA (height, width, 4)
 # ─────────────────────────────────────────────────────────────────────────────
 def build_autoeasy_template(width: int = 520, height: int = 110) -> np.ndarray:
     tpl = np.zeros((height, width, 4), dtype=np.uint8)
-    tpl[:, :] = [17, 17, 17, 255]
 
-    for y in range(height):
-        b = int(20 * (1.0 - y / height))
-        tpl[y, :, 0] = min(255, 17 + b)
-        tpl[y, :, 1] = min(255, 17 + b)
-        tpl[y, :, 2] = min(255, 17 + b)
+    # Dégradé horizontal #D9D9D9 (gauche) → #F5F5F5 (droite)
+    # Simule une légère réflexion de lumière studio
+    c_left  = np.array([217, 217, 217], dtype=np.float32)  # #D9D9D9 BGR
+    c_right = np.array([245, 245, 245], dtype=np.float32)  # #F5F5F5 BGR
 
-    shadow_h = max(2, height // 7)
-    for y in range(height - shadow_h, height):
-        factor   = (y - (height - shadow_h)) / shadow_h
-        darkness = int(12 * factor)
-        tpl[y, :, 0] = max(0, int(tpl[y, 0, 0]) - darkness)
-        tpl[y, :, 1] = max(0, int(tpl[y, 0, 1]) - darkness)
-        tpl[y, :, 2] = max(0, int(tpl[y, 0, 2]) - darkness)
+    for x in range(width):
+        t   = x / max(width - 1, 1)
+        col = (c_left * (1 - t) + c_right * t).astype(np.uint8)
+        tpl[:, x, 0] = col[0]
+        tpl[:, x, 1] = col[1]
+        tpl[:, x, 2] = col[2]
 
+    # Canal alpha : opacité globale OVERLAY_ALPHA
+    # Le feathering sera appliqué après warp via masque gaussien
+    tpl[:, :, 3] = int(255 * OVERLAY_ALPHA)
+
+    # ── Texte AUTOEASY ───────────────────────────────────────────
+    # Couleur texte : gris foncé #555555 pour rester lisible sans être agressif
     font       = cv2.FONT_HERSHEY_DUPLEX
     text       = "AUTOEASY"
-    font_scale = height / 45.0
-    thickness  = max(1, int(height / 22))
-    (tw, th), _ = cv2.getTextSize(text, font, font_scale, thickness)
-    cv2.putText(tpl, text,
-                ((width - tw) // 2, (height + th) // 2),
-                font, font_scale, (255, 255, 255, 255), thickness, cv2.LINE_AA)
+    margin_x   = int(width  * 0.18)   # marge interne 18%
+    margin_y   = int(height * 0.18)
+    max_tw     = width  - 2 * margin_x
+    max_th     = height - 2 * margin_y
+
+    # Calcule font_scale pour tenir dans la zone avec marge
+    scale = 1.0
+    for s in np.arange(3.0, 0.1, -0.05):
+        (tw, th), _ = cv2.getTextSize(text, font, s, 2)
+        if tw <= max_tw and th <= max_th:
+            scale = s
+            break
+
+    thickness  = max(1, int(height / 28))
+    (tw, th), _ = cv2.getTextSize(text, font, scale, thickness)
+    tx = (width  - tw) // 2
+    ty = (height + th) // 2
+
+    cv2.putText(tpl, text, (tx, ty), font, scale,
+                (85, 85, 85, int(255 * OVERLAY_ALPHA)),  # #555555
+                thickness, cv2.LINE_AA)
+
     return tpl
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# COMPUTE DST — trapèze 30% FORCÉ, sans condition
-#
-# Centre image → détermine quel côté de la plaque est le point de fuite.
-#
-# CAS A — plaque à GAUCHE du centre (côté droit = point de fuite) :
-#   tl = [xmin, ymin]                        tr = [xmax, ymin + h*0.3]
-#   bl = [xmin, ymax]                        br = [xmax, ymax - h*0.3]
-#
-# CAS B — plaque à DROITE du centre (côté gauche = point de fuite) :
-#   tl = [xmin, ymin + h*0.3]               tr = [xmax, ymin]
-#   bl = [xmin, ymax - h*0.3]               br = [xmax, ymax]
+# FEATHERING — adoucit les bords du cache après warp
+# Applique un flou gaussien uniquement sur le canal alpha
 # ─────────────────────────────────────────────────────────────────────────────
-def compute_dst(bbox: dict, img_width: int, shrink: float = 0.30) -> tuple[np.ndarray, str]:
+def apply_feathering(warped_bgra: np.ndarray, radius: int = FEATHER_PX) -> np.ndarray:
+    if radius < 1:
+        return warped_bgra
+    result   = warped_bgra.copy()
+    alpha    = warped_bgra[:, :, 3].astype(np.float32)
+    k        = radius * 2 + 1        # kernel impair
+    blurred  = cv2.GaussianBlur(alpha, (k, k), 0)
+    # On applique le flou uniquement sur les pixels de bordure
+    # (là où l'alpha original est > 0 mais < 255)
+    result[:, :, 3] = blurred.astype(np.uint8)
+    return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# COMPUTE DST — trapèze avec padding négatif intégré
+#
+# 1. Applique INSET_RATIO sur la bbox → zone réduite
+# 2. Applique le trapèze Fake3D sur cette zone réduite
+# ─────────────────────────────────────────────────────────────────────────────
+def compute_dst(bbox: dict, img_width: int) -> tuple[np.ndarray, str]:
     xmin = float(bbox["xmin"])
     ymin = float(bbox["ymin"])
     xmax = float(bbox["xmax"])
     ymax = float(bbox["ymax"])
-    h    = ymax - ymin
-    cx   = (xmin + xmax) / 2.0
-    mid  = img_width / 2.0
-    d    = h * shrink
+
+    bw = xmax - xmin
+    bh = ymax - ymin
+
+    # ── Padding négatif (inset) ───────────────────────────────────
+    ix = bw * INSET_RATIO   # retrait horizontal
+    iy = bh * INSET_RATIO   # retrait vertical
+
+    x1 = xmin + ix
+    x2 = xmax - ix
+    y1 = ymin + iy
+    y2 = ymax - iy
+    h  = y2 - y1
+
+    # ── Trapèze Fake3D ────────────────────────────────────────────
+    cx  = (xmin + xmax) / 2.0
+    mid = img_width / 2.0
+    d   = h * SHRINK_3D
 
     if cx < mid:
-        # CAS A — plaque à gauche → côté droit écrasé
+        # Plaque à gauche → côté droit écrasé
         dst = np.float32([
-            [xmin, ymin      ],   # tl — inchangé
-            [xmax, ymin + d  ],   # tr — descendu
-            [xmax, ymax - d  ],   # br — remonté
-            [xmin, ymax      ],   # bl — inchangé
+            [x1, y1    ],   # tl
+            [x2, y1 + d],   # tr
+            [x2, y2 - d],   # br
+            [x1, y2    ],   # bl
         ])
-        side = "A (plaque gauche, côté droit écrasé)"
+        side = "gauche→droit écrasé"
     else:
-        # CAS B — plaque à droite → côté gauche écrasé
+        # Plaque à droite → côté gauche écrasé
         dst = np.float32([
-            [xmin, ymin + d  ],   # tl — descendu
-            [xmax, ymin      ],   # tr — inchangé
-            [xmax, ymax      ],   # br — inchangé
-            [xmin, ymax - d  ],   # bl — remonté
+            [x1, y1 + d],   # tl
+            [x2, y1    ],   # tr
+            [x2, y2    ],   # br
+            [x1, y2 - d],   # bl
         ])
-        side = "B (plaque droite, côté gauche écrasé)"
+        side = "droite→gauche écrasé"
 
-    print(f"[warp-plate] CAS {side} | h={h:.1f} | d={d:.1f} | cx={cx:.1f} | mid={mid:.1f}")
-    print(f"[warp-plate] dst_pts = {dst.tolist()}")
+    print(f"[warp-plate] inset={ix:.1f}×{iy:.1f}px | d={d:.1f}px | {side}")
     return dst, side
 
 
@@ -117,20 +167,26 @@ def warp_and_composite(
         if template is None:
             raise ValueError("Impossible de décoder le logo")
         if template.shape[2] == 3:
-            alpha    = np.full((template.shape[0], template.shape[1], 1), 255, dtype=np.uint8)
-            template = np.concatenate([template, alpha], axis=2)
+            a_ch     = np.full((template.shape[0], template.shape[1], 1),
+                               int(255 * OVERLAY_ALPHA), dtype=np.uint8)
+            template = np.concatenate([template, a_ch], axis=2)
+        else:
+            # Applique l'opacité globale sur le logo fourni
+            template = template.copy()
+            template[:, :, 3] = (
+                template[:, :, 3].astype(np.float32) * OVERLAY_ALPHA
+            ).astype(np.uint8)
     else:
         template = build_autoeasy_template(520, 110)
 
     tpl_h, tpl_w = template.shape[:2]
 
-    # Coins source — template plat rectangulaire
-    # Ordre : tl, tr, br, bl  (sens horaire)
+    # Coins source (tl, tr, br, bl sens horaire)
     src_pts = np.float32([
-        [0,     0    ],   # tl
-        [tpl_w, 0    ],   # tr
-        [tpl_w, tpl_h],   # br
-        [0,     tpl_h],   # bl
+        [0,     0    ],
+        [tpl_w, 0    ],
+        [tpl_w, tpl_h],
+        [0,     tpl_h],
     ])
 
     # ── Priorité 1 : polygon PlateRecognizer ─────────────────────
@@ -138,48 +194,49 @@ def warp_and_composite(
     dst_pts = None
 
     if polygon and len(polygon) == 4:
-        # PlateRecognizer retourne : tl, tr, br, bl (sens horaire)
-        dst_pts = np.float32([
+        # Applique quand même l'inset sur le polygon pour la finesse
+        pts = np.float32([
             [polygon[0]["x"], polygon[0]["y"]],
             [polygon[1]["x"], polygon[1]["y"]],
             [polygon[2]["x"], polygon[2]["y"]],
             [polygon[3]["x"], polygon[3]["y"]],
         ])
-        method = "polygon"
-        print("[warp-plate] Méthode : polygon PlateRecognizer")
+        # Centre du polygon
+        cx_p = float(np.mean(pts[:, 0]))
+        cy_p = float(np.mean(pts[:, 1]))
+        # Réduit chaque coin vers le centre de INSET_RATIO
+        inset_pts = pts + (np.array([[cx_p, cy_p]] * 4, dtype=np.float32) - pts) * INSET_RATIO
+        dst_pts = inset_pts
+        method  = "polygon"
+        print("[warp-plate] Méthode : polygon PlateRecognizer (inset appliqué)")
 
-    # ── Priorité 2 : Fake3D FORCÉ ────────────────────────────────
+    # ── Priorité 2 : Fake3D + inset ──────────────────────────────
     if dst_pts is None:
-        dst_pts, side = compute_dst(bbox, iw, shrink=0.30)
+        dst_pts, side = compute_dst(bbox, iw)
         method = "fake3d"
 
     # ── Homographie ───────────────────────────────────────────────
     H = cv2.getPerspectiveTransform(src_pts, dst_pts)
 
-    # Warp BGRA sur canvas pleine taille
-    # BORDER_CONSTANT + borderValue=(0,0,0,0) → alpha=0 hors zone = transparent
-    warped_bgra = cv2.warpPerspective(
-        template,
-        H,
-        (car_w, car_h),
+    # Warp BGRA — bordures transparentes garanties
+    warped = cv2.warpPerspective(
+        template, H, (car_w, car_h),
         flags=cv2.INTER_LINEAR,
         borderMode=cv2.BORDER_CONSTANT,
-        borderValue=(0, 0, 0, 0),   # ← BGRA : transparent hors trapèze
+        borderValue=(0, 0, 0, 0),
     )
 
-    # ── Alpha compositing propre ──────────────────────────────────
-    # Canal alpha du template warpé (0 = transparent, 255 = opaque)
-    alpha_raw = warped_bgra[:, :, 3].astype(np.float32) / 255.0  # [0.0, 1.0]
-    alpha_3ch = np.stack([alpha_raw] * 3, axis=-1)                # broadcast RGB
+    # ── Feathering sur les bords ──────────────────────────────────
+    warped = apply_feathering(warped, radius=FEATHER_PX)
 
-    warped_rgb = warped_bgra[:, :, :3].astype(np.float32)
-    car_float  = car_bgr.astype(np.float32)
+    # ── Alpha compositing ─────────────────────────────────────────
+    alpha_raw = warped[:, :, 3].astype(np.float32) / 255.0
+    alpha_3ch = np.stack([alpha_raw] * 3, axis=-1)
 
-    # out = alpha * template + (1 - alpha) * voiture
-    composite  = warped_rgb * alpha_3ch + car_float * (1.0 - alpha_3ch)
-    composite  = np.clip(composite, 0, 255).astype(np.uint8)
+    composite = (warped[:, :, :3].astype(np.float32) * alpha_3ch
+                 + car_bgr.astype(np.float32)         * (1.0 - alpha_3ch))
+    composite = np.clip(composite, 0, 255).astype(np.uint8)
 
-    # Encode JPEG
     ok, buf = cv2.imencode(".jpg", composite, [cv2.IMWRITE_JPEG_QUALITY, 92])
     if not ok:
         raise ValueError("Échec encodage JPEG")
