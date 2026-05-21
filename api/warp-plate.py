@@ -205,11 +205,13 @@ def compute_dst(bbox: dict, img_width: int) -> tuple[np.ndarray, str]:
     mid = img_width / 2.0
 
     if cx < mid:
-        dst  = np.float32([[x1,y1],[x2,y1+d],[x2,y2-d],[x1,y2]])
-        side = "gauche→droit écrasé"
-    else:
+        # Plaque à gauche → côté GAUCHE vers le point de fuite → écrasé
         dst  = np.float32([[x1,y1+d],[x2,y1],[x2,y2],[x1,y2-d]])
-        side = "droite→gauche écrasé"
+        side = "gauche→côté gauche écrasé"
+    else:
+        # Plaque à droite → côté DROIT vers le point de fuite → écrasé
+        dst  = np.float32([[x1,y1],[x2,y1+d],[x2,y2-d],[x1,y2]])
+        side = "droite→côté droit écrasé"
 
     print(f"[warp-plate] inset={ix:.1f}×{iy:.1f}px | d={d:.1f}px | {side}")
     return dst, side
