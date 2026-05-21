@@ -20,11 +20,11 @@ import cv2
 from http.server import BaseHTTPRequestHandler
 
 # ── Constantes ───────────────────────────────────────────────────────────────
-INSET_RATIO    = 0.07   # retrait 7% sur chaque bord
+INSET_RATIO    = 0.04   # retrait 4% — cache légèrement plus petit que la bbox
 FEATHER_PX     = 2      # flou bords (pixels)
-OVERLAY_ALPHA  = 0.92   # opacité globale du cache
-SHRINK_3D      = 0.22   # déformation trapèze
-LOGO_MARGIN    = 0.15   # marge interne logo (15% de chaque côté du template)
+OVERLAY_ALPHA  = 0.95   # opacité globale du cache
+SHRINK_3D      = 0.32   # déformation trapèze plus prononcée (était 0.22)
+LOGO_MARGIN    = 0.12   # marge interne logo (12%)
 
 # Couleurs dégradé fond : #D9D9D9 → #F5F5F5 (gauche → droite)
 BG_LEFT  = np.array([217, 217, 217], dtype=np.float32)  # BGR
