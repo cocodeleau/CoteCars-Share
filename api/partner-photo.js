@@ -103,23 +103,21 @@ async function detectPlate(imageBuffer) {
         { inlineData: { mimeType: "image/jpeg", data: b64 } },
         { text: prompt },
       ]}],
-      generationConfig: { responseMimeType: "application/json", maxOutputTokens: 256 },
+      generationConfig: { maxOutputTokens: 256 },
     });
 
-    let raw = result.response.text().trim();
-    console.log("[Gemini] Réponse brute :", raw);
+    const raw = result.response.text();
+    console.log("[Gemini] Réponse :", raw.substring(0, 200));
 
-    // Nettoie la réponse Gemini — peut contenir markdown, texte, backticks
-    // Stratégie : chercher le premier {...} dans la réponse complète
-    const jsonMatch = raw.match(/\{[\s\S]*?\}/);
+    // Extrait le JSON même entouré de texte ou backticks markdown
+    // Cherche le pattern {"xmin":...} n'importe où dans la réponse
+    const jsonMatch = raw.match(/\{"xmin"\s*:\s*(-?\d+|null)[\s\S]*?\}/);
     if (!jsonMatch) {
-      console.warn("[Gemini] Aucun objet JSON trouvé dans la réponse");
+      console.warn("[Gemini] JSON non trouvé dans :", raw.substring(0, 100));
       return null;
     }
-    const cleaned = jsonMatch[0];
-    console.log("[Gemini] JSON extrait :", cleaned);
-
-    const parsed = JSON.parse(cleaned);
+    console.log("[Gemini] JSON extrait :", jsonMatch[0]);
+    const parsed = JSON.parse(jsonMatch[0]);
     if (!parsed.xmin) {
       console.log("[Gemini] Aucune plaque détectée");
       return null;
