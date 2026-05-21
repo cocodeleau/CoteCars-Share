@@ -92,10 +92,13 @@ async function detectPlate(imageBuffer) {
     const imgH   = meta.height;
 
     const prompt = `Image size: ${imgW}x${imgH} pixels. ` +
-      `Locate the vehicle license plate. ` +
+      `Find the rectangular license plate sign on the vehicle. ` +
+      `The license plate contains alphanumeric characters (letters and numbers). ` +
+      `Do NOT detect the bumper, the plate holder, or the area around the plate. ` +
+      `Detect ONLY the plate rectangle itself with the text on it. ` +
       `Respond with ONLY this exact JSON, nothing else, no markdown, no backticks, no explanation: ` +
       `{"xmin":INT,"ymin":INT,"xmax":INT,"ymax":INT} ` +
-      `Replace INT with the absolute pixel coordinates of the plate bounding box. ` +
+      `Replace INT with the absolute pixel coordinates of the license plate rectangle. ` +
       `If no plate found: {"xmin":null,"ymin":null,"xmax":null,"ymax":null}`;
 
     const result = await model.generateContent({
