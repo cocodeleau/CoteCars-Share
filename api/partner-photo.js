@@ -157,7 +157,10 @@ async function applyPlateMask(imageBuffer, plateResult, imgW, imgH) {
 
     const response = await fetch(`${baseUrl}/api/warp-plate`, {
       method:  "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${process.env.WARP_PLATE_SECRET}`,
+      },
       body: JSON.stringify({
         car_image:  imageBuffer.toString("base64"),
         polygon:    plateResult.polygon ?? null,

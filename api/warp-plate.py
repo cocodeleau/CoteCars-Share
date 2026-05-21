@@ -271,6 +271,15 @@ class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
+            # Vérification du secret partagé
+            import os
+            secret   = os.environ.get("WARP_PLATE_SECRET", "")
+            auth     = self.headers.get("Authorization", "")
+            expected = f"Bearer {secret}"
+            if secret and auth != expected:
+                self._json(401, {"error": "Unauthorized"})
+                return
+
             length  = int(self.headers.get("Content-Length", 0))
             body    = self.rfile.read(length)
             payload = json.loads(body)
