@@ -150,57 +150,35 @@ async function applyPlateMask(imageBuffer, plateResult, imgW, imgH) {
   }
 
   try {
-    // Appel direct au script Python via child_process — évite les problèmes d'auth HTTP
-    const result = await warpViaPython(imageBuffer, plateResult, imgW);
-    console.log("[applyPlateMask] Warp Python OK");
-    return result;
+    // URL fixe — évite les problèmes avec VERCEL_URL qui change à chaque déploiement
+    const warpUrl = process.env.WARP_PLATE_URL || "https://cotecars-test.vercel.app/api/warp-plate";
+
+    const response = await fetch(warpUrl, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        car_image:  imageBuffer.toString("base64"),
+        polygon:    plateResult.polygon ?? null,
+        bbox:       plateResult.box,
+        img_width:  imgW,
+        logo_image: AUTOEASY_LOGO_B64,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`warp-plate HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+
+    console.log(`[applyPlateMask] Warp OK — méthode: ${data.method}`);
+    return Buffer.from(data.result, "base64");
 
   } catch (err) {
     console.warn("[applyPlateMask] Warp échoué, fallback SVG plat :", err.message);
     return applyFlatMask(imageBuffer, plateResult, imgW, imgH);
   }
-}
-
-// Appel direct à warp-plate.py via child_process spawn
-function warpViaPython(imageBuffer, plateResult, imgW) {
-  return new Promise((resolve, reject) => {
-    const { spawn } = require("child_process");
-
-    const payload = JSON.stringify({
-      car_image:  imageBuffer.toString("base64"),
-      polygon:    plateResult.polygon ?? null,
-      bbox:       plateResult.box,
-      img_width:  imgW,
-      logo_image: AUTOEASY_LOGO_B64,
-    });
-
-    const proc = spawn("python3", ["api/warp-plate.py"], {
-      env: { ...process.env },
-    });
-
-    let stdout = "";
-    let stderr = "";
-
-    proc.stdout.on("data", d => { stdout += d.toString(); });
-    proc.stderr.on("data", d => { stderr += d.toString(); });
-
-    proc.on("close", code => {
-      if (stderr) console.log("[warp-plate python]", stderr.trim());
-      if (code !== 0) {
-        return reject(new Error(`python3 exit ${code}: ${stderr.slice(0, 200)}`));
-      }
-      try {
-        const response = JSON.parse(stdout);
-        if (response.error) return reject(new Error(response.error));
-        resolve(Buffer.from(response.result, "base64"));
-      } catch (e) {
-        reject(new Error("Parse stdout échoué : " + stdout.slice(0, 200)));
-      }
-    });
-
-    proc.stdin.write(payload);
-    proc.stdin.end();
-  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
