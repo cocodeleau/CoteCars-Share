@@ -90,10 +90,10 @@ async function blurPlateWatermarkly(imageBuffer) {
     const logoUrl = process.env.AUTOEASY_LOGO_URL || "";
 
     const params = new URLSearchParams({
-      blur_intensity:       "10",
+      blur_intensity:       "8",
       format:               "jpeg",
-      blur_padding:         "5",
-      detection_threshold:  "0.2",
+      blur_padding:         "0",
+      detection_threshold:  "0.3",
     });
 
     if (logoUrl) {
