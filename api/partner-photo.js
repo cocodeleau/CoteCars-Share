@@ -81,15 +81,17 @@ async function runPhotoroom(imageBuffer, mimeType) {
 // Détecte la plaque et retourne ses coordonnées pixel-perfect.
 // Retourne { box } ou null — NE THROW JAMAIS.
 // ─────────────────────────────────────────────────────────────────────────────
-async function detectPlate(imageBuffer) {
+async function detectPlate(imageBuffer, imgW = null, imgH = null) {
   try {
     const genAI  = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model  = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const b64    = imageBuffer.toString("base64");
-    const meta   = await sharp(imageBuffer).metadata();
-    const imgW   = meta.width;
-    const imgH   = meta.height;
+    if (!imgW || !imgH) {
+      const meta = await sharp(imageBuffer).metadata();
+      imgW = meta.width;
+      imgH = meta.height;
+    }
 
     const prompt = `Image size: ${imgW}x${imgH} pixels. ` +
       `Find the vehicle license plate (the rectangular sign with letters and numbers like AB-123-CD). ` +
@@ -248,13 +250,31 @@ module.exports = async function handler(req, res) {
     const { width: imgW, height: imgH } = await sharp(photoroomBuffer).metadata();
     console.log(`[Pipeline] Photoroom OK — ${imgW}x${imgH}`);
 
-    // ── 2. PlateRecognizer ────────────────────────────────────────
-    console.log("[Pipeline] Étape 2 — PlateRecognizer...");
-    const plateResult = await detectPlate(photoroomBuffer);
+    // ── 2. Gemini — détection sur l'image ORIGINALE (meilleur contraste)
+    console.log("[Pipeline] Étape 2 — Gemini détection plaque (image originale)...");
+    const plateResult = await detectPlate(imageBuffer, imgW, imgH);
 
-    // ── 3. Warp perspective ou fallback SVG ──────────────────────
+    // ── 3. Masque plaque ─────────────────────────────────────────
+    // Recalcule les coordonnées Gemini dans l'espace de l'image Photoroom
     console.log("[Pipeline] Étape 3 — Masque plaque...");
-    const finalBuffer = await applyPlateMask(photoroomBuffer, plateResult, imgW, imgH);
+    let scaledResult = plateResult;
+    if (plateResult) {
+      const origMeta  = await sharp(imageBuffer).metadata();
+      const scaleX    = imgW / origMeta.width;
+      const scaleY    = imgH / origMeta.height;
+      scaledResult = {
+        ...plateResult,
+        box: {
+          xmin: Math.round(plateResult.box.xmin * scaleX),
+          ymin: Math.round(plateResult.box.ymin * scaleY),
+          xmax: Math.round(plateResult.box.xmax * scaleX),
+          ymax: Math.round(plateResult.box.ymax * scaleY),
+        }
+      };
+      console.log(`[Pipeline] Scale: ${origMeta.width}x${origMeta.height} → ${imgW}x${imgH} | scaleX:${scaleX.toFixed(2)} scaleY:${scaleY.toFixed(2)}`);
+      console.log(`[Pipeline] Box originale: ${JSON.stringify(plateResult.box)} → Box scalée: ${JSON.stringify(scaledResult.box)}`);
+    }
+    const finalBuffer = await applyPlateMask(photoroomBuffer, scaledResult, imgW, imgH);
 
     console.log(`[Pipeline] Terminé — ${finalBuffer.length} octets | plaque: ${!!plateResult}`);
 
