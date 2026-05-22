@@ -162,11 +162,22 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: false, error: "Image trop volumineuse (max 20 Mo)." });
     }
 
-    // ── 1. Photoroom ─────────────────────────────────────────────
-    console.log("[Pipeline] Étape 1 — Photoroom...");
+    // ── 1. Watermarkly — image originale → plaque cachée avec logo
+    console.log("[Pipeline] Étape 1 — Watermarkly logo plaque...");
+    const watermarklyResult = await blurPlateWatermarkly(imageBuffer);
+
+    if (!watermarklyResult) {
+      console.warn("[Pipeline] Watermarkly échoué — on continue sans masque");
+    }
+
+    // Image à envoyer à Photoroom : avec logo si Watermarkly a réussi, originale sinon
+    const imageForPhotoroom = watermarklyResult ?? imageBuffer;
+
+    // ── 2. Photoroom — détourage + fond gris sur l'image avec logo
+    console.log("[Pipeline] Étape 2 — Photoroom...");
     let photoroomBuffer;
     try {
-      photoroomBuffer = await runPhotoroom(imageBuffer, mimeType);
+      photoroomBuffer = await runPhotoroom(imageForPhotoroom, "image/jpeg");
     } catch (err) {
       return res.status(200).json({ success: false, error: err.message });
     }
@@ -174,15 +185,7 @@ module.exports = async function handler(req, res) {
     const { width: imgW, height: imgH } = await sharp(photoroomBuffer).metadata();
     console.log(`[Pipeline] Photoroom OK — ${imgW}x${imgH}`);
 
-    // ── 2. Watermarkly — remplace la plaque par le logo AutoEasy
-    console.log("[Pipeline] Étape 2 — Watermarkly logo plaque...");
-    const watermarklyResult = await blurPlateWatermarkly(photoroomBuffer);
-
-    if (!watermarklyResult) {
-      console.warn("[Pipeline] Watermarkly échoué — image sans masque plaque");
-    }
-
-    const finalBuffer = watermarklyResult ?? photoroomBuffer;
+    const finalBuffer = photoroomBuffer;
 
     console.log(`[Pipeline] Terminé — ${finalBuffer.length} octets | plaque: ${!!watermarklyResult}`);
 
