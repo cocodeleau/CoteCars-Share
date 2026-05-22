@@ -89,7 +89,7 @@ async function blurPlateWatermarkly(imageBuffer) {
     const logoUrl = process.env.AUTOEASY_LOGO_URL || "";
 
     const params = new URLSearchParams({
-      blur_intensity:       "8",
+      blur_intensity:       "0",   // désactive le flou — logo uniquement
       format:               "jpeg",
       blur_padding:         "0",
       detection_threshold:  "0.3",
