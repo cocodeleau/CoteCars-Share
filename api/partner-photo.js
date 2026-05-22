@@ -12,7 +12,6 @@
 //
 // Variables d'env Vercel requises :
 //   PHOTOROOM_API_KEY
-//   PLATERECOGNIZER_TOKEN
 //   VERCEL_URL  (injecté automatiquement par Vercel)
 
 const FormData = require("form-data");
@@ -98,7 +97,7 @@ async function blurPlateWatermarkly(imageBuffer) {
 
     if (logoUrl) {
       params.set("logo_url",  logoUrl);
-      params.set("logo_size", "0.9");
+      params.set("logo_size", "1.0");
     }
 
     const res = await withRetry(() =>
@@ -132,74 +131,10 @@ async function blurPlateWatermarkly(imageBuffer) {
 // ÉTAPE 3A — WARP PERSPECTIVE via /api/warp-plate (Python)
 // Appel fetch interne Vercel — même domaine, pas de CORS.
 // ─────────────────────────────────────────────────────────────────────────────
-async function applyPlateMask(imageBuffer, plateResult, imgW, imgH) {
-
-  // Aucune plaque détectée → image Photoroom telle quelle
-  if (!plateResult) {
-    return sharp(imageBuffer).jpeg({ quality: 92 }).toBuffer();
-  }
-
-  const { xmin, ymin, xmax, ymax } = plateResult.box;
-  const pw = xmax - xmin;
-  const ph = ymax - ymin;
-
-  // Sécurité : coordonnées dans les limites de l'image
-  const sx = Math.max(0, xmin);
-  const sy = Math.max(0, ymin);
-  const sw = Math.min(pw, imgW - sx);
-  const sh = Math.min(ph, imgH - sy);
-
-  console.log(`[applyPlateMask] Flou gaussien — left:${sx} top:${sy} w:${sw} h:${sh}`);
-
-  try {
-    // DEBUG — dessine un rectangle rouge pour visualiser la bbox Gemini
-    const debugSvg = `<svg width="${imgW}" height="${imgH}" xmlns="http://www.w3.org/2000/svg">
-      <rect x="${sx}" y="${sy}" width="${sw}" height="${sh}"
-        fill="none" stroke="red" stroke-width="3"/>
-    </svg>`;
-
-    const debugResult = await sharp(imageBuffer)
-      .composite([{ input: Buffer.from(debugSvg), top: 0, left: 0 }])
-      .jpeg({ quality: 92 })
-      .toBuffer();
-
-    console.log("[applyPlateMask] DEBUG rectangle rouge appliqué");
-    return debugResult;
-
-  } catch (err) {
-    console.warn("[applyPlateMask] Flou échoué :", err.message);
-    return sharp(imageBuffer).jpeg({ quality: 92 }).toBuffer();
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ÉTAPE 3B — FALLBACK : rectangle SVG plat (si warp-plate échoue)
 // ─────────────────────────────────────────────────────────────────────────────
-async function applyFlatMask(imageBuffer, plateResult, imgW, imgH) {
-  const { xmin, ymin, xmax, ymax } = plateResult.box;
-  const pw     = xmax - xmin;
-  const ph     = ymax - ymin;
-  const cx     = xmin + pw / 2;
-  const cy     = ymin + ph / 2;
-  const angle  = plateResult.angle ?? 0;
-  const fontSize = Math.max(10, Math.round(ph * 0.48));
-
-  const svg = `<svg width="${imgW}" height="${imgH}" xmlns="http://www.w3.org/2000/svg">
-    <g transform="rotate(${angle}, ${cx}, ${cy})">
-      <rect x="${xmin}" y="${ymin}" width="${pw}" height="${ph}"
-        fill="#111111" rx="3"/>
-      <text x="${cx}" y="${cy}"
-        dominant-baseline="middle" text-anchor="middle"
-        fill="#FFFFFF" font-family="Arial Black, Arial, sans-serif"
-        font-weight="900" font-size="${fontSize}" letter-spacing="1">AUTOEASY</text>
-    </g>
-  </svg>`;
-
-  return sharp(imageBuffer)
-    .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
-    .jpeg({ quality: 92 })
-    .toBuffer();
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HANDLER PRINCIPAL
