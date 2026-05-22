@@ -91,7 +91,7 @@ async function blurPlateWatermarkly(imageBuffer) {
     const params = new URLSearchParams({
       blur_intensity:       "0",    // logo remplace la plaque — pas de flou
       format:               "jpeg",
-      detection_threshold:  "0.3",
+      detection_threshold:  "0.1",
     });
 
     if (logoUrl) {
