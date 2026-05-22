@@ -102,13 +102,11 @@
         img.src = URL.createObjectURL(file);
       });
 
-      // 1b. Image originale en base64 (non compressée) — pour Watermarkly
-      const base64Original = await new Promise((res, rej) => {
-        const reader = new FileReader();
-        reader.onload = () => res(reader.result);
-        reader.onerror = rej;
-        reader.readAsDataURL(file);
-      });
+      // 1b. Upload image originale sur Firebase Storage pour URL publique
+      onProgress("Upload image originale...", 10);
+      const origRef  = storage.ref(`partner_temp/${Date.now()}_orig.jpg`);
+      await origRef.put(file, { contentType: file.type });
+      const origUrl  = await origRef.getDownloadURL();
 
       // 2. Envoi au backend + progression animée pendant Photoroom (~15s)
       onProgress("Envoi vers le serveur...", 12);
@@ -134,7 +132,7 @@
         response = await fetch("/api/partner-photo", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ image: base64, image_original: base64Original }),
+          body:    JSON.stringify({ image: base64, original_url: origUrl }),
           signal:  controller.signal,
         });
 

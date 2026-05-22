@@ -79,37 +79,47 @@ async function runPhotoroom(imageBuffer, mimeType) {
 // Détecte ET floute la plaque automatiquement — retourne l'image floutée.
 // NE THROW JAMAIS — si erreur, retourne null (image sans flou).
 // ─────────────────────────────────────────────────────────────────────────────
-async function blurPlateWatermarkly(imageBuffer) {
+async function blurPlateWatermarkly(imageBuffer, originalUrl = null) {
   try {
     const API_URL = "https://blur-api-eu1.watermarkly.com/blur/";
     const API_KEY = process.env.WATERMARKLY_API_KEY;
-
-    // Logo AutoEasy — URL publique Cloudinary (évite les data URL trop longues)
-    // Si pas d'URL logo configurée → flou simple sans logo
     const logoUrl = process.env.AUTOEASY_LOGO_URL || "";
 
     const params = new URLSearchParams({
-      blur_intensity:       "0",    // logo remplace la plaque — pas de flou
-      format:               "jpeg",
-      detection_threshold:  "0.1",
+      blur_intensity:      "0",
+      format:              "jpeg",
+      detection_threshold: "0.1",
     });
 
     if (logoUrl) {
-      params.set("logo_url",    logoUrl);
-      params.set("logo_size",   "1.0");
-      params.set("plate_screws","true");  // rivets réalistes sur la plaque
+      params.set("logo_url",     logoUrl);
+      params.set("logo_size",    "1.0");
+      params.set("plate_screws", "true");
     }
 
-    const res = await withRetry(() =>
-      fetch(`${API_URL}?${params.toString()}`, {
-        method:  "POST",
-        headers: {
-          "x-api-key":    API_KEY,
-          "Content-Type": "application/octet-stream",
-        },
-        body: imageBuffer,
-      })
-    );
+    let res;
+
+    if (originalUrl) {
+      // GET — Watermarkly télécharge l'image originale directement (meilleure détection)
+      params.set("url", originalUrl);
+      console.log("[Watermarkly] Mode GET — URL originale");
+      res = await withRetry(() =>
+        fetch(`${API_URL}?${params.toString()}`, {
+          method:  "GET",
+          headers: { "x-api-key": API_KEY },
+        })
+      );
+    } else {
+      // POST — image compressée en fallback
+      console.log("[Watermarkly] Mode POST — image compressée");
+      res = await withRetry(() =>
+        fetch(`${API_URL}?${params.toString()}`, {
+          method:  "POST",
+          headers: { "x-api-key": API_KEY, "Content-Type": "application/octet-stream" },
+          body:    imageBuffer,
+        })
+      );
+    }
 
     if (!res.ok) {
       const err = await res.text().catch(() => "");
@@ -118,7 +128,7 @@ async function blurPlateWatermarkly(imageBuffer) {
     }
 
     const resultBuffer = Buffer.from(await res.arrayBuffer());
-    console.log(`[Watermarkly] OK — ${resultBuffer.length} octets | logo: ${!!logoUrl}`);
+    console.log(`[Watermarkly] OK — ${resultBuffer.length} octets`);
     return resultBuffer;
 
   } catch (err) {
@@ -158,11 +168,8 @@ module.exports = async function handler(req, res) {
       : "image/jpeg";
     const imageBuffer = Buffer.from(base64Data, "base64");
 
-    // Image originale non compressée (si fournie) — pour Watermarkly
-    const originalImage   = req.body.image_original;
-    const originalBuffer  = originalImage
-      ? Buffer.from(originalImage.includes(",") ? originalImage.split(",")[1] : originalImage, "base64")
-      : imageBuffer;
+    // URL publique de l'image originale — pour Watermarkly GET
+    const originalUrl = req.body.original_url || null;
 
     if (imageBuffer.length > 20 * 1024 * 1024) {
       return res.status(200).json({ success: false, error: "Image trop volumineuse (max 20 Mo)." });
@@ -170,7 +177,7 @@ module.exports = async function handler(req, res) {
 
     // ── 1. Watermarkly — image originale → plaque cachée avec logo
     console.log("[Pipeline] Étape 1 — Watermarkly logo plaque...");
-    const watermarklyResult = await blurPlateWatermarkly(originalBuffer);
+    const watermarklyResult = await blurPlateWatermarkly(imageBuffer, originalUrl);
 
     if (!watermarklyResult) {
       console.warn("[Pipeline] Watermarkly échoué — on continue sans masque");
