@@ -188,12 +188,11 @@ async function replaceWhiteWithBlack(imageBuffer, box, imgW, imgH) {
   try {
     const { xmin, ymin, xmax, ymax } = box;
 
-    // Marge légère pour couvrir le blanc résiduel autour du logo
-    const margin = 8;
-    const sx = Math.max(0, xmin - margin);
-    const sy = Math.max(0, ymin - margin);
-    const sw = Math.min(xmax - xmin + margin * 2, imgW - sx);
-    const sh = Math.min(ymax - ymin + margin * 2, imgH - sy);
+    // Zone exacte de la plaque — sans marge pour ne pas toucher la carrosserie
+    const sx = Math.max(0, xmin);
+    const sy = Math.max(0, ymin);
+    const sw = Math.min(xmax - xmin, imgW - sx);
+    const sh = Math.min(ymax - ymin, imgH - sy);
 
     // Extrait la zone de la plaque
     const zoneBuffer = await sharp(imageBuffer)
@@ -204,11 +203,10 @@ async function replaceWhiteWithBlack(imageBuffer, box, imgW, imgH) {
     const { data, info } = zoneBuffer;
     const { width, height, channels } = info;
 
-    // Remplace pixels clairs (R>160, G>160, B>160) par noir
-    // Seuil agressif pour éliminer tous les pixels blancs/gris résiduels du flou
+    // Remplace tous les pixels clairs par noir dans la zone plaque
     for (let i = 0; i < data.length; i += channels) {
       const r = data[i], g = data[i+1], b = data[i+2];
-      if (r > 160 && g > 160 && b > 160) {
+      if (r > 130 && g > 130 && b > 130) {
         data[i] = 0; data[i+1] = 0; data[i+2] = 0;
       }
     }
