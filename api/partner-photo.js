@@ -89,15 +89,15 @@ async function blurPlateWatermarkly(imageBuffer) {
     const logoUrl = process.env.AUTOEASY_LOGO_URL || "";
 
     const params = new URLSearchParams({
-      blur_intensity:       "8",
+      blur_intensity:       "0",    // logo remplace la plaque — pas de flou
       format:               "jpeg",
-      blur_padding:         "0",
       detection_threshold:  "0.3",
     });
 
     if (logoUrl) {
-      params.set("logo_url",  logoUrl);
-      params.set("logo_size", "1.0");
+      params.set("logo_url",    logoUrl);
+      params.set("logo_size",   "1.0");
+      params.set("plate_screws","true");  // rivets réalistes sur la plaque
     }
 
     const res = await withRetry(() =>
@@ -139,99 +139,7 @@ async function blurPlateWatermarkly(imageBuffer) {
 // ─────────────────────────────────────────────────────────────────────────────
 // HANDLER PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-// PLATERECOGNIZER — bbox uniquement pour post-traitement
-// ─────────────────────────────────────────────────────────────────────────────
-async function detectPlate(imageBuffer) {
-  try {
-    const form = new FormData();
-    form.append("upload",  imageBuffer, { filename: "car.jpg", contentType: "image/jpeg" });
-    form.append("regions", "fr");
-    form.append("regions", "re");
 
-    const res = await withRetry(() =>
-      fetch("https://api.platerecognizer.com/v1/plate-reader/", {
-        method:  "POST",
-        headers: {
-          "Authorization": `Token ${process.env.PLATERECOGNIZER_TOKEN}`,
-          ...form.getHeaders(),
-        },
-        body: form,
-      })
-    );
-
-    if (!res.ok) {
-      console.warn(`[PlateRecognizer] Erreur ${res.status}`);
-      return null;
-    }
-
-    const data = await res.json();
-    if (!data.results?.length) {
-      console.log("[PlateRecognizer] Aucune plaque");
-      return null;
-    }
-
-    const best = data.results.reduce((a, b) => (b.score ?? 0) > (a.score ?? 0) ? b : a);
-    console.log(`[PlateRecognizer] bbox: ${JSON.stringify(best.box)}`);
-    return { box: best.box };
-
-  } catch (err) {
-    console.warn("[PlateRecognizer] Erreur :", err.message);
-    return null;
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SHARP — fond noir sur bbox plaque + logo AutoEasy par-dessus
-// ─────────────────────────────────────────────────────────────────────────────
-async function replaceWhiteWithBlack(imageBuffer, box, imgW, imgH) {
-  try {
-    const { xmin, ymin, xmax, ymax } = box;
-    const sx = Math.max(0, xmin);
-    const sy = Math.max(0, ymin);
-    const sw = Math.min(xmax - xmin, imgW - sx);
-    const sh = Math.min(ymax - ymin, imgH - sy);
-
-    // 1. Rectangle noir pleine taille sur la bbox
-    const blackRect = `<svg width="${imgW}" height="${imgH}" xmlns="http://www.w3.org/2000/svg">
-      <rect x="${sx}" y="${sy}" width="${sw}" height="${sh}" fill="#000000"/>
-    </svg>`;
-
-    // 2. Charge le logo AutoEasy et le redimensionne aux dimensions de la plaque
-    const logoUrl  = process.env.AUTOEASY_LOGO_URL || "";
-    let logoLayer  = null;
-
-    if (logoUrl) {
-      try {
-        const logoRes    = await fetch(logoUrl);
-        const logoBuffer = Buffer.from(await logoRes.arrayBuffer());
-        logoLayer = await sharp(logoBuffer)
-          .resize(sw, sh, { fit: "fill" })
-          .toBuffer();
-      } catch (e) {
-        console.warn("[Sharp] Logo non chargé :", e.message);
-      }
-    }
-
-    // 3. Compose : image → rect noir → logo
-    const layers = [{ input: Buffer.from(blackRect), top: 0, left: 0 }];
-    if (logoLayer) {
-      layers.push({ input: logoLayer, left: sx, top: sy });
-    }
-
-    const result = await sharp(imageBuffer)
-      .composite(layers)
-      .jpeg({ quality: 92 })
-      .toBuffer();
-
-    console.log("[Sharp] Fond noir + logo OK");
-    return result;
-
-  } catch (err) {
-    console.warn("[Sharp] replaceWhiteWithBlack erreur :", err.message);
-    return imageBuffer;
-  }
-}
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -266,27 +174,17 @@ module.exports = async function handler(req, res) {
     const { width: imgW, height: imgH } = await sharp(photoroomBuffer).metadata();
     console.log(`[Pipeline] Photoroom OK — ${imgW}x${imgH}`);
 
-    // ── 2. Watermarkly — détecte ET floute la plaque + logo
-    console.log("[Pipeline] Étape 2 — Watermarkly blur plaque...");
+    // ── 2. Watermarkly — remplace la plaque par le logo AutoEasy
+    console.log("[Pipeline] Étape 2 — Watermarkly logo plaque...");
     const watermarklyResult = await blurPlateWatermarkly(photoroomBuffer);
 
     if (!watermarklyResult) {
       console.warn("[Pipeline] Watermarkly échoué — image sans masque plaque");
     }
 
-    // ── 3. PlateRecognizer — récupère la bbox pour post-traitement Sharp
-    // Tourne en parallèle avec Watermarkly pour ne pas allonger le temps de traitement
-    console.log("[Pipeline] Étape 3 — PlateRecognizer bbox...");
-    const plateResult = await detectPlate(photoroomBuffer);
+    const finalBuffer = watermarklyResult ?? photoroomBuffer;
 
-    // ── 4. Sharp — remplace le blanc résiduel par noir dans la bbox
-    console.log("[Pipeline] Étape 4 — Post-traitement noir...");
-    const baseBuffer   = watermarklyResult ?? photoroomBuffer;
-    const finalBuffer  = plateResult
-      ? await replaceWhiteWithBlack(baseBuffer, plateResult.box, imgW, imgH)
-      : baseBuffer;
-
-    console.log(`[Pipeline] Terminé — ${finalBuffer.length} octets | plaque: ${!!watermarklyResult} | bbox: ${!!plateResult}`);
+    console.log(`[Pipeline] Terminé — ${finalBuffer.length} octets | plaque: ${!!watermarklyResult}`);
 
     return res.status(200).json({
       success:       true,
