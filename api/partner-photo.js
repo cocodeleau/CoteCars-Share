@@ -182,47 +182,49 @@ async function detectPlate(imageBuffer) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SHARP — remplace les pixels blancs résiduels par noir dans la bbox plaque
+// SHARP — fond noir sur bbox plaque + logo AutoEasy par-dessus
 // ─────────────────────────────────────────────────────────────────────────────
 async function replaceWhiteWithBlack(imageBuffer, box, imgW, imgH) {
   try {
     const { xmin, ymin, xmax, ymax } = box;
-
-    // Zone exacte de la plaque — sans marge pour ne pas toucher la carrosserie
     const sx = Math.max(0, xmin);
     const sy = Math.max(0, ymin);
     const sw = Math.min(xmax - xmin, imgW - sx);
     const sh = Math.min(ymax - ymin, imgH - sy);
 
-    // Extrait la zone de la plaque
-    const zoneBuffer = await sharp(imageBuffer)
-      .extract({ left: sx, top: sy, width: sw, height: sh })
-      .raw()
-      .toBuffer({ resolveWithObject: true });
+    // 1. Rectangle noir pleine taille sur la bbox
+    const blackRect = `<svg width="${imgW}" height="${imgH}" xmlns="http://www.w3.org/2000/svg">
+      <rect x="${sx}" y="${sy}" width="${sw}" height="${sh}" fill="#000000"/>
+    </svg>`;
 
-    const { data, info } = zoneBuffer;
-    const { width, height, channels } = info;
+    // 2. Charge le logo AutoEasy et le redimensionne aux dimensions de la plaque
+    const logoUrl  = process.env.AUTOEASY_LOGO_URL || "";
+    let logoLayer  = null;
 
-    // Remplace tous les pixels clairs par noir dans la zone plaque
-    for (let i = 0; i < data.length; i += channels) {
-      const r = data[i], g = data[i+1], b = data[i+2];
-      if (r > 130 && g > 130 && b > 130) {
-        data[i] = 0; data[i+1] = 0; data[i+2] = 0;
+    if (logoUrl) {
+      try {
+        const logoRes    = await fetch(logoUrl);
+        const logoBuffer = Buffer.from(await logoRes.arrayBuffer());
+        logoLayer = await sharp(logoBuffer)
+          .resize(sw, sh, { fit: "fill" })
+          .toBuffer();
+      } catch (e) {
+        console.warn("[Sharp] Logo non chargé :", e.message);
       }
     }
 
-    // Recrée le buffer modifié
-    const blackZone = await sharp(data, {
-      raw: { width, height, channels }
-    }).jpeg({ quality: 92 }).toBuffer();
+    // 3. Compose : image → rect noir → logo
+    const layers = [{ input: Buffer.from(blackRect), top: 0, left: 0 }];
+    if (logoLayer) {
+      layers.push({ input: logoLayer, left: sx, top: sy });
+    }
 
-    // Recompose sur l'image complète
     const result = await sharp(imageBuffer)
-      .composite([{ input: blackZone, left: sx, top: sy }])
+      .composite(layers)
       .jpeg({ quality: 92 })
       .toBuffer();
 
-    console.log("[Sharp] Blanc → noir OK");
+    console.log("[Sharp] Fond noir + logo OK");
     return result;
 
   } catch (err) {
