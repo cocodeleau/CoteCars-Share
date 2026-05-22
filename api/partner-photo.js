@@ -89,7 +89,7 @@ async function blurPlateWatermarkly(imageBuffer) {
     const logoUrl = process.env.AUTOEASY_LOGO_URL || "";
 
     const params = new URLSearchParams({
-      blur_intensity:       "0",   // désactive le flou — logo uniquement
+      blur_intensity:       "8",
       format:               "jpeg",
       blur_padding:         "0",
       detection_threshold:  "0.3",
@@ -139,6 +139,99 @@ async function blurPlateWatermarkly(imageBuffer) {
 // ─────────────────────────────────────────────────────────────────────────────
 // HANDLER PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// PLATERECOGNIZER — bbox uniquement pour post-traitement
+// ─────────────────────────────────────────────────────────────────────────────
+async function detectPlate(imageBuffer) {
+  try {
+    const form = new FormData();
+    form.append("upload",  imageBuffer, { filename: "car.jpg", contentType: "image/jpeg" });
+    form.append("regions", "fr");
+    form.append("regions", "re");
+
+    const res = await withRetry(() =>
+      fetch("https://api.platerecognizer.com/v1/plate-reader/", {
+        method:  "POST",
+        headers: {
+          "Authorization": `Token ${process.env.PLATERECOGNIZER_TOKEN}`,
+          ...form.getHeaders(),
+        },
+        body: form,
+      })
+    );
+
+    if (!res.ok) {
+      console.warn(`[PlateRecognizer] Erreur ${res.status}`);
+      return null;
+    }
+
+    const data = await res.json();
+    if (!data.results?.length) {
+      console.log("[PlateRecognizer] Aucune plaque");
+      return null;
+    }
+
+    const best = data.results.reduce((a, b) => (b.score ?? 0) > (a.score ?? 0) ? b : a);
+    console.log(`[PlateRecognizer] bbox: ${JSON.stringify(best.box)}`);
+    return { box: best.box };
+
+  } catch (err) {
+    console.warn("[PlateRecognizer] Erreur :", err.message);
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHARP — remplace les pixels blancs résiduels par noir dans la bbox plaque
+// ─────────────────────────────────────────────────────────────────────────────
+async function replaceWhiteWithBlack(imageBuffer, box, imgW, imgH) {
+  try {
+    const { xmin, ymin, xmax, ymax } = box;
+
+    // Marge légère pour couvrir le blanc résiduel autour du logo
+    const margin = 4;
+    const sx = Math.max(0, xmin - margin);
+    const sy = Math.max(0, ymin - margin);
+    const sw = Math.min(xmax - xmin + margin * 2, imgW - sx);
+    const sh = Math.min(ymax - ymin + margin * 2, imgH - sy);
+
+    // Extrait la zone de la plaque
+    const zoneBuffer = await sharp(imageBuffer)
+      .extract({ left: sx, top: sy, width: sw, height: sh })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const { data, info } = zoneBuffer;
+    const { width, height, channels } = info;
+
+    // Remplace pixels blancs (R>200, G>200, B>200) par noir
+    for (let i = 0; i < data.length; i += channels) {
+      const r = data[i], g = data[i+1], b = data[i+2];
+      if (r > 200 && g > 200 && b > 200) {
+        data[i] = 0; data[i+1] = 0; data[i+2] = 0;
+      }
+    }
+
+    // Recrée le buffer modifié
+    const blackZone = await sharp(data, {
+      raw: { width, height, channels }
+    }).jpeg({ quality: 92 }).toBuffer();
+
+    // Recompose sur l'image complète
+    const result = await sharp(imageBuffer)
+      .composite([{ input: blackZone, left: sx, top: sy }])
+      .jpeg({ quality: 92 })
+      .toBuffer();
+
+    console.log("[Sharp] Blanc → noir OK");
+    return result;
+
+  } catch (err) {
+    console.warn("[Sharp] replaceWhiteWithBlack erreur :", err.message);
+    return imageBuffer;
+  }
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ success: false, error: "Method not allowed" });
@@ -172,17 +265,27 @@ module.exports = async function handler(req, res) {
     const { width: imgW, height: imgH } = await sharp(photoroomBuffer).metadata();
     console.log(`[Pipeline] Photoroom OK — ${imgW}x${imgH}`);
 
-    // ── 2 & 3. Watermarkly — détecte ET floute la plaque en une seule API call
+    // ── 2. Watermarkly — détecte ET floute la plaque + logo
     console.log("[Pipeline] Étape 2 — Watermarkly blur plaque...");
     const watermarklyResult = await blurPlateWatermarkly(photoroomBuffer);
 
-    // Si Watermarkly échoue → image Photoroom telle quelle
-    const finalBuffer = watermarklyResult ?? photoroomBuffer;
     if (!watermarklyResult) {
       console.warn("[Pipeline] Watermarkly échoué — image sans masque plaque");
     }
 
-    console.log(`[Pipeline] Terminé — ${finalBuffer.length} octets | plaque floutée: ${!!watermarklyResult}`);
+    // ── 3. PlateRecognizer — récupère la bbox pour post-traitement Sharp
+    // Tourne en parallèle avec Watermarkly pour ne pas allonger le temps de traitement
+    console.log("[Pipeline] Étape 3 — PlateRecognizer bbox...");
+    const plateResult = await detectPlate(photoroomBuffer);
+
+    // ── 4. Sharp — remplace le blanc résiduel par noir dans la bbox
+    console.log("[Pipeline] Étape 4 — Post-traitement noir...");
+    const baseBuffer   = watermarklyResult ?? photoroomBuffer;
+    const finalBuffer  = plateResult
+      ? await replaceWhiteWithBlack(baseBuffer, plateResult.box, imgW, imgH)
+      : baseBuffer;
+
+    console.log(`[Pipeline] Terminé — ${finalBuffer.length} octets | plaque: ${!!watermarklyResult} | bbox: ${!!plateResult}`);
 
     return res.status(200).json({
       success:       true,
