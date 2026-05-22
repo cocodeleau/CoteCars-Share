@@ -83,6 +83,7 @@
   
 <style id="theme-style">
   :root {
+    --nav-bg: linear-gradient(to right, #ECF6FA, #ffffff);
     --bg: #f0f4fa;
     --bg2: #ffffff;
     --bg3: #f9fafb;
@@ -102,6 +103,7 @@
     --price-badge-bg: #eff4ff;
   }
   body.dark {
+    --nav-bg: linear-gradient(to right, #1C1C1C, #111827);
     --bg: #161b27;
     --bg2: #1e2330;
     --bg3: #252d40;
@@ -1195,7 +1197,7 @@
 
           {/* ── DESKTOP ── */}
           <div className="desktop-spinner">
-            <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
+            <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
               <LogoCoteCars height={32} context="light" />
               <div style={{ display:"flex", gap:20, alignItems:"center" }}>
                 <span style={{ fontSize:13, color:"var(--text3)" }}>🏷️ Nos annonces</span>
@@ -1581,7 +1583,7 @@
 
       return (
         <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
-          <div style={{ background:"var(--card)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
+          <div style={{ background:"var(--nav-bg)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
             <LogoCoteCars height={32} context="light" />
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <DarkToggle />
@@ -2475,7 +2477,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       return (
         <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
           {/* Navbar */}
-          <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10 }}>
+          <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10 }}>
             <div style={{ display:"flex", alignItems:"center", gap:16 }}>
               <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
               <LogoCoteCars height={28} context="light" />
@@ -2654,7 +2656,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           `}</style>
 
           {/* ── Navbar commune ── */}
-          <div style={{ background:"var(--card)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)" }}>
+          <div style={{ background:"var(--nav-bg)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)" }}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
               <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
               <LogoCoteCars height={28} context="light" />
@@ -3511,7 +3513,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
           {/* ═══ DESKTOP ≥ 900px ═══ */}
           <div className="cc-desktop" style={{ minWidth:900 }}>
-            <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
+            <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
               <LogoCoteCars height={40} context="light" />
               <div style={{ display:"flex", gap:20, alignItems:"center" }}>
                 <button onClick={() => setShowAnnonces(true)} style={{ fontSize:13, color:"#8fa0b8", fontWeight:500, background:"none", border:"none", cursor:"pointer" }}>🏷️ Nos annonces</button>

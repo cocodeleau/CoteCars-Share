@@ -86,15 +86,14 @@ async function blurPlateWatermarkly(imageBuffer, originalUrl = null) {
     const logoUrl = process.env.AUTOEASY_LOGO_URL || "";
 
     const params = new URLSearchParams({
-      blur_intensity:      "0",
+      blur_intensity:      "10",   // flou fort en backup si logo non placé
       format:              "jpeg",
       detection_threshold: "0.1",
     });
 
     if (logoUrl) {
-      params.set("logo_url",     logoUrl);
-      params.set("logo_size",    "1.0");
-      params.set("plate_screws", "true");
+      params.set("logo_url",  logoUrl);
+      params.set("logo_size", "1.0");
     }
 
     let res;
