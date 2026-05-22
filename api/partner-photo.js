@@ -189,7 +189,7 @@ async function replaceWhiteWithBlack(imageBuffer, box, imgW, imgH) {
     const { xmin, ymin, xmax, ymax } = box;
 
     // Marge légère pour couvrir le blanc résiduel autour du logo
-    const margin = 4;
+    const margin = 8;
     const sx = Math.max(0, xmin - margin);
     const sy = Math.max(0, ymin - margin);
     const sw = Math.min(xmax - xmin + margin * 2, imgW - sx);
@@ -204,10 +204,11 @@ async function replaceWhiteWithBlack(imageBuffer, box, imgW, imgH) {
     const { data, info } = zoneBuffer;
     const { width, height, channels } = info;
 
-    // Remplace pixels blancs (R>200, G>200, B>200) par noir
+    // Remplace pixels clairs (R>160, G>160, B>160) par noir
+    // Seuil agressif pour éliminer tous les pixels blancs/gris résiduels du flou
     for (let i = 0; i < data.length; i += channels) {
       const r = data[i], g = data[i+1], b = data[i+2];
-      if (r > 200 && g > 200 && b > 200) {
+      if (r > 160 && g > 160 && b > 160) {
         data[i] = 0; data[i+1] = 0; data[i+2] = 0;
       }
     }
