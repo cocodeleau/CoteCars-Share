@@ -158,13 +158,19 @@ module.exports = async function handler(req, res) {
       : "image/jpeg";
     const imageBuffer = Buffer.from(base64Data, "base64");
 
+    // Image originale non compressée (si fournie) — pour Watermarkly
+    const originalImage   = req.body.image_original;
+    const originalBuffer  = originalImage
+      ? Buffer.from(originalImage.includes(",") ? originalImage.split(",")[1] : originalImage, "base64")
+      : imageBuffer;
+
     if (imageBuffer.length > 20 * 1024 * 1024) {
       return res.status(200).json({ success: false, error: "Image trop volumineuse (max 20 Mo)." });
     }
 
     // ── 1. Watermarkly — image originale → plaque cachée avec logo
     console.log("[Pipeline] Étape 1 — Watermarkly logo plaque...");
-    const watermarklyResult = await blurPlateWatermarkly(imageBuffer);
+    const watermarklyResult = await blurPlateWatermarkly(originalBuffer);
 
     if (!watermarklyResult) {
       console.warn("[Pipeline] Watermarkly échoué — on continue sans masque");
