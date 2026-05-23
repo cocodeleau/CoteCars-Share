@@ -211,6 +211,7 @@
         setLoading(false);
       }
 
+    function LicensePlate({ value, onChange }) {
       return (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:"20px" }}
           onClick={e => { if(e.target === e.currentTarget && onClose) onClose(); }}>
@@ -1088,6 +1089,7 @@
         toggleTheme();
         setDark(d => !d);
       }
+    function LicensePlate({ value, onChange }) {
       return (
         <button onClick={handle} title={dark ? "Mode clair" : "Mode sombre"}
           style={{ display:"flex", alignItems:"center", justifyContent:"center", width:36, height:20, borderRadius:999, background: dark ? "#3b5bf0" : "#e2e8f0", border:"none", cursor:"pointer", position:"relative", transition:"background 0.2s", padding:0, flexShrink:0 }}>
@@ -1097,6 +1099,7 @@
       );
     }
 
+    function LicensePlate({ value, onChange }) {
       return (
         <div style={{ display:"flex", alignItems:"stretch", borderRadius:12, overflow:"hidden", border:"2.5px solid #111", background:"white", height:56 }}>
           <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", background:"#1d4ed8", width:32, minWidth:32, paddingBottom:4 }}>
@@ -1126,6 +1129,7 @@
 
       const isDark = document.body.classList.contains('dark');
 
+    function LicensePlate({ value, onChange }) {
       return (
         <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
           <style>{`
@@ -1519,6 +1523,7 @@
 
     function FinitionSimilaireBlock({ result, onElargi }) {
       const finSim = getFinitionSimilaire(result.finition, result.finitionsList || []);
+    function LicensePlate({ value, onChange }) {
       return (
         <div style={{ background:"#FFF7ED", border:"1px solid #FED7AA", borderRadius:16, padding:"14px 16px", marginBottom:12 }}>
           <p style={{ margin:"0 0 10px", fontSize:13, color:"#92400E", fontWeight:600 }}>
@@ -1572,6 +1577,7 @@
         navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2500); if(window.posthog) posthog.capture('rapport_copie', {plate}); });
       }
 
+    function LicensePlate({ value, onChange }) {
       return (
         <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
           <div style={{ background:"var(--nav-bg)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
@@ -1857,6 +1863,7 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
         setLoading(false);
       }
 
+    function LicensePlate({ value, onChange }) {
       return (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:2000, display:"flex", alignItems:"flex-end", justifyContent:"center" }}
           onClick={e => { if(e.target===e.currentTarget) onClose(); }}>
@@ -2153,6 +2160,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
       const stepTitle = ["","📝 Infos du véhicule","📋 Détails & contact","🔗 Champs Leboncoin prêts !"][step];
 
+    function LicensePlate({ value, onChange }) {
       return (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:3000,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
           onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
@@ -2465,6 +2473,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
       if (selected) return <AnnonceDetail annonce={selected} onBack={()=>setSelected(null)} user={user} />;
 
+    function LicensePlate({ value, onChange }) {
       return (
         <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
           {/* Navbar */}
@@ -2635,6 +2644,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
         onBack();
       }
 
+    function LicensePlate({ value, onChange }) {
       return (
         <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
           <style>{`
@@ -2918,6 +2928,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
         setSending(false);
       }
 
+    function LicensePlate({ value, onChange }) {
       return (
         <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"var(--bg)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px" }}>
           <div style={{ position:"relative", marginBottom:16 }}>
@@ -3241,6 +3252,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       const BLUE = "#1a3fdb";
       const BLUE_DARK = "#0f28a8";
 
+    function LicensePlate({ value, onChange }) {
       return (
         <div style={{ fontFamily:"'DM Sans',-apple-system,sans-serif", background:"var(--bg)", minHeight:"100vh", transition:"background 0.2s" }}>
           <style>{`
