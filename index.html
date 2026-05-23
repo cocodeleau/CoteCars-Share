@@ -3337,53 +3337,58 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           )}
           {/* ═══ MOBILE ═══ */}
           <div className="cc-mobile" style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh" }}>
-            <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"16px 20px 24px", position:"relative", overflow:"hidden" }}>
-              <div style={{ position:"absolute", top:-50, right:-50, width:160, height:160, borderRadius:"50%", background:"rgba(255,255,255,0.06)" }} />
-              <div style={{ position:"absolute", bottom:-30, left:-20, width:100, height:100, borderRadius:"50%", background:"rgba(255,255,255,0.04)" }} />
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, position:"relative", zIndex:1 }}>
-                <span style={{ fontWeight:800, fontSize:32, color:"white", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#93c5fd"}}>Cars</span></span>
-                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <button onClick={() => setShowAnnonces(true)} style={{ fontSize:10, fontWeight:700, color:"white", background:"rgba(255,255,255,0.15)", padding:"5px 10px", borderRadius:999, border:"1px solid rgba(255,255,255,0.25)", cursor:"pointer" }}>🏷️ Annonces</button>
-                  <a href="/partner.html" style={{ fontSize:10, fontWeight:700, color:"#8dc63f", background:"#1a1a2e", padding:"5px 8px", borderRadius:5, textDecoration:"none" }}>⚡ Pro</a>
-                  <DarkToggle />
-                  {user ? (
-                    <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                      {user?.photoURL && <img src={user.photoURL} width={26} height={26} style={{ borderRadius:"50%", border:"2px solid rgba(255,255,255,0.3)" }} alt="" />}
-                      <button onClick={() => auth.signOut()} style={{ fontSize:10, color:"rgba(255,255,255,0.7)", background:"rgba(255,255,255,0.1)", padding:"4px 8px", borderRadius:999, border:"none", cursor:"pointer" }}>Déco</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setShowLoginModal(true)} style={{ fontSize:10, fontWeight:700, color:"white", background:"rgba(255,255,255,0.2)", padding:"5px 10px", borderRadius:999, border:"1px solid rgba(255,255,255,0.3)", cursor:"pointer" }}>Se connecter</button>
-                  )}
-                </div>
+
+            {/* ── NAVBAR MOBILE ── */}
+            <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 16px", height:52, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:20 }}>
+              <span style={{ fontWeight:800, fontSize:22, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <button onClick={() => setShowAnnonces(true)} style={{ fontSize:11, fontWeight:700, color:"var(--text2)", background:"var(--bg)", padding:"6px 10px", borderRadius:8, border:"1px solid var(--border)", cursor:"pointer" }}>🏷️</button>
+                <a href="/partner.html" style={{ fontSize:11, fontWeight:700, color:"#8dc63f", background:"#1a1a2e", padding:"6px 8px", borderRadius:6, textDecoration:"none" }}>⚡</a>
+                <DarkToggle />
+                {user ? (
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    {user?.photoURL && <img src={user.photoURL} width={28} height={28} style={{ borderRadius:"50%", border:"2px solid var(--border)" }} alt="" />}
+                    <button onClick={() => auth.signOut()} style={{ fontSize:10, color:"var(--text3)", background:"var(--bg)", padding:"4px 8px", borderRadius:6, border:"1px solid var(--border)", cursor:"pointer" }}>Déco</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowLoginModal(true)} style={{ fontSize:11, fontWeight:700, color:"white", background:"#1a3fdb", padding:"6px 12px", borderRadius:8, border:"none", cursor:"pointer" }}>Connexion</button>
+                )}
               </div>
+            </div>
+
+            {/* ── HERO BLEU ── */}
+            <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"20px 20px 28px", position:"relative", overflow:"hidden" }}>
+              <div style={{ position:"absolute", top:-40, right:-40, width:130, height:130, borderRadius:"50%", background:"rgba(255,255,255,0.06)" }} />
+              <div style={{ position:"absolute", bottom:-20, left:-15, width:80, height:80, borderRadius:"50%", background:"rgba(255,255,255,0.04)" }} />
               <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(255,255,255,0.12)", borderRadius:999, padding:"4px 12px", marginBottom:10, position:"relative", zIndex:1 }}>
-                <div className="pulse" style={{ width:7, height:7, borderRadius:"50%", background:"#93c5fd", display:"inline-block" }} />
+                <div className="pulse" style={{ width:6, height:6, borderRadius:"50%", background:"#93c5fd", display:"inline-block" }} />
                 <span style={{ fontSize:11, color:"rgba(255,255,255,0.85)", fontWeight:600 }}>{(()=>{ const d=new Date(); const seed=(d.getFullYear()*366+d.getMonth()*31+d.getDate())*9301+49297; const base=1800+((seed%17))*35+(d.getDate()*12); return `+${base.toLocaleString("fr-FR")} analyses ce mois-ci`; })()}</span>
               </div>
-              <h1 style={{ color:"white", fontWeight:700, fontSize:24, lineHeight:1.25, margin:"0 0 6px", position:"relative", zIndex:1 }}>Vendez votre voiture<br/><span style={{color:"#93c5fd"}}>au vrai prix.</span></h1>
+              <h1 style={{ color:"white", fontWeight:800, fontSize:26, lineHeight:1.2, margin:"0 0 6px", position:"relative", zIndex:1 }}>Vendez votre voiture<br/><span style={{color:"#93c5fd"}}>au vrai prix.</span></h1>
               <p style={{ color:"rgba(255,255,255,0.65)", fontSize:13, margin:0, position:"relative", zIndex:1 }}>Basé sur Leboncoin, pas l&apos;Argus.</p>
             </div>
-            <div style={{ margin:"-14px 16px 0", background:"var(--card)", borderRadius:20, padding:"18px 16px", boxShadow:"0 4px 24px rgba(26,63,219,0.12)", border:"0.5px solid var(--border)" }}>
-              <div style={{ marginBottom:14 }}>
-                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>Plaque d&apos;immatriculation</label>
+
+            {/* ── FORMULAIRE ── */}
+            <div style={{ margin:"-16px 12px 0", background:"var(--card)", borderRadius:20, padding:"16px 14px", boxShadow:"0 4px 24px rgba(26,63,219,0.12)", border:"0.5px solid var(--border)" }}>
+              <div style={{ marginBottom:12 }}>
+                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Plaque d&apos;immatriculation</label>
                 <LicensePlate value={plate} onChange={handlePlateChange} />
-                <p style={{ margin:"5px 0 0", fontSize:11, color:"var(--text3)", textAlign:"center" }}>Format accepté : AB-123-CD ou AB123CD</p>
                 {plate.length >= 7 && loadingFin && <p style={{ margin:"4px 0 0", fontSize:11, color:"var(--text3)", textAlign:"center" }}>Chargement des finitions...</p>}
               </div>
-              <div style={{ marginBottom:14 }}>
-                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>Kilométrage</label>
-                <div style={{ display:"flex", alignItems:"center", border:"1.5px solid var(--input-border)", borderRadius:12, overflow:"hidden", height:50, background:"var(--input-bg)" }}>
+              <div style={{ marginBottom:12 }}>
+                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Kilométrage</label>
+                <div style={{ display:"flex", alignItems:"center", border:"1.5px solid var(--input-border)", borderRadius:12, overflow:"hidden", height:48, background:"var(--input-bg)" }}>
                   <input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="85 000"
-                    style={{ flex:1, padding:"0 14px", fontSize:17, fontWeight:700, border:"none", outline:"none", background:"transparent", color:"var(--text)" }} inputMode="numeric" />
+                    style={{ flex:1, padding:"0 14px", fontSize:16, fontWeight:700, border:"none", outline:"none", background:"transparent", color:"var(--text)" }} inputMode="numeric" />
                   <span style={{ padding:"0 14px", color:"#8fa0b8", fontWeight:600, fontSize:13 }}>km</span>
                 </div>
               </div>
-              <div style={{ marginBottom:16 }}>
-                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>Boîte de vitesse</label>
+              <div style={{ marginBottom:finitionsList.length > 0 ? 12 : 14 }}>
+                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Boîte de vitesse</label>
                 <div style={{ display:"flex", gap:8 }}>
                   {[{ val:"1", label:"🔧 Manuelle" }, { val:"2", label:"⚙️ Automatique" }].map(opt => (
                     <button key={opt.val} onClick={() => setGearbox(opt.val)}
-                      style={{ flex:1, padding:"12px 0", borderRadius:11, border:`1.5px solid ${gearbox === opt.val ? "#1a3fdb" : "#e2e8f5"}`, background: gearbox === opt.val ? "#eff4ff" : "white", color: gearbox === opt.val ? "#1a3fdb" : "#8fa0b8", fontWeight:700, fontSize:13, cursor:"pointer", transition:"all 0.2s" }}>
+                      style={{ flex:1, padding:"13px 0", borderRadius:11, border:`1.5px solid ${gearbox === opt.val ? "#1a3fdb" : "var(--border)"}`, background: gearbox === opt.val ? "#eff4ff" : "var(--card)", color: gearbox === opt.val ? "#1a3fdb" : "var(--text3)", fontWeight:700, fontSize:13, cursor:"pointer" }}>
                       {opt.label}
                     </button>
                   ))}
@@ -3391,96 +3396,88 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               </div>
               {finitionsList.length > 0 && (
                 <div style={{ marginBottom:14 }}>
-                  <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>
+                  <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>
                     Finition {vehicleInfo ? `· ${vehicleInfo.marque} ${vehicleInfo.modele}` : ""}
                   </label>
                   <select value={finition} onChange={e => setFinition(e.target.value)}
-                    style={{ width:"100%", height:50, padding:"0 40px 0 14px", fontSize:14, fontWeight:600, color: finition ? "#1a1a2e" : "#8fa0b8", border:"1.5px solid #e2e8f5", borderRadius:12, background:"white", cursor:"pointer", outline:"none" }}>
+                    style={{ width:"100%", height:48, padding:"0 14px", fontSize:14, fontWeight:600, color: finition ? "var(--text)" : "#8fa0b8", border:"1.5px solid var(--border)", borderRadius:12, background:"var(--card)", cursor:"pointer", outline:"none" }}>
                     <option value="">Toutes les finitions</option>
                     {finitionsList.map(f => <option key={f} value={f}>{f}</option>)}
                   </select>
-                  <p style={{ margin:"6px 0 0", fontSize:11, color:"#f59e0b" }}>💡 Pour une analyse plus précise, sélectionnez la finition.</p>
+                  <p style={{ margin:"5px 0 0", fontSize:11, color:"#f59e0b" }}>💡 Sélectionnez la finition pour plus de précision.</p>
                 </div>
               )}
               {err && <p style={{ color:"#ef4444", fontSize:13, textAlign:"center", margin:"0 0 10px" }}>{err}</p>}
-              <button onClick={handleAnalyze} style={{ width:"100%", background:"linear-gradient(135deg,#1a3fdb,#0f28a8)", color:"white", fontWeight:700, fontSize:16, borderRadius:14, padding:"16px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 16px rgba(26,63,219,0.35)" }}>
+              <button onClick={handleAnalyze} style={{ width:"100%", background:"linear-gradient(135deg,#1a3fdb,#0f28a8)", color:"white", fontWeight:800, fontSize:16, borderRadius:14, padding:"15px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 16px rgba(26,63,219,0.35)" }}>
                 Analyser le marché 🚀
               </button>
-              <p style={{ textAlign:"center", fontSize:11, color:"var(--text3)", margin:"10px 0 0" }}>Résultat instantané · Aucune inscription</p>
+              <p style={{ textAlign:"center", fontSize:11, color:"var(--text3)", margin:"8px 0 0" }}>Résultat instantané · Aucune inscription</p>
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, margin:"18px 16px 0" }}>
+
+            {/* ── BADGES ── */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, margin:"14px 12px 0" }}>
               {[{icon:"⚡️",label:"Instantané"},{icon:"🎯",label:"Prix précis"},{icon:"🔒",label:"100% privé"}].map((item,i) => (
-                <div key={i} style={{ background:"var(--card)", borderRadius:14, padding:12, textAlign:"center", boxShadow:"0 1px 4px rgba(26,63,219,0.06)", border:"0.5px solid var(--border)" }}>
+                <div key={i} style={{ background:"var(--card)", borderRadius:12, padding:"10px 6px", textAlign:"center", border:"0.5px solid var(--border)" }}>
                   <div style={{ fontSize:18, marginBottom:3 }}>{item.icon}</div>
-                  <div style={{ fontSize:11, fontWeight:600, color:"#4b5563" }}>{item.label}</div>
+                  <div style={{ fontSize:11, fontWeight:600, color:"var(--text2)" }}>{item.label}</div>
                 </div>
               ))}
             </div>
+
+            {/* ── HISTORIQUE ── */}
             {historique.length > 0 && (
-              <div style={{ margin:"20px 16px 0" }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+              <div style={{ margin:"16px 12px 0" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                   <span style={{ fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em" }}>🕐 Recherches récentes</span>
                   <button onClick={clearHistorique} style={{ fontSize:11, color:"var(--text3)", background:"none", border:"none", cursor:"pointer", padding:0 }}>Effacer</button>
                 </div>
                 <div style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", overflow:"hidden" }}>
                   {historique.map((h, i) => (
                     <button key={i} onClick={() => { setPlate(h.plate); setKm(h.km ? String(h.km) : ""); }}
-                      style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 14px", borderBottom: i < historique.length-1 ? "1px solid #f8faff" : "none", background:"var(--card)", border:"none", cursor:"pointer", textAlign:"left" }}>
+                      style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"11px 14px", borderBottom: i < historique.length-1 ? "1px solid var(--hist-border)" : "none", background:"var(--card)", border:"none", cursor:"pointer", textAlign:"left" }}>
                       <div style={{ flex:1, minWidth:0 }}>
                         <p style={{ margin:0, fontSize:13, fontWeight:700, color:"var(--text)" }}>{h.plate}</p>
                         <p style={{ margin:"2px 0 0", fontSize:11, color:"var(--text3)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nom}{h.finition ? " · " + h.finition : ""}</p>
                         {h.stats && (
-                          <div style={{ display:"flex", gap:5, marginTop:5, flexWrap:"wrap" }}>
+                          <div style={{ display:"flex", gap:4, marginTop:4, flexWrap:"wrap" }}>
                             <span style={{ fontSize:10, fontWeight:700, color:"#f59e0b", background:"#fffbeb", padding:"2px 6px", borderRadius:999 }}>⚡️ {h.stats.pMin?.toLocaleString("fr-FR")}€</span>
                             <span style={{ fontSize:10, fontWeight:700, color:"#1a3fdb", background:"#eff4ff", padding:"2px 6px", borderRadius:999 }}>🎯 {h.stats.p25?.toLocaleString("fr-FR")}€</span>
                             <span style={{ fontSize:10, fontWeight:700, color:"#6366f1", background:"#eef2ff", padding:"2px 6px", borderRadius:999 }}>💎 {h.stats.p50?.toLocaleString("fr-FR")}€</span>
                           </div>
                         )}
                       </div>
-                      <div style={{ textAlign:"right", flexShrink:0, marginLeft:10 }}>
-                        <p style={{ margin:0, fontSize:10, color:"#8fa0b8" }}>{h.date}</p>
-                      </div>
+                      <p style={{ margin:0, fontSize:10, color:"#8fa0b8", flexShrink:0, marginLeft:8 }}>{h.date}</p>
                     </button>
                   ))}
                 </div>
               </div>
             )}
-            <div style={{ margin:"28px 16px 0", paddingBottom:32 }}>
-              <div style={{ textAlign:"center", marginBottom:18 }}>
-                <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#eff4ff", border:"1px solid #93c5fd", borderRadius:999, padding:"4px 12px", marginBottom:10 }}>
-                  <span style={{ fontSize:11, fontWeight:600, color:"#1a3fdb" }}>Comment ça marche</span>
-                </div>
-                <h2 style={{ fontWeight:700, fontSize:20, color:"#1a1a2e", margin:"0 0 4px" }}>Simple comme bonjour</h2>
-                <p style={{ color:"#8fa0b8", fontSize:13, margin:0 }}>Obtenez le prix du marché en 30 secondes</p>
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+
+            {/* ── COMMENT ÇA MARCHE ── */}
+            <div style={{ margin:"16px 12px 0", paddingBottom:32 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
                 {[
-                  { num:"1", icon:"🔍", title:"Entrez votre plaque", desc:"On identifie automatiquement votre véhicule (marque, modèle, année, motorisation) via la base officielle SIV.", color:"#1a3fdb" },
-                  { num:"2", icon:"📊", title:"On analyse Leboncoin", desc:"On analyse en temps réel les annonces de professionnels sur Leboncoin similaires à votre véhicule.", color:"#6366f1" },
-                  { num:"3", icon:"💰", title:"Vous obtenez 3 prix", desc:"Prix agressif pour vendre vite, prix marché pour le maximum de contacts, prix haut avec marge de négociation.", color:"#f59e0b" },
+                  { num:"1", icon:"🔍", title:"Plaque", desc:"Identification auto SIV", color:"#1a3fdb" },
+                  { num:"2", icon:"📊", title:"Leboncoin", desc:"Annonces en temps réel", color:"#6366f1" },
+                  { num:"3", icon:"💰", title:"3 prix", desc:"Agressif, marché, haut", color:"#f59e0b" },
                 ].map((step, i) => (
-                  <div key={i} style={{ display:"flex", gap:14, alignItems:"flex-start", background:"var(--card)", borderRadius:14, padding:"14px", border:"0.5px solid var(--border)" }}>
-                    <div style={{ width:36, height:36, minWidth:36, borderRadius:"50%", background:step.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>{step.icon}</div>
-                    <div>
-                      <p style={{ margin:"0 0 3px", fontSize:13, fontWeight:700, color:"var(--text)" }}>{step.num}. {step.title}</p>
-                      <p style={{ margin:0, fontSize:12, color:"var(--text3)", lineHeight:1.5 }}>{step.desc}</p>
-                    </div>
+                  <div key={i} style={{ background:"var(--card)", borderRadius:14, padding:"12px 10px", textAlign:"center", border:"0.5px solid var(--border)" }}>
+                    <div style={{ width:32, height:32, borderRadius:"50%", background:step.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, margin:"0 auto 8px" }}>{step.icon}</div>
+                    <p style={{ margin:"0 0 2px", fontSize:11, fontWeight:700, color:"var(--text)" }}>{step.title}</p>
+                    <p style={{ margin:0, fontSize:10, color:"var(--text3)", lineHeight:1.4 }}>{step.desc}</p>
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop:14, background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:14, padding:"14px" }}>
-                <p style={{ margin:0, fontSize:12, color:"#1a3fdb", fontWeight:600, marginBottom:3 }}>🔒 Vos données restent privées</p>
-                <p style={{ margin:0, fontSize:11, color:"#3b5bdb", lineHeight:1.5 }}>On ne stocke ni votre plaque, ni vos informations personnelles.</p>
+              <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:12, padding:"12px 14px", marginBottom:16 }}>
+                <p style={{ margin:0, fontSize:12, color:"#1a3fdb", fontWeight:600 }}>🔒 Vos données restent privées</p>
+                <p style={{ margin:"3px 0 0", fontSize:11, color:"#3b5bdb", lineHeight:1.5 }}>On ne stocke ni votre plaque, ni vos informations personnelles.</p>
               </div>
-              <div style={{ marginTop:24, textAlign:"center" }}>
-                <p style={{ fontSize:11, color:"var(--text3)", margin:0 }}>© 2025 CoteCars ·
-                  <a href="/mentions-legales.html" style={{ color:"#8fa0b8", marginLeft:6 }}>Mentions légales</a> ·
-                  <a href="/cgu.html" style={{ color:"#8fa0b8", marginLeft:6 }}>CGU</a>
-                </p>
-              </div>
+              <p style={{ fontSize:11, color:"var(--text3)", margin:0, textAlign:"center" }}>© 2025 CoteCars ·
+                <a href="/mentions-legales.html" style={{ color:"#8fa0b8", marginLeft:6 }}>Mentions légales</a> ·
+                <a href="/cgu.html" style={{ color:"#8fa0b8", marginLeft:6 }}>CGU</a>
+              </p>
             </div>
           </div>
-
           {/* ═══ DESKTOP ≥ 900px ═══ */}
           <div className="cc-desktop" style={{ minWidth:900 }}>
             <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
