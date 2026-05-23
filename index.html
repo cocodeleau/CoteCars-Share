@@ -16,6 +16,10 @@
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="apple-touch-icon" href="/favicon.png">
 
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
+
   <!-- Open Graph (WhatsApp, Facebook, LinkedIn) -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://cotecars.fr/" />
@@ -83,6 +87,8 @@
   
 <style id="theme-style">
   :root {
+    --nav-bg: linear-gradient(to right, #ECF6FA, #ffffff);
+    --nav-bg: linear-gradient(to right, #ECF6FA, #ffffff);
     --bg: #f0f4fa;
     --bg2: #ffffff;
     --bg3: #f9fafb;
@@ -102,6 +108,8 @@
     --price-badge-bg: #eff4ff;
   }
   body.dark {
+    --nav-bg: linear-gradient(to right, #1C1C1C, #111827);
+    --nav-bg: linear-gradient(to right, #1C1C1C, #111827);
     --bg: #161b27;
     --bg2: #1e2330;
     --bg3: #252d40;
@@ -123,33 +131,22 @@
 </style>
 
   <div id="root"></div>
-  <!-- Firebase initialisé de manière asynchrone depuis /api/firebase-config -->
-  <!-- Aucune clé n'est exposée dans ce fichier HTML -->
-  <script>
-    window.__firebaseReady = fetch("/api/firebase-config")
-      .then(r => r.json())
-      .then(cfg => {
-        firebase.initializeApp(cfg);
-        window.__firebase = {
-          auth:           firebase.auth(),
-          db:             firebase.firestore(),
-          storage:        firebase.storage(),
-          googleProvider: new firebase.auth.GoogleAuthProvider(),
-        };
-      })
-      .catch(err => {
-        console.error("[Firebase] Impossible de charger la config :", err);
-        document.getElementById("root").innerHTML =
-          '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#ef4444">Erreur de chargement. Veuillez réessayer.</div>';
-      });
-  </script>
-
   <script type="text/babel">
     const { useState } = React;
-
-    // Firebase — disponible via window.__firebase après initialisation asynchrone
-    // Les variables auth/db/storage sont extraites après le chargement
-    let auth, db, storage, googleProvider;
+    // Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCGVGeYrZ7JIgOTXN598V1O_0ez9QETyoA",
+      authDomain: "cotecars-8857f.firebaseapp.com",
+      projectId: "cotecars-8857f",
+      storageBucket: "cotecars-8857f.firebasestorage.app",
+      messagingSenderId: "727958687493",
+      appId: "1:727958687493:web:f1ca0c1cacb899e425316c"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+    const googleProvider = new firebase.auth.GoogleAuthProvider();
 
     // Dark mode
     function initTheme() {
@@ -1154,7 +1151,7 @@
           {/* ── MOBILE ── */}
           <div className="mobile-spinner">
             <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"16px 20px 20px" }}>
-              <span style={{ color:"white", fontWeight:700, fontSize:18 }}>Cote<span style={{color:"#93c5fd"}}>Cars</span></span>
+              <span style={{ fontWeight:800, fontSize:32, color:"white", fontFamily:"'DM Sans',-apple-system,sans-serif", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#93c5fd"}}>Cars</span></span>
             </div>
             <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"48px 24px", gap:20 }}>
               <div style={{ position:"relative", width:72, height:72, display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -1194,8 +1191,8 @@
 
           {/* ── DESKTOP ── */}
           <div className="desktop-spinner">
-            <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
-              <span style={{ fontSize:20, fontWeight:700, color:"var(--text)" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
+            <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
+              <span style={{ fontWeight:800, fontSize:32, color:"var(--text)", fontFamily:"'DM Sans',-apple-system,sans-serif", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
               <div style={{ display:"flex", gap:20, alignItems:"center" }}>
                 <span style={{ fontSize:13, color:"var(--text3)" }}>🏷️ Nos annonces</span>
                 <span style={{ fontSize:13, color:"var(--text3)" }}>Comment ça marche</span>
@@ -1580,8 +1577,8 @@
 
       return (
         <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
-          <div style={{ background:"var(--card)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
-            <span onClick={onReset} style={{ fontWeight:800, fontSize:28, color:EMERALD, letterSpacing:"-0.5px", cursor:"pointer" }}>Cote<span style={{color:"var(--text2)"}}>Cars</span></span>
+          <div style={{ background:"var(--nav-bg)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
+            <span style={{ fontWeight:800, fontSize:32, color:"var(--text)", fontFamily:"'DM Sans',-apple-system,sans-serif", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <DarkToggle />
               {user ? (
@@ -1598,21 +1595,21 @@
             </div>
           </div>
           <div style={{ padding:"24px 28px 80px", maxWidth:1200, margin:"0 auto" }}>
-            <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:14, padding:"18px 20px", marginBottom:14 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+            <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:14, padding:"12px 14px", marginBottom:14 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 {veh.AWN_logo_marque && (
-                  <img src={veh.AWN_logo_marque} alt={veh.AWN_marque} style={{ width:64, height:64, objectFit:"contain", flexShrink:0 }} />
+                  <img src={veh.AWN_logo_marque} alt={veh.AWN_marque} style={{ width:36, height:36, objectFit:"contain", flexShrink:0 }} />
                 )}
                 <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ margin:0, color:"var(--badge-text)", fontWeight:600, fontSize:15 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
-                  {nom && <p style={{ margin:"6px 0 0", color:"#1a3fdb", fontWeight:800, fontSize:20 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
-                  <p style={{ margin:"6px 0 0", color:"var(--badge-text)", fontSize:15 }}>
+                  <p style={{ margin:0, color:"var(--badge-text)", fontWeight:600, fontSize:12 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
+                  {nom && <p style={{ margin:"3px 0 0", color:"#1a3fdb", fontWeight:800, fontSize:14 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
+                  <p style={{ margin:"3px 0 0", color:"var(--badge-text)", fontSize:12 }}>
                     {veh.AWN_energie} · {veh.AWN_puissance_CH} ch
                     {veh.AWN_boite ? ` · ${veh.AWN_boite}` : ""}
                     {" · "}{veh.AWN_date_mise_en_circulation}
                   </p>
                   {(veh.AWN_version||veh.AWN_nb_portes||veh.AWN_cylindres) && (
-                    <p style={{ margin:"4px 0 0", color:"#1e3a8a", fontSize:14 }}>
+                    <p style={{ margin:"2px 0 0", color:"#1e3a8a", fontSize:11 }}>
                       {veh.AWN_version ? veh.AWN_version+" · " : ""}
                       {veh.AWN_nb_portes ? veh.AWN_nb_portes+" portes · " : ""}
                       {veh.AWN_passagers ? veh.AWN_passagers+" places · " : ""}
@@ -1620,15 +1617,15 @@
                     </p>
                   )}
                   {veh.AWN_vin && (
-                    <p style={{ margin:"4px 0 0", color:"var(--text3)", fontSize:12, fontFamily:"monospace", letterSpacing:"0.05em" }}>
+                    <p style={{ margin:"3px 0 0", color:"var(--text3)", fontSize:10, fontFamily:"monospace", letterSpacing:"0.05em" }}>
                       VIN : {veh.AWN_vin}
                     </p>
                   )}
                 </div>
-                {/* Photo du modèle */}
+                {/* Photo du modèle — masquée sur mobile */}
                 {veh.AWN_photo_modele && (
                   <img src={veh.AWN_photo_modele} alt={`${veh.AWN_marque} ${veh.AWN_modele}`}
-                    style={{ width:260, height:160, objectFit:"contain", flexShrink:0, mixBlendMode:"multiply" }}
+                    style={{ width:100, height:64, objectFit:"contain", flexShrink:0, mixBlendMode:"multiply" }}
                     onError={e => { e.target.style.display="none"; }}
                   />
                 )}
@@ -1644,14 +1641,14 @@
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:0 }}>
                   {[
                     { icon:"⚡️", label:"AGRESSIF", sub:"Vente rapide", val:stats.pMin, color:"#F59E0B", border:"1px solid #fde68a" },
-                    { icon:"🎯", label:"MARCHÉ", sub:"Max de contacts", val:stats.p25, color:EMERALD, border:"1px solid "+EMERALD, recommended:true },
-                    { icon:"💎", label:"HAUT", sub:"Marge de négo", val:stats.p50, color:"#6366F1", border:"1px solid #c7d2fe" },
+                    { icon:"🎯", label:"MARCHÉ", sub:"Max contacts", val:stats.p25, color:EMERALD, border:"1px solid "+EMERALD, recommended:true },
+                    { icon:"💎", label:"HAUT", sub:"Marge négo", val:stats.p50, color:"#6366F1", border:"1px solid #c7d2fe" },
                   ].map((c, i) => (
-                    <div key={i} style={{ padding:"16px 18px", background:"var(--card)", borderRight: i < 2 ? `0.5px solid var(--border)` : "none", position:"relative", borderTop: c.recommended ? `2px solid ${EMERALD}` : "none" }}>
-                      {c.recommended && <div style={{ position:"absolute", top:-9, left:"50%", transform:"translateX(-50%)", background:EMERALD, color:"white", fontSize:8, padding:"2px 10px", borderRadius:999, whiteSpace:"nowrap", fontWeight:700 }}>Recommandé</div>}
-                      <p style={{ margin:0, fontSize:9, fontWeight:700, color:c.color, textTransform:"uppercase", letterSpacing:"0.08em" }}>{c.icon} {c.label}</p>
-                      <p style={{ margin:"8px 0 3px", fontSize:26, fontWeight:700, color:"var(--text)", filter: isConnected ? "none" : "blur(6px)", userSelect: isConnected ? "auto" : "none", letterSpacing:"-0.5px" }}>{fmt(c.val)}</p>
-                      <p style={{ margin:0, fontSize:10, color:"var(--text2)" }}>{c.sub}</p>
+                    <div key={i} style={{ padding:"12px 8px", background:"var(--card)", borderRight: i < 2 ? `0.5px solid var(--border)` : "none", position:"relative", borderTop: c.recommended ? `2px solid ${EMERALD}` : "none" }}>
+                      {c.recommended && <div style={{ position:"absolute", top:-9, left:"50%", transform:"translateX(-50%)", background:EMERALD, color:"white", fontSize:8, padding:"2px 8px", borderRadius:999, whiteSpace:"nowrap", fontWeight:700 }}>Recommandé</div>}
+                      <p style={{ margin:0, fontSize:8, fontWeight:700, color:c.color, textTransform:"uppercase", letterSpacing:"0.06em" }}>{c.icon} {c.label}</p>
+                      <p style={{ margin:"6px 0 2px", fontSize:18, fontWeight:700, color:"var(--text)", filter: isConnected ? "none" : "blur(6px)", userSelect: isConnected ? "auto" : "none", letterSpacing:"-0.5px", whiteSpace:"nowrap" }}>{fmt(c.val)}</p>
+                      <p style={{ margin:0, fontSize:9, color:"var(--text2)" }}>{c.sub}</p>
                     </div>
                   ))}
                 </div>
@@ -1678,11 +1675,11 @@
                   <div style={{ padding:"10px 16px", borderBottom:"0.5px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                     <p style={{ margin:0, fontSize:10, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>🔍 Annonces similaires</p>
                   </div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)" }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)" }}>
                   {cleanAds.map((ad, i) => (
                     <a key={i} href={ad.url} target="_blank" rel="noopener noreferrer"
-                      style={{ display:"flex", flexDirection:"column", padding:"10px 12px", borderRight: i % 3 < 2 ? "0.5px solid var(--border)" : "none", borderBottom: i < cleanAds.length - (cleanAds.length % 3 || 3) ? "0.5px solid var(--border)" : "none", textDecoration:"none" }}>
-                      <p style={{ margin:0, fontSize:11, fontWeight:600, color:"var(--text)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ad.subject}</p>
+                      style={{ display:"flex", flexDirection:"column", padding:"10px 12px", borderRight: i % 2 < 1 ? "0.5px solid var(--border)" : "none", borderBottom: i < cleanAds.length - (cleanAds.length % 2 || 2) ? "0.5px solid var(--border)" : "none", textDecoration:"none" }}>
+                      <p style={{ margin:0, fontSize:11, fontWeight:600, color:"var(--text)", overflow:"hidden", textOverflow:"ellipsis", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{ad.subject}</p>
                       <p style={{ margin:"2px 0 0", fontSize:10, color:"var(--text3)" }}>
                         {getAttr(ad,"regdate") ? getAttr(ad,"regdate")+" · " : ""}
                         {getAttr(ad,"mileage") ? parseInt(getAttr(ad,"mileage")).toLocaleString("fr-FR")+" km" : ""}
@@ -2474,10 +2471,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       return (
         <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
           {/* Navbar */}
-          <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10 }}>
+          <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10 }}>
             <div style={{ display:"flex", alignItems:"center", gap:16 }}>
               <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
-              <span style={{ fontWeight:800, fontSize:28, color:"#1a3fdb", letterSpacing:"-0.5px" }}>Cote<span style={{color:"var(--text2)"}}>Cars</span></span>
+              <span style={{ fontWeight:800, fontSize:32, color:"var(--text)", fontFamily:"'DM Sans',-apple-system,sans-serif", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
               <span style={{ fontSize:13, color:"var(--text3)", fontWeight:500 }}>Annonces</span>
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
@@ -2653,10 +2650,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           `}</style>
 
           {/* ── Navbar commune ── */}
-          <div style={{ background:"var(--card)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)" }}>
+          <div style={{ background:"var(--nav-bg)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)" }}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
               <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
-              <span style={{ fontWeight:800, fontSize:28, color:"#1a3fdb", letterSpacing:"-0.5px" }}>Cote<span style={{color:"var(--text2)"}}>Cars</span></span>
+              <span style={{ fontWeight:800, fontSize:32, color:"var(--text)", fontFamily:"'DM Sans',-apple-system,sans-serif", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <DarkToggle />
@@ -3077,10 +3074,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           const sivData = await sivRes.json();
           const veh = sivData.data || sivData.données || {};
           const marque = veh.AWN_marque || "";
-          const modeleRaw = (veh.AWN_nom_commercial || veh.AWN_modele || "").replace(/_/g, " ");
-          const fins = getFinitions(marque, modeleRaw);
+          const modele = veh.AWN_modele || "";
+          const fins = getFinitions(marque, modele);
           setFinitionsList(fins);
-          setVehicleInfo({ marque, modele: modeleRaw });
+          setVehicleInfo({ marque, modele });
           setFinition("");
         } catch(e) {}
         setFinLoaded(true);
@@ -3099,8 +3096,8 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           const sivData = await sivRes.json();
           const veh = sivData.data || sivData.données || {};
           const marque = veh.AWN_marque || "";
-          const modele = (veh.AWN_nom_commercial || veh.AWN_modele || "").replace(/_/g, " ");
-          const nom = [marque, veh.AWN_modele, veh.AWN_date_mise_en_circulation?.slice(6)].filter(Boolean).join(" ");
+          const modele = veh.AWN_modele || "";
+          const nom = [marque, modele, veh.AWN_date_mise_en_circulation?.slice(6)].filter(Boolean).join(" ");
           if (!marque || !modele) throw new Error("Véhicule non identifié.");
 
           const kmUser = km ? parseInt(km) : null;
@@ -3148,6 +3145,35 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
           let resultData = { veh, nom, ads, stats, finition, peuResultats, marque, modele, kmUser, anneeUser, chUser, fuelCode, gearbox, finitionsList: finitionsList2 };
           if (veh.AWN_energie_SUSPECT) {
+            // Relancer par VIN pour obtenir des données plus précises (puissance, cylindrée, version)
+            const vinCode = veh.AWN_vin;
+            if (vinCode) {
+              try {
+                const vinRes = await fetch(`/api/rapid-api-requests?vin=${vinCode}`);
+                if (vinRes.ok) {
+                  const vinData = await vinRes.json();
+                  const vehVin = vinData.data;
+                  if (vehVin && !vehVin.error) {
+                    // Garder les deux valeurs énergie contradictoires pour le modal
+                    vehVin.AWN_energie_SUSPECT = true;
+                    vehVin.AWN_energie_SUSPECT_valeurs = veh.AWN_energie_SUSPECT_valeurs;
+                    const nomVin = [vehVin.AWN_marque, vehVin.AWN_modele, vehVin.AWN_date_mise_en_circulation?.slice(-4)].filter(Boolean).join(" ");
+                    const chVin = vehVin.AWN_puissance_CH || chUser;
+                    resultData = {
+                      ...resultData,
+                      veh: vehVin,
+                      nom: nomVin,
+                      chUser: chVin,
+                      marque: vehVin.AWN_marque || marque,
+                      modele: vehVin.AWN_modele || modele,
+                      anneeUser: vehVin.AWN_date_mise_en_circulation ? parseInt(vehVin.AWN_date_mise_en_circulation.slice(-4)) : anneeUser,
+                    };
+                  }
+                }
+              } catch(e) {
+                console.warn('[VIN] Recherche VIN échouée, on garde les données plaque', e.message);
+              }
+            }
             setPendingResult(resultData);
             setShowEnergieConfirm(true);
             setState("home");
@@ -3290,10 +3316,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                           const r = {...pendingResult, veh: {...pendingResult.veh}};
                           r.veh.AWN_energie = val;
                           r.fuelCode = chosenFuelCode;
-                          // Utiliser chUser du pendingResult
+                          // Utiliser chUser du pendingResult (données VIN si disponible)
                           const chFinal = r.chUser || r.veh.AWN_puissance_CH;
                           const anneeFinal = r.anneeUser || (r.veh.AWN_date_mise_en_circulation ? parseInt(r.veh.AWN_date_mise_en_circulation.slice(-4)) : null);
-                          // Relancer Leboncoin avec le bon carburant choisi
+                          // Relancer Leboncoin avec le bon carburant et les bonnes données VIN
                           const lbcParams = new URLSearchParams({ marque: r.marque, modele: r.modele });
                           if (r.kmUser)        lbcParams.set("km", r.kmUser);
                           if (anneeFinal)      lbcParams.set("annee", anneeFinal);
@@ -3339,7 +3365,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <div style={{ position:"absolute", top:-50, right:-50, width:160, height:160, borderRadius:"50%", background:"rgba(255,255,255,0.06)" }} />
               <div style={{ position:"absolute", bottom:-30, left:-20, width:100, height:100, borderRadius:"50%", background:"rgba(255,255,255,0.04)" }} />
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, position:"relative", zIndex:1 }}>
-                <span style={{ fontWeight:700, fontSize:20, color:"white" }}>Cote<span style={{color:"#93c5fd"}}>Cars</span></span>
+                <span style={{ fontWeight:800, fontSize:32, color:"white", fontFamily:"'DM Sans',-apple-system,sans-serif", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#93c5fd"}}>Cars</span></span>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <button onClick={() => setShowAnnonces(true)} style={{ fontSize:10, fontWeight:700, color:"white", background:"rgba(255,255,255,0.15)", padding:"5px 10px", borderRadius:999, border:"1px solid rgba(255,255,255,0.25)", cursor:"pointer" }}>🏷️ Annonces</button>
                   <a href="/partner.html" style={{ fontSize:10, fontWeight:700, color:"#8dc63f", background:"#1a1a2e", padding:"5px 8px", borderRadius:5, textDecoration:"none" }}>⚡ Pro</a>
@@ -3376,17 +3402,6 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <span style={{ padding:"0 14px", color:"#8fa0b8", fontWeight:600, fontSize:13 }}>km</span>
                 </div>
               </div>
-              <div style={{ marginBottom:16 }}>
-                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>Boîte de vitesse</label>
-                <div style={{ display:"flex", gap:8 }}>
-                  {[{ val:"1", label:"🔧 Manuelle" }, { val:"2", label:"⚙️ Automatique" }].map(opt => (
-                    <button key={opt.val} onClick={() => setGearbox(opt.val)}
-                      style={{ flex:1, padding:"12px 0", borderRadius:11, border:`1.5px solid ${gearbox === opt.val ? "#1a3fdb" : "#e2e8f5"}`, background: gearbox === opt.val ? "#eff4ff" : "white", color: gearbox === opt.val ? "#1a3fdb" : "#8fa0b8", fontWeight:700, fontSize:13, cursor:"pointer", transition:"all 0.2s" }}>
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
               {finitionsList.length > 0 && (
                 <div style={{ marginBottom:14 }}>
                   <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>
@@ -3400,6 +3415,17 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <p style={{ margin:"6px 0 0", fontSize:11, color:"#f59e0b" }}>💡 Pour une analyse plus précise, sélectionnez la finition.</p>
                 </div>
               )}
+              <div style={{ marginBottom:16 }}>
+                <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:7 }}>Boîte de vitesse</label>
+                <div style={{ display:"flex", gap:8 }}>
+                  {[{ val:"1", label:"🔧 Manuelle" }, { val:"2", label:"⚙️ Automatique" }].map(opt => (
+                    <button key={opt.val} onClick={() => setGearbox(opt.val)}
+                      style={{ flex:1, padding:"12px 0", borderRadius:11, border:`1.5px solid ${gearbox === opt.val ? "#1a3fdb" : "#e2e8f5"}`, background: gearbox === opt.val ? "#eff4ff" : "white", color: gearbox === opt.val ? "#1a3fdb" : "#8fa0b8", fontWeight:700, fontSize:13, cursor:"pointer", transition:"all 0.2s" }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {err && <p style={{ color:"#ef4444", fontSize:13, textAlign:"center", margin:"0 0 10px" }}>{err}</p>}
               <button onClick={handleAnalyze} style={{ width:"100%", background:"linear-gradient(135deg,#1a3fdb,#0f28a8)", color:"white", fontWeight:700, fontSize:16, borderRadius:14, padding:"16px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 16px rgba(26,63,219,0.35)" }}>
                 Analyser le marché 🚀
@@ -3481,8 +3507,8 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
           {/* ═══ DESKTOP ≥ 900px ═══ */}
           <div className="cc-desktop" style={{ minWidth:900 }}>
-            <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
-              <span style={{ fontSize:32, fontWeight:800, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
+            <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
+              <span style={{ fontWeight:800, fontSize:32, color:"var(--text)", fontFamily:"'DM Sans',-apple-system,sans-serif", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
               <div style={{ display:"flex", gap:20, alignItems:"center" }}>
                 <button onClick={() => setShowAnnonces(true)} style={{ fontSize:13, color:"#8fa0b8", fontWeight:500, background:"none", border:"none", cursor:"pointer" }}>🏷️ Nos annonces</button>
                 <span style={{ fontSize:13, color:"#8fa0b8", fontWeight:500 }}>Comment ça marche</span>
@@ -3512,16 +3538,26 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <div>
                     <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6, display:"block" }}>Plaque d&apos;immatriculation</label>
                     <div style={{ marginBottom:12 }}><LicensePlate value={plate} onChange={handlePlateChange} /></div>
-                    <div style={{ marginBottom:12 }}>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
+                      <div>
                         <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5, display:"block" }}>Kilométrage</label>
                         <div style={{ display:"flex", alignItems:"center", background:"rgba(255,255,255,0.1)", borderRadius:10, border:"1px solid rgba(255,255,255,0.18)", height:42, overflow:"hidden" }}>
                           <input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="85 000"
                             style={{ flex:1, padding:"0 10px", fontSize:14, fontWeight:600, border:"none", outline:"none", background:"transparent", color:"white" }} inputMode="numeric" />
                           <span style={{ padding:"0 10px", color:"rgba(255,255,255,0.5)", fontSize:12 }}>km</span>
                         </div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5, display:"block" }}>Finition</label>
+                        <select value={finition} onChange={e => setFinition(e.target.value)}
+                          style={{ width:"100%", height:42, padding:"0 10px", fontSize:13, fontWeight:600, color: finition ? "white" : "rgba(255,255,255,0.5)", border:"1px solid rgba(255,255,255,0.18)", borderRadius:10, background:"rgba(255,255,255,0.1)", cursor:"pointer", outline:"none" }}>
+                          <option value="" style={{color:"#333"}}>Toutes</option>
+                          {finitionsList.map(f => <option key={f} value={f} style={{color:"#333"}}>{f}</option>)}
+                        </select>
+                      </div>
                     </div>
                     <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6, display:"block" }}>Boîte de vitesse</label>
-                    <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+                    <div style={{ display:"flex", gap:8, marginBottom:16 }}>
                       {[{ val:"1", label:"🔧 Manuelle" }, { val:"2", label:"⚙️ Automatique" }].map(opt => (
                         <button key={opt.val} onClick={() => setGearbox(opt.val)}
                           style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1.5px solid ${gearbox === opt.val ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.2)"}`, background: gearbox === opt.val ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)", color: gearbox === opt.val ? "white" : "rgba(255,255,255,0.45)", fontWeight:600, fontSize:13, cursor:"pointer" }}>
@@ -3529,16 +3565,6 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                         </button>
                       ))}
                     </div>
-                    {finitionsList.length > 0 && (
-                      <div style={{ marginBottom:12 }}>
-                        <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5, display:"block" }}>Finition</label>
-                        <select value={finition} onChange={e => setFinition(e.target.value)}
-                          style={{ width:"100%", height:42, padding:"0 10px", fontSize:13, fontWeight:600, color: finition ? "white" : "rgba(255,255,255,0.5)", border:"1px solid rgba(255,255,255,0.18)", borderRadius:10, background:"rgba(255,255,255,0.1)", cursor:"pointer", outline:"none" }}>
-                          <option value="" style={{color:"#333"}}>Toutes les finitions</option>
-                          {finitionsList.map(f => <option key={f} value={f} style={{color:"#333"}}>{f}</option>)}
-                        </select>
-                      </div>
-                    )}
                     {err && <p style={{ color:"#fca5a5", fontSize:12, margin:"0 0 10px" }}>{err}</p>}
                     <button onClick={handleAnalyze} style={{ width:"100%", background:"white", color:"#1a3fdb", fontWeight:700, fontSize:14, borderRadius:12, padding:"13px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 20px rgba(0,0,0,0.18)" }}>
                       Analyser le marché →
@@ -3611,7 +3637,6 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       );
     }
 
-    // On attend que Firebase soit prêt avant de monter l'app React
     window.__firebaseReady.then(() => {
       auth           = window.__firebase.auth;
       db             = window.__firebase.db;
