@@ -3646,7 +3646,14 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       );
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    // On attend que Firebase soit prêt avant de monter l'app React
+    window.__firebaseReady.then(() => {
+      auth           = window.__firebase.auth;
+      db             = window.__firebase.db;
+      storage        = window.__firebase.storage;
+      googleProvider = window.__firebase.googleProvider;
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    });
   </script>
 </body>
 </html>
