@@ -3399,19 +3399,19 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             )}
 
             {/* ── HERO BLEU ── */}
-            <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"20px 20px 28px", position:"relative", overflow:"hidden" }}>
-              <div style={{ position:"absolute", top:-40, right:-40, width:130, height:130, borderRadius:"50%", background:"rgba(255,255,255,0.06)" }} />
-              <div style={{ position:"absolute", bottom:-20, left:-15, width:80, height:80, borderRadius:"50%", background:"rgba(255,255,255,0.04)" }} />
-              <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(255,255,255,0.12)", borderRadius:999, padding:"4px 12px", marginBottom:10, position:"relative", zIndex:1 }}>
+            <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"16px 20px 32px", position:"relative", overflow:"hidden", textAlign:"center" }}>
+              <div style={{ position:"absolute", top:-30, right:-30, width:100, height:100, borderRadius:"50%", background:"rgba(255,255,255,0.06)" }} />
+              <div style={{ position:"absolute", bottom:-15, left:-10, width:70, height:70, borderRadius:"50%", background:"rgba(255,255,255,0.04)" }} />
+              <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(255,255,255,0.12)", borderRadius:999, padding:"3px 10px", marginBottom:8, position:"relative", zIndex:1 }}>
                 <div className="pulse" style={{ width:6, height:6, borderRadius:"50%", background:"#93c5fd", display:"inline-block" }} />
-                <span style={{ fontSize:11, color:"rgba(255,255,255,0.85)", fontWeight:600 }}>{(()=>{ const d=new Date(); const seed=(d.getFullYear()*366+d.getMonth()*31+d.getDate())*9301+49297; const base=1800+((seed%17))*35+(d.getDate()*12); return `+${base.toLocaleString("fr-FR")} analyses ce mois-ci`; })()}</span>
+                <span style={{ fontSize:10, color:"rgba(255,255,255,0.85)", fontWeight:600 }}>{(()=>{ const d=new Date(); const seed=(d.getFullYear()*366+d.getMonth()*31+d.getDate())*9301+49297; const base=1800+((seed%17))*35+(d.getDate()*12); return `+${base.toLocaleString("fr-FR")} analyses ce mois-ci`; })()}</span>
               </div>
-              <h1 style={{ color:"white", fontWeight:800, fontSize:26, lineHeight:1.2, margin:"0 0 6px", position:"relative", zIndex:1 }}>Vendez votre voiture<br/><span style={{color:"#93c5fd"}}>au vrai prix.</span></h1>
-              <p style={{ color:"rgba(255,255,255,0.65)", fontSize:13, margin:0, position:"relative", zIndex:1 }}>Basé sur Leboncoin, pas l&apos;Argus.</p>
+              <h1 style={{ color:"white", fontWeight:800, fontSize:22, lineHeight:1.25, margin:"0 0 4px", position:"relative", zIndex:1 }}>Vendez votre voiture<br/><span style={{color:"#93c5fd"}}>au vrai prix.</span></h1>
+              <p style={{ color:"rgba(255,255,255,0.65)", fontSize:12, margin:0, position:"relative", zIndex:1 }}>Basé sur Leboncoin, pas l&apos;Argus.</p>
             </div>
 
             {/* ── FORMULAIRE ── */}
-            <div style={{ margin:"-16px 12px 0", background:"var(--card)", borderRadius:20, padding:"16px 14px", boxShadow:"0 4px 24px rgba(26,63,219,0.12)", border:"0.5px solid var(--border)" }}>
+            <div style={{ margin:"-20px 12px 0", background:"var(--card)", borderRadius:20, padding:"16px 14px", boxShadow:"0 4px 24px rgba(26,63,219,0.12)", border:"0.5px solid var(--border)" }}>
               <div style={{ marginBottom:12 }}>
                 <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Plaque d&apos;immatriculation</label>
                 <LicensePlate value={plate} onChange={handlePlateChange} />
