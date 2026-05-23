@@ -1582,11 +1582,49 @@
 
       return (
         <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
-          <div style={{ background:"var(--nav-bg)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
-            <span onClick={onReset} style={{ fontWeight:800, fontSize:32, color:"var(--text)", letterSpacing:"-0.5px", cursor:"pointer" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+
+          {/* ── MENU HAMBURGER RESULTS (mobile) ── */}
+          {isMobile && showResultMenu && (
+            <div style={{ position:"fixed", inset:0, zIndex:100 }} onClick={() => setShowResultMenu(false)}>
+              <div style={{ position:"absolute", top:56, left:0, right:0, background:"var(--card)", borderBottom:"1px solid var(--border)", boxShadow:"0 8px 24px rgba(0,0,0,0.12)", padding:"8px 0" }}
+                onClick={e => e.stopPropagation()}>
+                <button onClick={() => { onReset(); setShowResultMenu(false); }}
+                  style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", background:"none", border:"none", cursor:"pointer", textAlign:"left", borderBottom:"0.5px solid var(--border)" }}>
+                  <span style={{ fontSize:20 }}>🔄</span>
+                  <div><p style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--text)" }}>Nouvelle recherche</p><p style={{ margin:0, fontSize:11, color:"var(--text3)" }}>Retour à l&apos;accueil</p></div>
+                </button>
+                {user ? (
+                  <button onClick={() => { auth.signOut(); setShowResultMenu(false); }}
+                    style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", background:"none", border:"none", cursor:"pointer", textAlign:"left" }}>
+                    <div style={{ width:36, height:36, borderRadius:"50%", overflow:"hidden", flexShrink:0 }}>
+                      {user.photoURL ? <img src={user.photoURL} width={36} height={36} alt="" style={{ borderRadius:"50%" }} /> : <div style={{ width:36, height:36, borderRadius:"50%", background:"#1a3fdb", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:700, fontSize:14 }}>{user.email?.[0]?.toUpperCase()}</div>}
+                    </div>
+                    <div><p style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--text)" }}>{user.displayName || user.email}</p><p style={{ margin:0, fontSize:11, color:"#ef4444" }}>Se déconnecter</p></div>
+                  </button>
+                ) : (
+                  <button onClick={() => { setShowLoginModal(true); setShowResultMenu(false); }}
+                    style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", background:"none", border:"none", cursor:"pointer", textAlign:"left" }}>
+                    <span style={{ fontSize:20 }}>👤</span>
+                    <div><p style={{ margin:0, fontSize:14, fontWeight:700, color:"#1a3fdb" }}>Se connecter</p><p style={{ margin:0, fontSize:11, color:"var(--text3)" }}>Accéder à votre historique</p></div>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── NAVBAR RESULTS ── */}
+          <div style={{ background:"var(--nav-bg)", padding: isMobile ? "0 16px" : "0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
+            <span onClick={onReset} style={{ fontWeight:800, fontSize: isMobile ? 22 : 32, color:"var(--text)", letterSpacing:"-0.5px", cursor:"pointer" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
+            <div style={{ display:"flex", alignItems:"center", gap: isMobile ? 8 : 10 }}>
               <DarkToggle />
-              {user ? (
+              {isMobile ? (
+                <button onClick={() => setShowResultMenu(m=>!m)}
+                  style={{ display:"flex", flexDirection:"column", justifyContent:"center", gap:5, width:36, height:36, background:"var(--bg)", border:"1px solid var(--border)", borderRadius:8, cursor:"pointer", padding:"0 8px" }}>
+                  <div style={{ height:2, background:"var(--text)", borderRadius:2 }} />
+                  <div style={{ height:2, background:"var(--text)", borderRadius:2 }} />
+                  <div style={{ height:2, background:"var(--text)", borderRadius:2 }} />
+                </button>
+              ) : user ? (
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   {user?.photoURL && <img src={user.photoURL} width={26} height={26} style={{ borderRadius:"50%" }} alt="" />}
                   <button onClick={() => auth.signOut()} style={{ fontSize:11, color:"var(--text3)", background:"var(--bg3)", padding:"4px 10px", borderRadius:999, border:"none", cursor:"pointer" }}>Déconnexion</button>
@@ -1599,42 +1637,59 @@
               )}
             </div>
           </div>
-          <div style={{ padding:"24px 28px 80px", maxWidth:1200, margin:"0 auto" }}>
-            <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:14, padding:"18px 20px", marginBottom:14 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-                {veh.AWN_logo_marque && (
-                  <img src={veh.AWN_logo_marque} alt={veh.AWN_marque} style={{ width:64, height:64, objectFit:"contain", flexShrink:0 }} />
-                )}
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ margin:0, color:"var(--badge-text)", fontWeight:600, fontSize:15 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
-                  {nom && <p style={{ margin:"6px 0 0", color:"#1a3fdb", fontWeight:800, fontSize:20 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
-                  <p style={{ margin:"6px 0 0", color:"var(--badge-text)", fontSize:15 }}>
-                    {veh.AWN_energie} · {veh.AWN_puissance_CH} ch
-                    {veh.AWN_boite ? ` · ${veh.AWN_boite}` : ""}
-                    {" · "}{veh.AWN_date_mise_en_circulation}
-                  </p>
-                  {(veh.AWN_version||veh.AWN_nb_portes||veh.AWN_cylindres) && (
-                    <p style={{ margin:"4px 0 0", color:"#1e3a8a", fontSize:14 }}>
-                      {veh.AWN_version ? veh.AWN_version+" · " : ""}
-                      {veh.AWN_nb_portes ? veh.AWN_nb_portes+" portes · " : ""}
-                      {veh.AWN_passagers ? veh.AWN_passagers+" places · " : ""}
-                      {veh.AWN_cylindres ? veh.AWN_cylindres+" cyl." : ""}
-                    </p>
+
+          <div style={{ padding: isMobile ? "12px 12px 80px" : "24px 28px 80px", maxWidth:1200, margin:"0 auto" }}>
+
+            {/* ── CARTE VÉHICULE ── */}
+            <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:14, padding: isMobile ? "12px 14px" : "18px 20px", marginBottom:14 }}>
+              {isMobile ? (
+                <div>
+                  <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                    {veh.AWN_logo_marque && <img src={veh.AWN_logo_marque} alt={veh.AWN_marque} style={{ width:40, height:40, objectFit:"contain", flexShrink:0 }} />}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ margin:0, color:"var(--badge-text)", fontWeight:600, fontSize:12 }}>✅ <strong>{plate}</strong></p>
+                      {nom && <p style={{ margin:"3px 0 0", color:"#1a3fdb", fontWeight:800, fontSize:16, lineHeight:1.2 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
+                    </div>
+                    {veh.AWN_photo_modele && <img src={veh.AWN_photo_modele} alt="" style={{ width:90, height:56, objectFit:"contain", flexShrink:0, mixBlendMode:"multiply" }} onError={e=>{e.target.style.display="none"}} />}
+                  </div>
+                  <p style={{ margin:0, color:"var(--badge-text)", fontSize:12 }}>{veh.AWN_energie} · {veh.AWN_puissance_CH} ch{veh.AWN_boite ? ` · ${veh.AWN_boite}` : ""} · {veh.AWN_date_mise_en_circulation}</p>
+                  {veh.AWN_vin && <p style={{ margin:"3px 0 0", color:"var(--text3)", fontSize:10, fontFamily:"monospace" }}>VIN : {veh.AWN_vin}</p>}
+                </div>
+              ) : (
+                <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+                  {veh.AWN_logo_marque && (
+                    <img src={veh.AWN_logo_marque} alt={veh.AWN_marque} style={{ width:64, height:64, objectFit:"contain", flexShrink:0 }} />
                   )}
-                  {veh.AWN_vin && (
-                    <p style={{ margin:"4px 0 0", color:"var(--text3)", fontSize:12, fontFamily:"monospace", letterSpacing:"0.05em" }}>
-                      VIN : {veh.AWN_vin}
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ margin:0, color:"var(--badge-text)", fontWeight:600, fontSize:15 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
+                    {nom && <p style={{ margin:"6px 0 0", color:"#1a3fdb", fontWeight:800, fontSize:20 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
+                    <p style={{ margin:"6px 0 0", color:"var(--badge-text)", fontSize:15 }}>
+                      {veh.AWN_energie} · {veh.AWN_puissance_CH} ch
+                      {veh.AWN_boite ? ` · ${veh.AWN_boite}` : ""}
+                      {" · "}{veh.AWN_date_mise_en_circulation}
                     </p>
+                    {(veh.AWN_version||veh.AWN_nb_portes||veh.AWN_cylindres) && (
+                      <p style={{ margin:"4px 0 0", color:"#1e3a8a", fontSize:14 }}>
+                        {veh.AWN_version ? veh.AWN_version+" · " : ""}
+                        {veh.AWN_nb_portes ? veh.AWN_nb_portes+" portes · " : ""}
+                        {veh.AWN_passagers ? veh.AWN_passagers+" places · " : ""}
+                        {veh.AWN_cylindres ? veh.AWN_cylindres+" cyl." : ""}
+                      </p>
+                    )}
+                    {veh.AWN_vin && (
+                      <p style={{ margin:"4px 0 0", color:"var(--text3)", fontSize:12, fontFamily:"monospace", letterSpacing:"0.05em" }}>
+                        VIN : {veh.AWN_vin}
+                      </p>
+                    )}
+                  </div>
+                  {veh.AWN_photo_modele && (
+                    <img src={veh.AWN_photo_modele} alt={`${veh.AWN_marque} ${veh.AWN_modele}`}
+                      style={{ width:260, height:160, objectFit:"contain", flexShrink:0, mixBlendMode:"multiply" }}
+                      onError={e => { e.target.style.display="none"; }}
+                    />
                   )}
                 </div>
-                {/* Photo du modèle */}
-                {veh.AWN_photo_modele && (
-                  <img src={veh.AWN_photo_modele} alt={`${veh.AWN_marque} ${veh.AWN_modele}`}
-                    style={{ width:260, height:160, objectFit:"contain", flexShrink:0, mixBlendMode:"multiply" }}
-                    onError={e => { e.target.style.display="none"; }}
-                  />
-                )}
-              </div>
+              )}
             </div>
             {stats ? (
               <div style={{ position:"relative", marginBottom:16 }}>
@@ -1649,10 +1704,10 @@
                     { icon:"🎯", label:"MARCHÉ", sub:"Max de contacts", val:stats.p25, color:EMERALD, border:"1px solid "+EMERALD, recommended:true },
                     { icon:"💎", label:"HAUT", sub:"Marge de négo", val:stats.p50, color:"#6366F1", border:"1px solid #c7d2fe" },
                   ].map((c, i) => (
-                    <div key={i} style={{ padding:"16px 18px", background:"var(--card)", borderRight: i < 2 ? `0.5px solid var(--border)` : "none", position:"relative", borderTop: c.recommended ? `2px solid ${EMERALD}` : "none" }}>
+                    <div key={i} style={{ padding: isMobile ? "10px 10px" : "16px 18px", background:"var(--card)", borderRight: i < 2 ? `0.5px solid var(--border)` : "none", position:"relative", borderTop: c.recommended ? `2px solid ${EMERALD}` : "none" }}>
                       {c.recommended && <div style={{ position:"absolute", top:-9, left:"50%", transform:"translateX(-50%)", background:EMERALD, color:"white", fontSize:8, padding:"2px 10px", borderRadius:999, whiteSpace:"nowrap", fontWeight:700 }}>Recommandé</div>}
                       <p style={{ margin:0, fontSize:9, fontWeight:700, color:c.color, textTransform:"uppercase", letterSpacing:"0.08em" }}>{c.icon} {c.label}</p>
-                      <p style={{ margin:"8px 0 3px", fontSize:26, fontWeight:700, color:"var(--text)", filter: isConnected ? "none" : "blur(6px)", userSelect: isConnected ? "auto" : "none", letterSpacing:"-0.5px" }}>{fmt(c.val)}</p>
+                      <p style={{ margin: isMobile ? "4px 0 2px" : "8px 0 3px", fontSize: isMobile ? 18 : 26, fontWeight:700, color:"var(--text)", filter: isConnected ? "none" : "blur(6px)", userSelect: isConnected ? "auto" : "none", letterSpacing:"-0.5px" }}>{fmt(c.val)}</p>
                       <p style={{ margin:0, fontSize:10, color:"var(--text2)" }}>{c.sub}</p>
                     </div>
                   ))}
@@ -1680,10 +1735,10 @@
                   <div style={{ padding:"10px 16px", borderBottom:"0.5px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                     <p style={{ margin:0, fontSize:10, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>🔍 Annonces similaires</p>
                   </div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)" }}>
+                  <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)" }}>
                   {cleanAds.map((ad, i) => (
                     <a key={i} href={ad.url} target="_blank" rel="noopener noreferrer"
-                      style={{ display:"flex", flexDirection:"column", padding:"10px 12px", borderRight: i % 3 < 2 ? "0.5px solid var(--border)" : "none", borderBottom: i < cleanAds.length - (cleanAds.length % 3 || 3) ? "0.5px solid var(--border)" : "none", textDecoration:"none" }}>
+                      style={{ display:"flex", flexDirection:"column", padding:"12px 14px", borderRight: !isMobile && i % 3 < 2 ? "0.5px solid var(--border)" : "none", borderBottom: i < cleanAds.length - 1 ? "0.5px solid var(--border)" : "none", textDecoration:"none" }}>
                       <p style={{ margin:0, fontSize:11, fontWeight:600, color:"var(--text)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ad.subject}</p>
                       <p style={{ margin:"2px 0 0", fontSize:10, color:"var(--text3)" }}>
                         {getAttr(ad,"regdate") ? getAttr(ad,"regdate")+" · " : ""}
@@ -2445,6 +2500,8 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       const [filterKmMax, setFilterKmMax] = React.useState("");
       const [filterLoc, setFilterLoc] = React.useState("");
       const [showFilters, setShowFilters] = React.useState(false);
+      const isMobile = useIsMobile();
+      const [showAnnonceMenu, setShowAnnonceMenu] = React.useState(false);
 
       const marques = [...new Set(annonces.map(a => a.nom?.split(" ")[0]).filter(Boolean))].sort();
       const modeles = [...new Set(annonces.filter(a => !filterMarque || a.nom?.startsWith(filterMarque)).map(a => a.nom).filter(Boolean))].sort();
@@ -2475,26 +2532,55 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
       return (
         <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
-          {/* Navbar */}
-          <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-              <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
-              <span style={{ fontWeight:800, fontSize:32, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
-              <span style={{ fontSize:13, color:"var(--text3)", fontWeight:500 }}>Annonces</span>
+
+          {/* ── MENU HAMBURGER ANNONCES (mobile) ── */}
+          {isMobile && showAnnonceMenu && (
+            <div style={{ position:"fixed", inset:0, zIndex:100 }} onClick={() => setShowAnnonceMenu(false)}>
+              <div style={{ position:"absolute", top:56, left:0, right:0, background:"var(--card)", borderBottom:"1px solid var(--border)", boxShadow:"0 8px 24px rgba(0,0,0,0.12)", padding:"8px 0" }}
+                onClick={e => e.stopPropagation()}>
+                <button onClick={() => { onBack(); setShowAnnonceMenu(false); }}
+                  style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", background:"none", border:"none", cursor:"pointer", textAlign:"left", borderBottom:"0.5px solid var(--border)" }}>
+                  <span style={{ fontSize:20 }}>🏠</span>
+                  <div><p style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--text)" }}>Accueil</p><p style={{ margin:0, fontSize:11, color:"var(--text3)" }}>Retour à la recherche</p></div>
+                </button>
+                <button onClick={() => { setShowFilters(!showFilters); setShowAnnonceMenu(false); }}
+                  style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", background:"none", border:"none", cursor:"pointer", textAlign:"left" }}>
+                  <span style={{ fontSize:20 }}>⚙️</span>
+                  <div><p style={{ margin:0, fontSize:14, fontWeight:700, color: hasFilters ? "#1a3fdb" : "var(--text)" }}>{hasFilters ? "Filtres actifs" : "Filtres"}</p><p style={{ margin:0, fontSize:11, color:"var(--text3)" }}>Affiner les résultats</p></div>
+                </button>
+              </div>
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          )}
+
+          {/* ── NAVBAR ANNONCES ── */}
+          <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding: isMobile ? "0 16px" : "0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap: isMobile ? 10 : 16 }}>
+              <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
+              <span style={{ fontWeight:800, fontSize: isMobile ? 22 : 32, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
+              {!isMobile && <span style={{ fontSize:13, color:"var(--text3)", fontWeight:500 }}>Annonces</span>}
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap: isMobile ? 8 : 12 }}>
               <DarkToggle />
-              <button onClick={()=>setShowFilters(!showFilters)}
-                style={{ background: hasFilters ? "#1a3fdb" : "var(--bg)", border:"1px solid var(--border)", borderRadius:8, padding:"6px 14px", fontSize:12, fontWeight:600, color: hasFilters ? "white" : "var(--text2)", cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
-                ⚙️ {hasFilters ? "Filtres actifs" : "Filtres"}
-              </button>
+              {isMobile ? (
+                <button onClick={() => setShowAnnonceMenu(m=>!m)}
+                  style={{ display:"flex", flexDirection:"column", justifyContent:"center", gap:5, width:36, height:36, background:"var(--bg)", border:"1px solid var(--border)", borderRadius:8, cursor:"pointer", padding:"0 8px" }}>
+                  <div style={{ height:2, background:"var(--text)", borderRadius:2 }} />
+                  <div style={{ height:2, background:"var(--text)", borderRadius:2 }} />
+                  <div style={{ height:2, background:"var(--text)", borderRadius:2 }} />
+                </button>
+              ) : (
+                <button onClick={()=>setShowFilters(!showFilters)}
+                  style={{ background: hasFilters ? "#1a3fdb" : "var(--bg)", border:"1px solid var(--border)", borderRadius:8, padding:"6px 14px", fontSize:12, fontWeight:600, color: hasFilters ? "white" : "var(--text2)", cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
+                  ⚙️ {hasFilters ? "Filtres actifs" : "Filtres"}
+                </button>
+              )}
             </div>
           </div>
 
           {/* Filters panel */}
           {showFilters && (
-            <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding:"14px 32px" }}>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:10, maxWidth:1200, margin:"0 auto" }}>
+            <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding: isMobile ? "12px 16px" : "14px 32px" }}>
+              <div style={{ display:"grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(6,1fr)", gap:10, maxWidth:1200, margin:"0 auto" }}>
                 <div>
                   <div style={{ fontSize:9, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:4 }}>Marque</div>
                   <select value={filterMarque} onChange={e=>{ setFilterMarque(e.target.value); setFilterModele(""); }}
@@ -2562,7 +2648,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             </div>
           )}
 
-          <div style={{ padding:"24px 32px", maxWidth:1200, margin:"0 auto" }}>
+          <div style={{ padding: isMobile ? "12px 12px" : "24px 32px", maxWidth:1200, margin:"0 auto" }}>
             {/* Search bar */}
             <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Rechercher une marque, modèle, finition..."
@@ -2655,17 +2741,15 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           `}</style>
 
           {/* ── Navbar commune ── */}
-          <div style={{ background:"var(--nav-bg)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
-              <span style={{ fontWeight:800, fontSize:32, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
-            </div>
+          <div style={{ background:"var(--nav-bg)", padding:"0 16px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
+              <span style={{ fontWeight:800, fontSize:22, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
               <DarkToggle />
               {isOwner && (
-                <button onClick={handleDelete} style={{ fontSize:11, color:"#ef4444", background:"#fef2f2", padding:"4px 10px", borderRadius:999, border:"none", cursor:"pointer" }}>
-                  Supprimer
-                </button>
+                <button onClick={handleDelete} style={{ fontSize:11, color:"#ef4444", background:"#fef2f2", padding:"5px 10px", borderRadius:8, border:"1px solid #fecaca", cursor:"pointer" }}>🗑️ Supprimer</button>
               )}
             </div>
           </div>
