@@ -1157,7 +1157,7 @@
           {/* ── MOBILE ── */}
           <div className="mobile-spinner">
             <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"16px 20px 20px", display:"flex", justifyContent:"center" }}>
-              <LogoCoteCars height={100} context="blue" />
+              <span style={{ fontWeight:800, fontSize:24, color:"white", fontFamily:"'DM Sans',-apple-system,sans-serif", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#93c5fd"}}>Cars</span></span>
             </div>
             <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"48px 24px", gap:20 }}>
               <div style={{ position:"relative", width:72, height:72, display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -1197,8 +1197,8 @@
 
           {/* ── DESKTOP ── */}
           <div className="desktop-spinner">
-            <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"4px 32px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
-              <LogoCoteCars height={100} context="light" />
+            <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
+              <span style={{ fontWeight:800, fontSize:24, color:"var(--text)", fontFamily:"'DM Sans',-apple-system,sans-serif", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
               <div style={{ display:"flex", gap:20, alignItems:"center" }}>
                 <span style={{ fontSize:13, color:"var(--text3)" }}>🏷️ Nos annonces</span>
                 <span style={{ fontSize:13, color:"var(--text3)" }}>Comment ça marche</span>
@@ -1583,8 +1583,8 @@
 
       return (
         <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
-          <div style={{ background:"var(--nav-bg)", padding:"4px 24px", display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
-            <LogoCoteCars height={100} context="light" />
+          <div style={{ background:"var(--nav-bg)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
+            <span style={{ fontWeight:800, fontSize:24, color:"var(--text)", fontFamily:"'DM Sans',-apple-system,sans-serif", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <DarkToggle />
               {user ? (
@@ -2477,10 +2477,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       return (
         <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
           {/* Navbar */}
-          <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"4px 32px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10 }}>
+          <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10 }}>
             <div style={{ display:"flex", alignItems:"center", gap:16 }}>
               <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
-              <LogoCoteCars height={90} context="light" />
+              <span style={{ fontWeight:800, fontSize:24, color:"var(--text)", fontFamily:"'DM Sans',-apple-system,sans-serif", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
               <span style={{ fontSize:13, color:"var(--text3)", fontWeight:500 }}>Annonces</span>
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
@@ -2656,10 +2656,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           `}</style>
 
           {/* ── Navbar commune ── */}
-          <div style={{ background:"var(--nav-bg)", padding:"4px 24px", display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)" }}>
+          <div style={{ background:"var(--nav-bg)", padding:"0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)" }}>
             <div style={{ display:"flex", alignItems:"center", gap:12 }}>
               <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
-              <LogoCoteCars height={90} context="light" />
+              <span style={{ fontWeight:800, fontSize:24, color:"var(--text)", fontFamily:"'DM Sans',-apple-system,sans-serif", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <DarkToggle />
@@ -3371,7 +3371,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <div style={{ position:"absolute", top:-50, right:-50, width:160, height:160, borderRadius:"50%", background:"rgba(255,255,255,0.06)" }} />
               <div style={{ position:"absolute", bottom:-30, left:-20, width:100, height:100, borderRadius:"50%", background:"rgba(255,255,255,0.04)" }} />
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, position:"relative", zIndex:1 }}>
-                <LogoCoteCars height={90} context="blue" />
+                <span style={{ fontWeight:800, fontSize:24, color:"white", fontFamily:"'DM Sans',-apple-system,sans-serif", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#93c5fd"}}>Cars</span></span>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <button onClick={() => setShowAnnonces(true)} style={{ fontSize:10, fontWeight:700, color:"white", background:"rgba(255,255,255,0.15)", padding:"5px 10px", borderRadius:999, border:"1px solid rgba(255,255,255,0.25)", cursor:"pointer" }}>🏷️ Annonces</button>
                   <a href="/partner.html" style={{ fontSize:10, fontWeight:700, color:"#8dc63f", background:"#1a1a2e", padding:"5px 8px", borderRadius:5, textDecoration:"none" }}>⚡ Pro</a>
@@ -3513,8 +3513,8 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
           {/* ═══ DESKTOP ≥ 900px ═══ */}
           <div className="cc-desktop" style={{ minWidth:900 }}>
-            <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"4px 32px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
-              <LogoCoteCars height={120} context="light" />
+            <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
+              <span style={{ fontWeight:800, fontSize:24, color:"var(--text)", fontFamily:"'DM Sans',-apple-system,sans-serif", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
               <div style={{ display:"flex", gap:20, alignItems:"center" }}>
                 <button onClick={() => setShowAnnonces(true)} style={{ fontSize:13, color:"#8fa0b8", fontWeight:500, background:"none", border:"none", cursor:"pointer" }}>🏷️ Nos annonces</button>
                 <span style={{ fontSize:13, color:"#8fa0b8", fontWeight:500 }}>Comment ça marche</span>
