@@ -3031,6 +3031,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       const [showAnnonces, setShowAnnonces] = React.useState(false);
       const [showCreateAnnonce, setShowCreateAnnonce] = React.useState(false);
       const [showPrepareLbc, setShowPrepareLbc] = React.useState(false);
+      const [showMobileMenu, setShowMobileMenu] = React.useState(false);
       const [gearbox, setGearbox] = useState("");
       const [showPuissanceConfirm, setShowPuissanceConfirm] = React.useState(false);
       const [puissanceConfirmValue, setPuissanceConfirmValue] = React.useState("");
@@ -3339,22 +3340,63 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           <div className="cc-mobile" style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh" }}>
 
             {/* ── NAVBAR MOBILE ── */}
-            <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 16px", height:52, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:20 }}>
-              <span style={{ fontWeight:800, fontSize:22, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <button onClick={() => setShowAnnonces(true)} style={{ fontSize:11, fontWeight:700, color:"var(--text2)", background:"var(--bg)", padding:"6px 10px", borderRadius:8, border:"1px solid var(--border)", cursor:"pointer" }}>🏷️</button>
-                <a href="/partner.html" style={{ fontSize:11, fontWeight:700, color:"#8dc63f", background:"#1a1a2e", padding:"6px 8px", borderRadius:6, textDecoration:"none" }}>⚡</a>
+            <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 16px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:20 }}>
+              <span style={{ fontWeight:800, fontSize:24, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <DarkToggle />
-                {user ? (
-                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                    {user?.photoURL && <img src={user.photoURL} width={28} height={28} style={{ borderRadius:"50%", border:"2px solid var(--border)" }} alt="" />}
-                    <button onClick={() => auth.signOut()} style={{ fontSize:10, color:"var(--text3)", background:"var(--bg)", padding:"4px 8px", borderRadius:6, border:"1px solid var(--border)", cursor:"pointer" }}>Déco</button>
-                  </div>
-                ) : (
-                  <button onClick={() => setShowLoginModal(true)} style={{ fontSize:11, fontWeight:700, color:"white", background:"#1a3fdb", padding:"6px 12px", borderRadius:8, border:"none", cursor:"pointer" }}>Connexion</button>
-                )}
+                <button onClick={() => setShowMobileMenu(m => !m)}
+                  style={{ display:"flex", flexDirection:"column", justifyContent:"center", gap:5, width:36, height:36, background:"var(--bg)", border:"1px solid var(--border)", borderRadius:8, cursor:"pointer", padding:"0 8px" }}>
+                  <div style={{ height:2, background:"var(--text)", borderRadius:2 }} />
+                  <div style={{ height:2, background:"var(--text)", borderRadius:2 }} />
+                  <div style={{ height:2, background:"var(--text)", borderRadius:2 }} />
+                </button>
               </div>
             </div>
+
+            {/* ── MENU HAMBURGER ── */}
+            {showMobileMenu && (
+              <div style={{ position:"fixed", inset:0, zIndex:100 }} onClick={() => setShowMobileMenu(false)}>
+                <div style={{ position:"absolute", top:56, left:0, right:0, background:"var(--card)", borderBottom:"1px solid var(--border)", boxShadow:"0 8px 24px rgba(0,0,0,0.12)", padding:"8px 0" }}
+                  onClick={e => e.stopPropagation()}>
+                  <button onClick={() => { setShowAnnonces(true); setShowMobileMenu(false); }}
+                    style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", background:"none", border:"none", cursor:"pointer", textAlign:"left", borderBottom:"0.5px solid var(--border)" }}>
+                    <span style={{ fontSize:20 }}>🏷️</span>
+                    <div>
+                      <p style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--text)" }}>Nos annonces</p>
+                      <p style={{ margin:0, fontSize:11, color:"var(--text3)" }}>Voir les voitures disponibles</p>
+                    </div>
+                  </button>
+                  <a href="/partner.html" style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", textDecoration:"none", borderBottom:"0.5px solid var(--border)" }}>
+                    <span style={{ fontSize:20 }}>⚡</span>
+                    <div>
+                      <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#8dc63f" }}>Espace Partenaire</p>
+                      <p style={{ margin:0, fontSize:11, color:"var(--text3)" }}>Accès professionnel</p>
+                    </div>
+                  </a>
+                  {user ? (
+                    <button onClick={() => { auth.signOut(); setShowMobileMenu(false); }}
+                      style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", background:"none", border:"none", cursor:"pointer", textAlign:"left" }}>
+                      <div style={{ width:36, height:36, borderRadius:"50%", overflow:"hidden", flexShrink:0 }}>
+                        {user.photoURL ? <img src={user.photoURL} width={36} height={36} alt="" style={{ borderRadius:"50%" }} /> : <div style={{ width:36, height:36, borderRadius:"50%", background:"#1a3fdb", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:700, fontSize:14 }}>{user.email?.[0]?.toUpperCase()}</div>}
+                      </div>
+                      <div>
+                        <p style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--text)" }}>{user.displayName || user.email}</p>
+                        <p style={{ margin:0, fontSize:11, color:"#ef4444" }}>Se déconnecter</p>
+                      </div>
+                    </button>
+                  ) : (
+                    <button onClick={() => { setShowLoginModal(true); setShowMobileMenu(false); }}
+                      style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", background:"none", border:"none", cursor:"pointer", textAlign:"left" }}>
+                      <span style={{ fontSize:20 }}>👤</span>
+                      <div>
+                        <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#1a3fdb" }}>Se connecter</p>
+                        <p style={{ margin:0, fontSize:11, color:"var(--text3)" }}>Accéder à votre historique</p>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* ── HERO BLEU ── */}
             <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"20px 20px 28px", position:"relative", overflow:"hidden" }}>
