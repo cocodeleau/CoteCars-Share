@@ -1,14 +1,16 @@
 // api/partner-photo.js
 //
-// Pipeline par photo :
-//   1. Preprocessing sharp  → sharpen + saturation (avant Watermarkly)
-//   2. Watermarkly          → détection plaque + tentative remplacement logo
-//   3. Logo garanti         → diff(enhanced, wmResult) → composite propre
-//   4. Photoroom v2         → détourage + fond #F2F2F2 + ombre ai.soft
-//   5. Vignette AE          → logo carré en haut à droite
+// Pipeline :
+//   0. Sharp preprocessing (enhanced = sharpen + saturation)
+//   1. Watermarkly (reçoit enhanced) → tente logo sur la plaque
+//   2. Logo garanti :
+//        S1 — diff(enhanced, wm, THR=30) : capte tout changement Watermarkly
+//        S2 — pixels sombre→blanc       : spécifique plaque blanche sur voiture blanche
+//      → composite AUTOEASY_LOGO_B64 sur la zone trouvée
+//   3. Photoroom v2 → détourage + fond #F2F2F2 + ombre
+//   4. Vignette AE  → logo en haut à droite
 //
-// Variables d'env Vercel requises :
-//   PHOTOROOM_API_KEY  WATERMARKLY_API_KEY  AUTOEASY_LOGO_URL  VIGNETTE_URL
+// Variables Vercel : PHOTOROOM_API_KEY WATERMARKLY_API_KEY AUTOEASY_LOGO_URL VIGNETTE_URL
 
 const FormData = require("form-data");
 const fetch    = require("node-fetch");
@@ -24,9 +26,7 @@ const AUTOEASY_LOGO_B64 = "iVBORw0KGgoAAAANSUhEUgAAAgkAAABhCAYAAABcWjLmAAAgAElEQ
 async function withRetry(fn, maxAttempts = 3, backoffMs = [0, 2000, 4000]) {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (backoffMs[attempt] > 0) await new Promise(r => setTimeout(r, backoffMs[attempt]));
-    try {
-      return await fn();
-    } catch (err) {
+    try { return await fn(); } catch (err) {
       const msg = err.message || "";
       const retry = msg.includes("503") || msg.includes("429") ||
                     msg.includes("Service Unavailable") || msg.includes("Too Many Requests");
@@ -52,7 +52,6 @@ async function blurPlateWatermarkly(enhancedBuffer) {
     });
     if (logoUrl) { params.set("logo_url", logoUrl); params.set("logo_size", "1.3"); }
 
-    console.log("[Watermarkly] POST — image prétraitée envoyée");
     const res = await withRetry(() =>
       fetch(`${API_URL}?${params.toString()}`, {
         method:  "POST",
@@ -60,101 +59,121 @@ async function blurPlateWatermarkly(enhancedBuffer) {
         body:    enhancedBuffer,
       })
     );
-
     if (!res.ok) { console.warn(`[Watermarkly] Erreur ${res.status}`); return null; }
     const buf = Buffer.from(await res.arrayBuffer());
     console.log(`[Watermarkly] OK — ${buf.length} octets`);
     return buf;
-  } catch (err) {
-    console.warn("[Watermarkly] Erreur :", err.message);
-    return null;
-  }
+  } catch (err) { console.warn("[Watermarkly] Erreur :", err.message); return null; }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FIND PLATE REGION
-// Compare enhanced (ce qu'on a envoyé) vs wmResult (ce que Watermarkly retourne).
-// → Diff propre : uniquement les modifications de Watermarkly, sans bruit de
-//   preprocessing. THR=50 filtre les artefacts JPEG inter-compresseurs.
+// BUILD REGION — helper commun aux 2 stratégies
+// Construit la bounding box à partir de rowCount/colCount.
+// ─────────────────────────────────────────────────────────────────────────────
+function buildRegion(rowCount, colCount, total, cW, cH, scale, W, H, label) {
+  if (total < 3) return null;
+
+  let maxRow = 0, maxCol = 0;
+  for (let y = 0; y < cH; y++) if (rowCount[y] > maxRow) maxRow = rowCount[y];
+  for (let x = 0; x < cW; x++) if (colCount[x] > maxCol) maxCol = colCount[x];
+  if (maxRow === 0) return null;
+
+  const rowThr = Math.max(1, Math.round(maxRow * 0.2));
+  const colThr = Math.max(1, Math.round(maxCol * 0.2));
+
+  let minY = cH, maxY = 0, minX = cW, maxX = 0;
+  for (let y = 0; y < cH; y++) if (rowCount[y] >= rowThr) { minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
+  for (let x = 0; x < cW; x++) if (colCount[x] >= colThr) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); }
+
+  const bW = maxX - minX;
+  const bH = maxY - minY;
+
+  if (bW < 5 || bH < 1 || bW > cW * 0.92) {
+    console.log(`[findPlate ${label}] bbox invalide (${bW}x${bH})`);
+    return null;
+  }
+
+  // Padding dynamique : 25% en X, 120% en Y
+  // → Si seuls les chiffres sont détectés, le padding Y couvre toute la plaque
+  const padX = Math.max(3, Math.round(bW * 0.25));
+  const padY = Math.max(3, Math.round(bH * 1.2));
+
+  const oL = Math.max(0, Math.round((minX - padX) / scale));
+  const oT = Math.max(0, Math.round((minY - padY) / scale));
+  const oR = Math.min(W, Math.round((maxX + padX) / scale));
+  const oB = Math.min(H, Math.round((maxY + padY) / scale));
+
+  console.log(`[findPlate ${label}] total=${total} → (${oL},${oT}) ${oR-oL}x${oB-oT}px`);
+  return { left: oL, top: oT, width: oR - oL, height: oB - oT };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FIND PLATE REGION — 2 stratégies en cascade
 //
-// Padding Y généreux (100% de la hauteur détectée) : si seuls les chiffres
-// (pixels sombres→blanc) sont capturés, le padding couvre toute la plaque.
+// Stratégie 1 (S1) : diff standard enhanced→wm avec THR=30
+//   • capte tout changement Watermarkly (blur léger, remplacement blanc, logo)
+//   • THR=30 ≈ limite des artefacts JPEG inter-compresseurs
+//
+// Stratégie 2 (S2) : pixels sombres dans enhanced → blancs dans wm
+//   • spécifique : chiffres de plaque (R,G,B < 140) devenus blancs (> 210)
+//   • robuste sur voiture blanche car la carrosserie était déjà blanche
+//     → ne génère pas de faux positifs sur le reste de l'image
 // ─────────────────────────────────────────────────────────────────────────────
 async function findPlateRegion(enhancedBuffer, wmBuffer) {
   try {
     const { width: W, height: H } = await sharp(enhancedBuffer).metadata();
-
     const scale = Math.min(1, 800 / W);
-    const cW    = Math.round(W * scale);
-    const cH    = Math.round(H * scale);
+    const cW = Math.round(W * scale);
+    const cH = Math.round(H * scale);
 
     const [eRaw, wRaw] = await Promise.all([
       sharp(enhancedBuffer).resize(cW, cH).raw().toBuffer({ resolveWithObject: true }),
       sharp(wmBuffer).resize(cW, cH).raw().toBuffer({ resolveWithObject: true }),
     ]);
 
-    const eD  = eRaw.data;
-    const wD  = wRaw.data;
-    const ch  = eRaw.info.channels;
-    // THR=50 : filtre artefacts JPEG (diff ~15-30), capte chiffres noirs→blanc (diff ~600)
-    const THR = 50;
+    const eD = eRaw.data;
+    const wD = wRaw.data;
+    const ch = eRaw.info.channels;
 
-    const rowCount = new Int32Array(cH);
-    const colCount = new Int32Array(cW);
-    let total = 0;
-
-    for (let y = 0; y < cH; y++) {
-      for (let x = 0; x < cW; x++) {
-        const i = (y * cW + x) * ch;
-        const d = Math.abs(eD[i]-wD[i]) + Math.abs(eD[i+1]-wD[i+1]) + Math.abs(eD[i+2]-wD[i+2]);
-        if (d > THR) { rowCount[y]++; colCount[x]++; total++; }
+    // ── S1 : diff standard (THR=30) ─────────────────────────────────────────
+    {
+      const rowC = new Int32Array(cH);
+      const colC = new Int32Array(cW);
+      let total = 0;
+      for (let y = 0; y < cH; y++) {
+        for (let x = 0; x < cW; x++) {
+          const i = (y * cW + x) * ch;
+          const d = Math.abs(eD[i]-wD[i]) + Math.abs(eD[i+1]-wD[i+1]) + Math.abs(eD[i+2]-wD[i+2]);
+          if (d > 30) { rowC[y]++; colC[x]++; total++; }
+        }
       }
+      console.log(`[findPlate S1] total=${total} (${cW}x${cH})`);
+      const region = buildRegion(rowC, colC, total, cW, cH, scale, W, H, "S1");
+      if (region) return region;
     }
 
-    // Seuil minimal : au moins 10 pixels OU 0.005% de l'image downscalée
-    const MIN_CHANGED = Math.max(10, Math.round(cW * cH * 0.00005));
-    console.log(`[findPlate] total=${total} min=${MIN_CHANGED} img=${cW}x${cH}`);
-    if (total < MIN_CHANGED) return null;
+    // ── S2 : pixels sombres→blancs (plaque arrière, voiture blanche) ─────────
+    {
+      const rowC = new Int32Array(cH);
+      const colC = new Int32Array(cW);
+      let total = 0;
+      for (let y = 0; y < cH; y++) {
+        for (let x = 0; x < cW; x++) {
+          const i = (y * cW + x) * ch;
+          // Était sombre dans enhanced : au moins un canal < 140
+          const wasDark  = eD[i] < 140 || eD[i+1] < 140 || eD[i+2] < 140;
+          // Est devenu clair dans wm : tous les canaux > 210
+          const nowLight = wD[i] > 210 && wD[i+1] > 210 && wD[i+2] > 210;
+          if (wasDark && nowLight) { rowC[y]++; colC[x]++; total++; }
+        }
+      }
+      console.log(`[findPlate S2] total=${total}`);
+      const region = buildRegion(rowC, colC, total, cW, cH, scale, W, H, "S2");
+      if (region) return region;
+    }
 
-    let maxRow = 0, maxCol = 0;
-    for (let y = 0; y < cH; y++) if (rowCount[y] > maxRow) maxRow = rowCount[y];
-    for (let x = 0; x < cW; x++) if (colCount[x] > maxCol) maxCol = colCount[x];
-    if (maxRow === 0) return null;
-
-    // 20% du pic → capture les bords diffus de la zone plaque
-    const rowThr = Math.max(1, Math.round(maxRow * 0.2));
-    const colThr = Math.max(1, Math.round(maxCol * 0.2));
-
-    let minY = cH, maxY = 0, minX = cW, maxX = 0;
-    for (let y = 0; y < cH; y++) if (rowCount[y] >= rowThr) { minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
-    for (let x = 0; x < cW; x++) if (colCount[x] >= colThr) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); }
-
-    const bW = maxX - minX;
-    const bH = maxY - minY;
-
-    if (bW < 6 || bH < 1) { console.log(`[findPlate] Zone trop petite (${bW}x${bH})`); return null; }
-    if (bW > cW * 0.92)   { console.log("[findPlate] Zone trop large"); return null; }
-
-    // Padding dynamique :
-    //   X → 25% de la largeur (couvre les bords horizontaux)
-    //   Y → 100% de la hauteur (si seuls les chiffres sont détectés,
-    //         double la zone pour couvrir la plaque entière)
-    const padX = Math.max(3, Math.round(bW * 0.25));
-    const padY = Math.max(3, Math.round(bH * 1.0));
-
-    const dsL = Math.max(0, minX - padX);
-    const dsT = Math.max(0, minY - padY);
-    const dsR = Math.min(cW, maxX + padX);
-    const dsB = Math.min(cH, maxY + padY);
-
-    const oLeft  = Math.max(0, Math.round(dsL / scale));
-    const oTop   = Math.max(0, Math.round(dsT / scale));
-    const oRight = Math.min(W, Math.round(dsR / scale));
-    const oBot   = Math.min(H, Math.round(dsB / scale));
-
-    const region = { left: oLeft, top: oTop, width: oRight - oLeft, height: oBot - oTop };
-    console.log(`[findPlate] Plaque : (${oLeft},${oTop}) ${region.width}x${region.height}px`);
-    return region;
+    console.log("[findPlate] Aucune région détectée");
+    return null;
 
   } catch (err) {
     console.warn("[findPlate] Erreur :", err.message);
@@ -163,13 +182,15 @@ async function findPlateRegion(enhancedBuffer, wmBuffer) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMPOSITE LOGO SUR LA RÉGION DÉTECTÉE
+// COMPOSITE LOGO SUR LA RÉGION
+// fit:fill → logo remplit toute la zone (sans distorsion excessive,
+//             la plaque étant horizontale comme le logo)
 // ─────────────────────────────────────────────────────────────────────────────
 async function compositeLogoOnRegion(imageBuffer, region) {
   const logo = Buffer.from(AUTOEASY_LOGO_B64, "base64");
   const overlay = await sharp(logo)
     .resize(region.width, region.height, {
-      fit:        "contain",
+      fit:        "fill",
       background: { r: 255, g: 255, b: 255, alpha: 1 },
     })
     .flatten({ background: { r: 255, g: 255, b: 255 } })
@@ -209,9 +230,7 @@ async function runPhotoroom(imageBuffer, mimeType) {
 // HANDLER PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
 module.exports = async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ success: false, error: "Method not allowed" });
-  }
+  if (req.method !== "POST") return res.status(405).json({ success: false, error: "Method not allowed" });
 
   try {
     const { image } = req.body;
@@ -221,43 +240,43 @@ module.exports = async function handler(req, res) {
     const mimeType    = image.includes("data:") ? image.split(";")[0].split(":")[1] : "image/jpeg";
     const imageBuffer = Buffer.from(base64Data, "base64");
 
-    if (imageBuffer.length > 20 * 1024 * 1024) {
+    if (imageBuffer.length > 20 * 1024 * 1024)
       return res.status(200).json({ success: false, error: "Image trop volumineuse (max 20 Mo)." });
-    }
 
-    // ── 0. Prétraitement commun (sharp)
-    // enhanced est envoyé à Watermarkly ET sert de référence pour findPlateRegion.
-    // Diff(enhanced, wmResult) = uniquement les modifications Watermarkly.
+    // ── 0. Preprocessing commun ──────────────────────────────────────────────
+    // enhanced → envoyé à Watermarkly ET référence pour findPlateRegion
+    // diff(enhanced, wmResult) = uniquement les changements Watermarkly (pas de bruit sharp)
     const enhanced = await sharp(imageBuffer)
       .sharpen({ sigma: 1.2, flat: 1, jagged: 2 })
       .modulate({ saturation: 1.1 })
       .jpeg({ quality: 96 })
       .toBuffer();
 
-    // ── 1. Watermarkly (reçoit enhanced)
+    // ── 1. Watermarkly ──────────────────────────────────────────────────────
     console.log("[Pipeline] Étape 1 — Watermarkly...");
     const watermarklyResult = await blurPlateWatermarkly(enhanced);
-    if (!watermarklyResult) console.warn("[Pipeline] Watermarkly échoué — enhanced utilisé");
+    if (!watermarklyResult) console.warn("[Pipeline] Watermarkly échoué");
 
-    // ── 2. Logo garanti — diff(enhanced, wmResult) → composite propre
+    // ── 2. Logo garanti (S1 + S2) ────────────────────────────────────────────
     let imageForPhotoroom = watermarklyResult ?? enhanced;
+    let plateRegion = null;
 
     if (watermarklyResult) {
       console.log("[Pipeline] Étape 2 — Logo garanti...");
       try {
-        const region = await findPlateRegion(enhanced, watermarklyResult);
-        if (region) {
-          imageForPhotoroom = await compositeLogoOnRegion(watermarklyResult, region);
-          console.log("[Pipeline] Logo composite appliqué");
+        plateRegion = await findPlateRegion(enhanced, watermarklyResult);
+        if (plateRegion) {
+          imageForPhotoroom = await compositeLogoOnRegion(watermarklyResult, plateRegion);
+          console.log("[Pipeline] Logo composite OK");
         } else {
-          console.log("[Pipeline] Aucune région trouvée — watermarkly conservé");
+          console.log("[Pipeline] Aucune région — watermarkly conservé");
         }
       } catch (e) {
         console.warn("[Pipeline] Logo garanti échoué :", e.message);
       }
     }
 
-    // ── 3. Photoroom
+    // ── 3. Photoroom ─────────────────────────────────────────────────────────
     console.log("[Pipeline] Étape 3 — Photoroom...");
     let photoroomBuffer;
     try {
@@ -267,9 +286,8 @@ module.exports = async function handler(req, res) {
     }
 
     const { width: imgW } = await sharp(photoroomBuffer).metadata();
-    console.log(`[Pipeline] Photoroom OK — ${imgW}px`);
 
-    // ── 4. Vignette AE
+    // ── 4. Vignette AE ───────────────────────────────────────────────────────
     const vignetteUrl = process.env.VIGNETTE_URL || "https://cotecars-test.vercel.app/vignette-AE.png";
     try {
       const vigRes     = await fetch(vignetteUrl);
@@ -283,16 +301,15 @@ module.exports = async function handler(req, res) {
         .composite([{ input: vigResized, top: VIG_PAD, left: imgW - VIG_SIZE - VIG_PAD }])
         .jpeg({ quality: 92 })
         .toBuffer();
-      console.log(`[Pipeline] Vignette OK — ${VIG_SIZE}px`);
-    } catch (e) {
-      console.warn("[Pipeline] Vignette échouée :", e.message);
-    }
+    } catch (e) { console.warn("[Pipeline] Vignette échouée :", e.message); }
 
-    console.log(`[Pipeline] Terminé — ${photoroomBuffer.length} octets`);
+    console.log(`[Pipeline] Terminé — ${photoroomBuffer.length} octets | region: ${JSON.stringify(plateRegion)}`);
+
     return res.status(200).json({
       success:       true,
       result:        "data:image/jpeg;base64," + photoroomBuffer.toString("base64"),
       plateDetected: !!watermarklyResult,
+      plateRegion,          // ← debug : visible dans DevTools → Network → réponse
     });
 
   } catch (error) {
