@@ -1,7 +1,7 @@
 // api/partner-photo.js
 //
 // Pipeline :
-//   1. Watermarkly  → détecte plaque + place logo (URL hébergée)
+//   1. Watermarkly  → détecte plaque + place logo (Cloudinary)
 //   2. Photoroom v2 → détourage + fond #F2F2F2 + ombre ai.soft
 //   3. Sharp        → vignette AE en haut à droite
 //
@@ -12,7 +12,7 @@ const fetch    = require("node-fetch");
 const sharp    = require("sharp");
 
 const BACKGROUND_COLOR = "#F2F2F2";
-const LOGO_URL         = "https://cotecars-test.vercel.app/logo-ae.png";
+const LOGO_URL = "https://res.cloudinary.com/di3xa7ldg/image/upload/f_auto,q_80,w_600/v1779551062/autoeasy-logo_j41dix.png";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RETRY HELPER
@@ -32,6 +32,9 @@ async function withRetry(fn, maxAttempts = 3, backoffMs = [0, 2000, 4000]) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ÉTAPE 1 — WATERMARKLY
+// detection_threshold:0  → détection maximale
+// logo_size:1.0          → taille exacte de la plaque
+// logo_url: Cloudinary   → URL légère et accessible
 // ─────────────────────────────────────────────────────────────────────────────
 async function blurPlateWatermarkly(imageBuffer) {
   try {
