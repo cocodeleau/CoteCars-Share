@@ -322,16 +322,16 @@
 
         db.collection("partner_sessions")
           .where("uid", "==", user.uid)
-          .orderBy("createdAt", "desc")
           .get()
           .then(snap => {
             const docs = snap.docs
               .map(d => ({ id:d.id, ...d.data() }))
-              .filter(s => s.createdAt >= cutoff); // filtre 30j côté client
+              .filter(s => s.createdAt >= cutoff)
+              .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
             setSessions(docs);
             setLoading(false);
           })
-          .catch(() => setLoading(false));
+          .catch(err => { console.error("[partner_sessions]", err); setLoading(false); });
       }, []);
 
       async function downloadSession(sess) {
