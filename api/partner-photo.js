@@ -1,8 +1,9 @@
 // api/partner-photo.js
 //
 // Pipeline :
-//   1. Gemini Vision  → 4 coins de la plaque en % de l'image
-//   2. Sharp          → logo redimensionné + incliné selon l'angle réel
+//   1. Gemini Vision  → quadrillage plaque (4 coins réels avec angle)
+//   2. Sharp          → logo dimensionné aux dimensions exactes de la plaque
+//                       + tourné selon l'angle réel + centré sur la plaque
 //   3. Photoroom v2   → détourage + fond #F2F2F2 + ombre ai.soft
 //   4. Sharp          → vignette AE en haut à droite
 //
@@ -36,6 +37,7 @@ async function withRetry(fn, maxAttempts = 3, backoffMs = [0, 2000, 4000]) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ÉTAPE 1 — GEMINI VISION
+// Prompt : "draw a tight bounding box" — vocabulaire vision standard
 // ─────────────────────────────────────────────────────────────────────────────
 async function detectPlateWithGemini(imageBuffer) {
   try {
@@ -44,31 +46,25 @@ async function detectPlateWithGemini(imageBuffer) {
       .jpeg({ quality: 90 })
       .toBuffer();
 
-    const base64 = forGemini.toString("base64");
+    const base64img = forGemini.toString("base64");
 
-    const prompt = `This is a car photo. Your task: find the LICENSE PLATE (plaque d'immatriculation).
+    const prompt = `This is a car photo. Draw a tight bounding box around the vehicle license plate (plaque d'immatriculation).
 
-IMPORTANT CHARACTERISTICS of a license plate:
-- It is a THIN HORIZONTAL RECTANGLE fixed to the BUMPER of the car
-- It is in the LOWER PART of the car (near the bottom of the vehicle)
-- It contains visible alphanumeric text (letters and numbers)
-- Width is 4 to 6 times greater than height
-- In France: white/yellow background with black text, blue strip on the left
-- It is SMALL relative to the car (typically 5-20% of image width)
-- Do NOT select windows, body panels, spoilers, decorative strips, or badges
+The license plate is the rectangular metal plate attached to the bumper displaying the registration number.
+It is located in the LOWER part of the car, fixed to the front or rear bumper.
+It contains alphanumeric characters (letters and digits).
+It is much wider than tall (ratio ~4:1 to 6:1).
 
-Return ONLY valid JSON.
+For angled or 3/4 views, report the ACTUAL 4 corner positions including any tilt — do not approximate as a perfect horizontal rectangle.
 
-If a license plate is found:
+Return ONLY valid JSON:
 {"found": true, "plate": {"tl": {"x": 0.30, "y": 0.82}, "tr": {"x": 0.50, "y": 0.81}, "br": {"x": 0.50, "y": 0.86}, "bl": {"x": 0.30, "y": 0.87}}}
 
-If no license plate visible:
+If no plate is visible:
 {"found": false}
 
-Corner labels: tl=top-left, tr=top-right, br=bottom-right, bl=bottom-left
-x = fraction of image width (0=left, 1=right)
-y = fraction of image height (0=top, 1=bottom)
-Place corners TIGHTLY around the plate rectangle only.`;
+x = fraction of image width (0.0=left, 1.0=right)
+y = fraction of image height (0.0=top, 1.0=bottom)`;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
@@ -78,7 +74,7 @@ Place corners TIGHTLY around the plate rectangle only.`;
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           contents: [{ parts: [
-            { inlineData: { mimeType: "image/jpeg", data: base64 } },
+            { inlineData: { mimeType: "image/jpeg", data: base64img } },
             { text: prompt },
           ]}],
           generationConfig: {
@@ -96,8 +92,8 @@ Place corners TIGHTLY around the plate rectangle only.`;
       return null;
     }
 
-    const data      = await res.json();
-    const raw       = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+    const data = await res.json();
+    const raw  = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
     console.log(`[Gemini] Réponse (${raw.length} chars) : ${raw.substring(0, 300)}`);
 
     if (!raw) return null;
@@ -109,24 +105,21 @@ Place corners TIGHTLY around the plate rectangle only.`;
     if (!parsed.found) { console.log("[Gemini] Aucune plaque"); return null; }
 
     const { tl, tr, br, bl } = parsed.plate;
-
-    // Largeur et hauteur de la zone détectée
     const zoneW = Math.abs(tr.x - tl.x);
     const zoneH = Math.abs(bl.y - tl.y);
 
-    // Validation 1 : ratio largeur/hauteur > 1.5
+    // Validation ratio (plaque = rectangle horizontal)
     if (zoneH > 0 && zoneW / zoneH < 1.5) {
-      console.warn(`[Gemini] Rejeté ratio ${(zoneW/zoneH).toFixed(2)} < 1.5`);
+      console.warn(`[Gemini] Rejeté ratio=${( zoneW/zoneH).toFixed(2)} < 1.5`);
       return null;
     }
-
-    // Validation 2 : la plaque ne doit pas couvrir plus de 55% de la largeur
+    // Validation taille max (pas toute la carrosserie)
     if (zoneW > 0.55) {
-      console.warn(`[Gemini] Rejeté trop large zoneW=${zoneW.toFixed(3)} > 0.55`);
+      console.warn(`[Gemini] Rejeté trop large zoneW=${zoneW.toFixed(3)}`);
       return null;
     }
 
-    console.log(`[Gemini] OK : TL(${tl.x.toFixed(3)},${tl.y.toFixed(3)}) TR(${tr.x.toFixed(3)},${tr.y.toFixed(3)}) BR(${br.x.toFixed(3)},${br.y.toFixed(3)}) BL(${bl.x.toFixed(3)},${bl.y.toFixed(3)}) ratio=${zoneH>0?(zoneW/zoneH).toFixed(1):"?"}`);
+    console.log(`[Gemini] Plaque OK — TL(${tl.x.toFixed(3)},${tl.y.toFixed(3)}) TR(${tr.x.toFixed(3)},${tr.y.toFixed(3)}) BR(${br.x.toFixed(3)},${br.y.toFixed(3)}) BL(${bl.x.toFixed(3)},${bl.y.toFixed(3)})`);
     return parsed.plate;
 
   } catch (err) {
@@ -137,14 +130,21 @@ Place corners TIGHTLY around the plate rectangle only.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ÉTAPE 2 — COMPOSITE LOGO AVEC ROTATION
+//
+// 1. Calcule les dimensions RÉELLES de la plaque (longueur des côtés)
+// 2. Calcule l'angle d'inclinaison du bord supérieur (tl→tr)
+// 3. Redimensionne le logo à ces dimensions exactes (inset 5% pour ne pas dépasser)
+// 4. Tourne le logo par cet angle
+// 5. Centre le logo sur le centre géométrique de la plaque
 // ─────────────────────────────────────────────────────────────────────────────
 async function compositeLogoRotated(imageBuffer, plate, W, H) {
+  // Coins en pixels
   const tl = { x: plate.tl.x * W, y: plate.tl.y * H };
   const tr = { x: plate.tr.x * W, y: plate.tr.y * H };
   const br = { x: plate.br.x * W, y: plate.br.y * H };
   const bl = { x: plate.bl.x * W, y: plate.bl.y * H };
 
-  // Dimensions réelles de la plaque
+  // Dimensions réelles de la plaque (moyenne des côtés opposés)
   const pW = Math.round(
     (Math.hypot(tr.x - tl.x, tr.y - tl.y) +
      Math.hypot(br.x - bl.x, br.y - bl.y)) / 2
@@ -154,33 +154,38 @@ async function compositeLogoRotated(imageBuffer, plate, W, H) {
      Math.hypot(br.x - tr.x, br.y - tr.y)) / 2
   );
 
-  // Angle d'inclinaison du bord supérieur (positif = horaire pour Sharp)
+  // Angle d'inclinaison du bord supérieur (tl→tr), en degrés
+  // Sharp: positif = rotation horaire
   const angleDeg = Math.atan2(tr.y - tl.y, tr.x - tl.x) * 180 / Math.PI;
 
-  // Centre géométrique
+  // Centre géométrique de la plaque
   const cx = Math.round((tl.x + tr.x + br.x + bl.x) / 4);
   const cy = Math.round((tl.y + tr.y + br.y + bl.y) / 4);
 
-  // Dimensions logo avec inset 10%
-  const logoW = Math.max(10, Math.round(pW * 0.90));
-  const logoH = Math.max(4,  Math.round(pH * 0.90));
+  // Inset 5% pour rester à l'intérieur du quadrillage
+  const logoW = Math.max(10, Math.round(pW * 0.95));
+  const logoH = Math.max(4,  Math.round(pH * 0.95));
 
-  console.log(`[Logo] pW=${pW} pH=${pH} angle=${angleDeg.toFixed(2)}° center=(${cx},${cy})`);
+  console.log(`[Logo] pW=${pW}px pH=${pH}px angle=${angleDeg.toFixed(2)}° center=(${cx},${cy})`);
 
   const logoBuf = Buffer.from(AUTOEASY_LOGO_B64, "base64");
 
+  // Redimensionner aux dimensions exactes de la plaque
   const logoResized = await sharp(logoBuf)
     .resize(logoW, logoH, { fit: "fill" })
     .jpeg({ quality: 95 })
     .toBuffer();
 
+  // Tourner selon l'angle réel de la plaque
   const logoRotated = await sharp(logoResized)
     .rotate(angleDeg, { background: { r: 0, g: 0, b: 0 } })
     .jpeg({ quality: 95 })
     .toBuffer();
 
+  // Sharp agrandit l'image lors de la rotation — récupérer les vraies dimensions
   const { width: rW, height: rH } = await sharp(logoRotated).metadata();
 
+  // Centrer le logo rotaté sur le centre de la plaque
   const left = Math.max(0, Math.min(W - rW, Math.round(cx - rW / 2)));
   const top  = Math.max(0, Math.min(H - rH, Math.round(cy - rH / 2)));
 
@@ -233,11 +238,11 @@ module.exports = async function handler(req, res) {
 
     const { width: W, height: H } = await sharp(imageBuffer).metadata();
 
-    // ── 1. Gemini ────────────────────────────────────────────────────────────
-    console.log(`[Pipeline] Étape 1 — Gemini Vision (${GEMINI_MODEL})...`);
+    // ── 1. Gemini Vision ────────────────────────────────────────────────────
+    console.log(`[Pipeline] Étape 1 — Gemini Vision...`);
     const plate = await detectPlateWithGemini(imageBuffer);
 
-    // ── 2. Logo ──────────────────────────────────────────────────────────────
+    // ── 2. Logo avec rotation ────────────────────────────────────────────────
     let imageForPhotoroom = imageBuffer;
     let plateDetected     = false;
 
