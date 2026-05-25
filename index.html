@@ -167,6 +167,18 @@
 
     const EMERALD = "#1a3fdb";
 
+
+    function useIsMobile(breakpoint) {
+      var bp = breakpoint || 768;
+      const [isMobile, setIsMobile] = React.useState(window.innerWidth < bp);
+      React.useEffect(function() {
+        const handler = function() { setIsMobile(window.innerWidth < bp); };
+        window.addEventListener("resize", handler);
+        return function() { window.removeEventListener("resize", handler); };
+      }, []);
+      return isMobile;
+    }
+
     function LoginModal({ onClose }) {
       const [mode, setMode] = React.useState("login"); // login | register | forgot
       const [email, setEmail] = React.useState("");
