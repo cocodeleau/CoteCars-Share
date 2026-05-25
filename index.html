@@ -1547,6 +1547,7 @@
       const [showLogin, setShowLogin] = useState(false);
       const [showCount, setShowCount] = useState(6);
       const isConnected = !!user;
+      const isMobile = useIsMobile();
       const { veh, nom, ads, stats, finition, peuResultats } = result;
       const fmt = n => n ? n.toLocaleString("fr-FR") + " €" : "N/A";
       const allAds = [...ads].filter(a => a.price?.[0] > 500).sort((a, b) => a.price?.[0] - b.price[0]);
