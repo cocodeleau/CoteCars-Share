@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoEasy — Boutique Jetons</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', -apple-system, sans-serif; background: #f5f5f7; min-height: 100vh; }
+
+    /* Header */
+    .header { background: #1a1a2e; border-bottom: 2px solid #8dc63f; padding: 0 28px; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .ae-logo { width: 28px; height: 28px; border-radius: 7px; background: #8dc63f; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: #1a1a2e; text-decoration: none; }
+    .header-title { font-size: 14px; font-weight: 700; color: white; }
+    .header-sub { font-size: 11px; color: rgba(255,255,255,0.35); }
+    .btn-back { background: transparent; border: 1.5px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.6); border-radius: 8px; padding: 5px 14px; font-size: 12px; cursor: pointer; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-back:hover { border-color: #8dc63f; color: #8dc63f; }
+
+    /* Page content */
+    .page { max-width: 960px; margin: 0 auto; padding: 36px 24px; }
+    .page-title { font-size: 26px; font-weight: 800; color: #111; margin-bottom: 6px; }
+    .page-sub { font-size: 14px; color: #6b7280; margin-bottom: 36px; }
+
+    /* Packs grid */
+    .packs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px; margin-bottom: 32px; }
+
+    .pack-card { background: white; border-radius: 14px; border: 1.5px solid #e2e8f0; padding: 20px 16px; display: flex; flex-direction: column; gap: 10px; position: relative; transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s; }
+    .pack-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+    .pack-card.popular { border-color: #8dc63f; box-shadow: 0 4px 16px rgba(141,198,63,0.15); }
+
+    .pack-badge { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #8dc63f; color: #1a1a2e; font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
+    .pack-icon { font-size: 26px; }
+    .pack-name { font-size: 13px; font-weight: 700; color: #374151; }
+    .pack-tokens { font-size: 28px; font-weight: 800; color: #111; line-height: 1; }
+    .pack-tokens span { font-size: 13px; font-weight: 500; color: #9ca3af; }
+    .pack-price { font-size: 22px; font-weight: 800; color: #1a1a2e; }
+    .pack-unit { font-size: 11px; color: #9ca3af; margin-top: -4px; }
+    .pack-desc { font-size: 11px; color: #6b7280; line-height: 1.5; border-top: 1px solid #f3f4f6; padding-top: 10px; }
+    .pack-saving { font-size: 11px; font-weight: 700; color: #8dc63f; }
+
+    .btn-buy { width: 100%; padding: 11px; background: #1a1a2e; color: white; border: none; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: auto; transition: background 0.15s; }
+    .btn-buy:hover { background: #2d2d3a; }
+    .pack-card.popular .btn-buy { background: #8dc63f; color: #1a1a2e; }
+    .pack-card.popular .btn-buy:hover { background: #7db535; }
+    .btn-buy:disabled { background: #9ca3af; cursor: not-allowed; }
+
+    /* Success / Error banners */
+    .banner { border-radius: 12px; padding: 20px 24px; margin-bottom: 28px; display: flex; align-items: flex-start; gap: 16px; }
+    .banner.success { background: #f0fdf4; border: 1px solid #86efac; }
+    .banner.error { background: #fef2f2; border: 1px solid #fecaca; }
+    .banner-icon { font-size: 28px; flex-shrink: 0; }
+    .banner-title { font-size: 16px; font-weight: 700; color: #166534; margin-bottom: 4px; }
+    .banner.error .banner-title { color: #991b1b; }
+    .banner-sub { font-size: 13px; color: #15803d; }
+    .banner.error .banner-sub { color: #b91c1c; }
+
+    /* Info section */
+    .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .info-card { background: white; border-radius: 12px; border: 0.5px solid #e2e8f0; padding: 16px; display: flex; align-items: flex-start; gap: 12px; }
+    .info-icon { width: 36px; height: 36px; border-radius: 8px; background: #f5f5f7; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .info-title { font-size: 13px; font-weight: 700; color: #111; margin-bottom: 3px; }
+    .info-desc { font-size: 12px; color: #6b7280; line-height: 1.5; }
+
+    /* Loading overlay */
+    .loading-overlay { position: fixed; inset: 0; background: rgba(26,26,46,0.7); display: flex; align-items: center; justify-content: center; z-index: 999; backdrop-filter: blur(4px); }
+    .loading-box { background: white; border-radius: 14px; padding: 32px 40px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .spinner { width: 36px; height: 36px; border: 3px solid rgba(141,198,63,0.3); border-top-color: #8dc63f; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 640px) {
+      .packs-grid { grid-template-columns: repeat(2, 1fr); }
+      .info-grid { grid-template-columns: 1fr; }
+      .page { padding: 20px 16px; }
+      .header { padding: 0 16px; }
+      .header-sub { display: none; }
+    }
+    @media (max-width: 380px) {
+      .packs-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <a href="/partner.html" class="ae-logo">AE</a>
+      <span class="header-title">AutoEasy Studio</span>
+      <span class="header-sub">/ Boutique</span>
+    </div>
+    <a href="/partner.html" class="btn-back">← Espace partenaire</a>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-overlay" id="loadingOverlay" style="display:none">
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <div style="font-size:15px;font-weight:700;color:#111">Redirection vers le paiement...</div>
+      <div style="font-size:13px;color:#6b7280">Vous allez être redirigé vers Stripe</div>
+    </div>
+  </div>
+
+  <div class="page">
+
+    <!-- Bannières success / cancel -->
+    <div id="bannerSuccess" class="banner success" style="display:none">
+      <div class="banner-icon">🎉</div>
+      <div>
+        <div class="banner-title">Paiement confirmé !</div>
+        <div class="banner-sub" id="bannerSuccessText">Vos jetons ont été crédités sur votre compte.</div>
+      </div>
+    </div>
+    <div id="bannerCancel" class="banner error" style="display:none">
+      <div class="banner-icon">❌</div>
+      <div>
+        <div class="banner-title">Paiement annulé</div>
+        <div class="banner-sub">Votre paiement a été annulé. Aucun montant n'a été prélevé.</div>
+      </div>
+    </div>
+
+    <div class="page-title">Recharger en jetons</div>
+    <div class="page-sub">1 jeton = 1 session complète (jusqu'à 6 photos traitées). Les jetons n'expirent pas.</div>
+
+    <!-- Packs -->
+    <div class="packs-grid" id="packsGrid">
+
+      <div class="pack-card" data-price="price_1Tb6uaFoNUg5Tq4AOHKKjZiD" data-tokens="1">
+        <div class="pack-icon">⚡</div>
+        <div class="pack-name">Jeton unique</div>
+        <div class="pack-tokens">1 <span>jeton</span></div>
+        <div class="pack-price">4,90€</div>
+        <div class="pack-unit">4,90€ / jeton</div>
+        <div class="pack-desc">1 crédit de session photo. Jusqu'à 6 photos traitées professionnellement.</div>
+        <button class="btn-buy" onclick="buy(this)">Acheter</button>
+      </div>
+
+      <div class="pack-card" data-price="price_1Tb6wNFoNUg5Tq4AnU6Yf3jT" data-tokens="10">
+        <div class="pack-icon">🚀</div>
+        <div class="pack-name">Découverte</div>
+        <div class="pack-tokens">10 <span>jetons</span></div>
+        <div class="pack-price">29€</div>
+        <div class="pack-unit">2,90€ / jeton</div>
+        <div class="pack-saving">Économisez 41%</div>
+        <div class="pack-desc">Jusqu'à 60 photos traitées professionnellement.</div>
+        <button class="btn-buy" onclick="buy(this)">Acheter</button>
+      </div>
+
+      <div class="pack-card" data-price="price_1Tb6y6FoNUg5Tq4A4qtzW32r" data-tokens="25">
+        <div class="pack-icon">💼</div>
+        <div class="pack-name">Essentiel</div>
+        <div class="pack-tokens">25 <span>jetons</span></div>
+        <div class="pack-price">65€</div>
+        <div class="pack-unit">2,60€ / jeton</div>
+        <div class="pack-saving">Économisez 47%</div>
+        <div class="pack-desc">Jusqu'à 150 photos traitées professionnellement.</div>
+        <button class="btn-buy" onclick="buy(this)">Acheter</button>
+      </div>
+
+      <div class="pack-card popular" data-price="price_1Tb71xFoNUg5Tq4AxGHK6PmW" data-tokens="50">
+        <div class="pack-badge">⭐ Populaire</div>
+        <div class="pack-icon">🏆</div>
+        <div class="pack-name">Pro</div>
+        <div class="pack-tokens">50 <span>jetons</span></div>
+        <div class="pack-price">110€</div>
+        <div class="pack-unit">2,20€ / jeton</div>
+        <div class="pack-saving">Économisez 55%</div>
+        <div class="pack-desc">Jusqu'à 300 photos traitées professionnellement.</div>
+        <button class="btn-buy" onclick="buy(this)">Acheter</button>
+      </div>
+
+      <div class="pack-card" data-price="price_1Tb744FoNUg5Tq4AfvdDy0BJ" data-tokens="100">
+        <div class="pack-icon">🏢</div>
+        <div class="pack-name">Business</div>
+        <div class="pack-tokens">100 <span>jetons</span></div>
+        <div class="pack-price">199€</div>
+        <div class="pack-unit">1,99€ / jeton</div>
+        <div class="pack-saving">Économisez 59%</div>
+        <div class="pack-desc">Jusqu'à 600 photos traitées professionnellement.</div>
+        <button class="btn-buy" onclick="buy(this)">Acheter</button>
+      </div>
+
+    </div>
+
+    <!-- Infos -->
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-icon">⚡</div>
+        <div>
+          <div class="info-title">Crédité instantanément</div>
+          <div class="info-desc">Vos jetons sont disponibles dès la confirmation du paiement.</div>
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="info-icon">🔒</div>
+        <div>
+          <div class="info-title">Paiement sécurisé</div>
+          <div class="info-desc">Transactions chiffrées via Stripe. Aucune donnée bancaire stockée.</div>
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="info-icon">♾️</div>
+        <div>
+          <div class="info-title">Sans expiration</div>
+          <div class="info-desc">Vos jetons n'expirent pas. Utilisez-les à votre rythme.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Récupérer companyId depuis l'URL
+    const params = new URLSearchParams(window.location.search);
+    const companyId = params.get("company") || "autoeasy";
+
+    // Afficher bannières
+    if (params.get("success") === "true") {
+      const tokens = params.get("tokens");
+      document.getElementById("bannerSuccess").style.display = "flex";
+      document.getElementById("bannerSuccessText").textContent =
+        `${tokens} jeton${tokens > 1 ? "s ont été crédités" : " a été crédité"} sur votre compte.`;
+    }
+    if (params.get("cancelled") === "true") {
+      document.getElementById("bannerCancel").style.display = "flex";
+    }
+
+    async function buy(btn) {
+      const card = btn.closest(".pack-card");
+      const priceId = card.dataset.price;
+      const tokens = card.dataset.tokens;
+
+      document.getElementById("loadingOverlay").style.display = "flex";
+      document.querySelectorAll(".btn-buy").forEach(b => b.disabled = true);
+
+      try {
+        const res = await fetch("/api/stripe-checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ priceId, tokens: parseInt(tokens), companyId }),
+        });
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error(data.error || "Erreur inconnue");
+        }
+      } catch (err) {
+        document.getElementById("loadingOverlay").style.display = "none";
+        document.querySelectorAll(".btn-buy").forEach(b => b.disabled = false);
+        alert("Erreur : " + err.message);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -92,6 +92,9 @@
 
     const ALLOWED_EMAILS = ["corentin.millet974@gmail.com"];
 
+    // Mapping email → companyId
+    const COMPANY_MAP = { "corentin.millet974@gmail.com": "autoeasy" };
+
     async function processPartnerImage(file, onProgress) {
       if (file.size > 20 * 1024 * 1024) throw new Error("Image trop volumineuse (max 20 Mo).");
       onProgress("Compression de la photo...", 8);
@@ -434,12 +437,24 @@
     }
 
     // ── Dashboard (shell avec navigation) ────────────────────────
-    function Dashboard({ user, onNewSession }) {
+    function Dashboard({ user, tokens, companyId, onNewSession }) {
       const [menuOpen, setMenuOpen] = useState(false);
       const [activeTab, setActiveTab] = useState("historique");
 
+      const tokenColor = tokens === null ? "#9ca3af" : tokens === 0 ? "#ef4444" : tokens <= 3 ? "#f59e0b" : "#8dc63f";
+
       const headerRight = (
         <>
+          {/* Solde jetons */}
+          <a href={`/shop.html?company=${companyId||"autoeasy"}`}
+            style={{ display:"flex", alignItems:"center", gap:6, padding:"5px 12px", background:"rgba(255,255,255,0.08)", border:`1px solid ${tokenColor}`, borderRadius:8, textDecoration:"none", transition:"all 0.15s" }}
+            title="Recharger des jetons">
+            <span style={{ fontSize:13 }}>⚡</span>
+            <span style={{ fontSize:12, fontWeight:700, color:tokenColor }}>
+              {tokens === null ? "..." : `${tokens} jeton${tokens > 1 ? "s" : ""}`}
+            </span>
+            {tokens <= 3 && tokens !== null && <span style={{ fontSize:10, color:tokenColor }}>· Recharger</span>}
+          </a>
           <button onClick={onNewSession} className="btn-ae" style={{ padding:"7px 16px", fontSize:12 }}>+ Nouveau traitement</button>
           <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:"rgba(255,255,255,0.6)" }}>
             <div style={{ width:28, height:28, borderRadius:"50%", background:"#2d2d3a", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, color:"#8dc63f", fontWeight:700 }}>
@@ -454,13 +469,27 @@
         <div style={{ minHeight:"100vh", background:"#f5f5f7", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
           <Sidebar user={user} open={menuOpen} onClose={() => setMenuOpen(false)} activeTab={activeTab} onTabChange={setActiveTab} />
           <AEHeader title={activeTab === "historique" ? "Historique" : activeTab} rightSlot={headerRight} onMenuToggle={() => setMenuOpen(m=>!m)} />
+          {/* Alerte jetons faibles */}
+          {tokens !== null && tokens <= 1 && (
+            <div style={{ background:tokens===0?"#fef2f2":"#fff7ed", borderBottom:`2px solid ${tokens===0?"#fecaca":"#fed7aa"}`, padding:"10px 28px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, fontSize:13 }}>
+                <span>{tokens===0?"🚫":"⚠️"}</span>
+                <span style={{ color:tokens===0?"#991b1b":"#92400e", fontWeight:600 }}>
+                  {tokens===0 ? "Plus de jetons — les nouveaux traitements sont bloqués." : "Attention : il vous reste 1 jeton."}
+                </span>
+              </div>
+              <a href={`/shop.html?company=${companyId||"autoeasy"}`} style={{ background:tokens===0?"#ef4444":"#f59e0b", color:"white", padding:"6px 14px", borderRadius:7, fontSize:12, fontWeight:700, textDecoration:"none", flexShrink:0 }}>
+                Recharger →
+              </a>
+            </div>
+          )}
           {activeTab === "historique" && <Historique user={user} onNewSession={onNewSession} />}
         </div>
       );
     }
 
     // ── Studio Photo ──────────────────────────────────────────────
-    function Studio({ user, onBack }) {
+    function Studio({ user, tokens, companyId, commercialName, onBack, onTokenUsed }) {
       const [step, setStep] = useState(1);
       const [files, setFiles] = useState([]);
       const [vehicleName, setVehicleName] = useState("");
@@ -526,12 +555,15 @@
           await db.collection("partner_sessions").add({
             uid: user.uid,
             userEmail: user.email,
+            companyId: companyId || "autoeasy",
+            commercialName: commercialName || "Inconnu",
             vehicleName: vehicleName || "Véhicule",
             photoCount: photoUrls.length,
             photos: photoUrls,
             createdAt: now.toISOString(),
             expiresAt,
           });
+          await onTokenUsed();
           setSaved(true);
         } catch(err) { alert("Erreur sauvegarde : " + err.message); }
         setSaving(false);
@@ -610,9 +642,23 @@
                       ))}
                     </div>
                   )}
-                  <button onClick={()=>handleProcess()} disabled={files.length===0} className="btn-ae" style={{ width:"100%", padding:"13px", fontSize:14 }}>
-                    Traiter {files.length} photo{files.length>1?"s":""} →
-                  </button>
+                  {tokens === 0 ? (
+                    <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:10, padding:"14px", textAlign:"center" }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:"#991b1b", marginBottom:8 }}>🚫 Plus de jetons disponibles</div>
+                      <a href={`/shop.html?company=${companyId||"autoeasy"}`} style={{ display:"inline-block", background:"#ef4444", color:"white", padding:"9px 18px", borderRadius:8, fontSize:13, fontWeight:700, textDecoration:"none" }}>Recharger maintenant →</a>
+                    </div>
+                  ) : (
+                    <>
+                      {tokens === 1 && (
+                        <div style={{ background:"#fff7ed", border:"1px solid #fed7aa", borderRadius:8, padding:"10px 12px", marginBottom:10, fontSize:12, color:"#92400e", fontWeight:600 }}>
+                          ⚠️ Attention : il vous reste 1 jeton. Cette session le consommera.
+                        </div>
+                      )}
+                      <button onClick={()=>handleProcess()} disabled={files.length===0} className="btn-ae" style={{ width:"100%", padding:"13px", fontSize:14 }}>
+                        Traiter {files.length} photo{files.length>1?"s":""} →
+                      </button>
+                    </>
+                  )}
                 </div>
                 <div className="step1-panel-right" style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:18 }}>
                   <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:14 }}>Ce qui sera fait</div>
@@ -741,20 +787,80 @@
     }
 
     // ── App ───────────────────────────────────────────────────────
+    // ── Modal sélection commercial ────────────────────────────────
+    function CommercialModal({ commercials, onSelect }) {
+      const [selected, setSelected] = useState("");
+      return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(26,26,46,0.85)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(4px)" }}>
+          <div style={{ background:"white", borderRadius:16, padding:"32px 28px", width:"100%", maxWidth:360, margin:"0 16px", boxShadow:"0 24px 60px rgba(0,0,0,0.3)" }}>
+            <div style={{ width:44, height:44, borderRadius:10, background:"#8dc63f", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:16 }}>
+              <span style={{ fontSize:16, fontWeight:900, color:"#1a1a2e" }}>AE</span>
+            </div>
+            <div style={{ fontSize:20, fontWeight:700, color:"#111", marginBottom:6 }}>Qui êtes-vous ?</div>
+            <div style={{ fontSize:13, color:"#6b7280", marginBottom:24 }}>Sélectionnez votre nom pour identifier votre session.</div>
+            <select value={selected} onChange={e => setSelected(e.target.value)}
+              style={{ width:"100%", padding:"12px 14px", border:"1.5px solid #e2e8f0", borderRadius:10, fontSize:14, outline:"none", color:"#111", marginBottom:20, background:"white", cursor:"pointer" }}>
+              <option value="">— Choisissez votre nom —</option>
+              {commercials.map((c,i) => <option key={i} value={c}>{c}</option>)}
+            </select>
+            <button onClick={() => selected && onSelect(selected)} disabled={!selected}
+              className="btn-ae" style={{ width:"100%", padding:"13px", fontSize:14, borderRadius:10, opacity:selected?1:0.5 }}>
+              Confirmer
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     function App() {
       const [user, setUser] = useState(null);
       const [loading, setLoading] = useState(true);
       const [view, setView] = useState("dashboard");
+      const [tokens, setTokens] = useState(null);
+      const [companyId, setCompanyId] = useState(null);
+      const [commercials, setCommercials] = useState([]);
+      const [commercialName, setCommercialName] = useState(() => sessionStorage.getItem("commercialName") || "");
 
       useEffect(() => {
-        const unsub = auth.onAuthStateChanged(u => {
-          if (u && ALLOWED_EMAILS.includes(u.email?.toLowerCase())) { setUser(u); }
-          else if (u) { auth.signOut(); setUser(null); }
+        const unsub = auth.onAuthStateChanged(async u => {
+          if (u && ALLOWED_EMAILS.includes(u.email?.toLowerCase())) {
+            setUser(u);
+            const cid = COMPANY_MAP[u.email?.toLowerCase()];
+            setCompanyId(cid);
+            if (cid) {
+              try {
+                const doc = await db.collection("companies").doc(cid).get();
+                if (doc.exists) {
+                  setTokens(doc.data().tokens ?? 0);
+                  setCommercials(doc.data().commercials || []);
+                }
+              } catch(e) { console.error("[company]", e); }
+            }
+          } else if (u) { auth.signOut(); setUser(null); }
           else { setUser(null); }
           setLoading(false);
         });
         return unsub;
       }, []);
+
+      function handleSelectCommercial(name) {
+        setCommercialName(name);
+        sessionStorage.setItem("commercialName", name);
+      }
+
+      async function deductToken() {
+        if (!companyId) return;
+        try {
+          await db.runTransaction(async (t) => {
+            const ref = db.collection("companies").doc(companyId);
+            const doc = await t.get(ref);
+            const current = doc.data()?.tokens || 0;
+            if (current <= 0) throw new Error("Plus de jetons");
+            t.update(ref, { tokens: current - 1 });
+            setTokens(current - 1);
+          });
+        } catch(e) { console.error("[deductToken]", e); }
+      }
 
       if (loading) return (
         <div style={{ minHeight:"100vh", background:"#1a1a2e", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:16 }}>
@@ -766,8 +872,9 @@
       );
 
       if (!user) return <LoginPage />;
-      if (view==="studio") return <Studio user={user} onBack={()=>setView("dashboard")} />;
-      return <Dashboard user={user} onNewSession={()=>setView("studio")} />;
+      if (user && commercials.length > 0 && !commercialName) return <CommercialModal commercials={commercials} onSelect={handleSelectCommercial} />;
+      if (view==="studio") return <Studio user={user} tokens={tokens} companyId={companyId} commercialName={commercialName} onBack={()=>setView("dashboard")} onTokenUsed={deductToken} />;
+      return <Dashboard user={user} tokens={tokens} companyId={companyId} onNewSession={()=>setView("studio")} />;
     }
 
     window.__firebaseReady.then(() => {

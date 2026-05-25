@@ -9,6 +9,8 @@
     "node-fetch": "^2.7.0",
     "@google/generative-ai": "^0.21.0",
     "sharp": "^0.33.4",
-    "replicate": "^0.34.0"
+    "replicate": "^0.34.0",
+    "stripe": "^14.21.0",
+    "firebase-admin": "^12.1.0"
   }
 }
