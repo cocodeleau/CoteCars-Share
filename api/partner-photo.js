@@ -1,7 +1,7 @@
 // api/partner-photo.js
 //
 // Pipeline :
-//   1. Watermarkly  → détecte plaque + place logo AutoEasy
+//   1. Watermarkly  → détecte plaque + place logo AutoEasy (blur_intensity:0 = logo seul, pas de flou)
 //   2. Photoroom v2 → détourage + fond #F2F2F2 + ombre ai.soft
 //   3. Sharp        → vignette AE en haut à droite
 //
@@ -36,8 +36,9 @@ async function withRetry(fn, maxAttempts = 3, backoffMs = [0, 2000, 4000]) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ÉTAPE 1 — WATERMARKLY
-// Détecte la plaque + place le logo AutoEasy via AUTOEASY_LOGO_URL (Cloudinary)
-// Retourne null si erreur (sans bloquer le pipeline)
+// blur_intensity: 0.0 → désactive le flou natif, seul le logo est incrusté
+// plate_screws: true  → détection stricte des vis de plaque (évite les faux positifs)
+// logo_size: 0.9      → légèrement en retrait pour ne pas déborder
 // ─────────────────────────────────────────────────────────────────────────────
 async function blurPlateWatermarkly(imageBuffer) {
   try {
@@ -46,14 +47,15 @@ async function blurPlateWatermarkly(imageBuffer) {
     const logoUrl = process.env.AUTOEASY_LOGO_URL || "";
 
     const params = new URLSearchParams({
-      blur_intensity:      "10",
+      blur_intensity:      "0.0",   // ← désactive le flou, logo seul
       format:              "jpeg",
       detection_threshold: "0.1",
+      plate_screws:        "true",  // ← détection stricte
     });
 
     if (logoUrl) {
       params.set("logo_url",  logoUrl);
-      params.set("logo_size", "1.0");
+      params.set("logo_size", "0.9");
     }
 
     const res = await withRetry(() =>
@@ -82,7 +84,6 @@ async function blurPlateWatermarkly(imageBuffer) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ÉTAPE 2 — PHOTOROOM v2
-// Détourage + fond gris clair + ombre portée réaliste
 // ─────────────────────────────────────────────────────────────────────────────
 async function runPhotoroom(imageBuffer, mimeType) {
   const form = new FormData();
@@ -132,7 +133,7 @@ module.exports = async function handler(req, res) {
     }
 
     // ── 1. Watermarkly ───────────────────────────────────────────────────────
-    console.log("[Pipeline] Étape 1 — Watermarkly...");
+    console.log("[Pipeline] Étape 1 — Watermarkly (blur_intensity:0, logo seul)...");
     const watermarklyResult = await blurPlateWatermarkly(imageBuffer);
     if (!watermarklyResult) {
       console.warn("[Pipeline] Watermarkly échoué — image originale utilisée");
