@@ -548,6 +548,13 @@
       const successCount = processed.filter(Boolean).length;
       const failCount = failed.length;
 
+      // Sauvegarde automatique dès que le traitement est terminé
+      useEffect(() => {
+        if (step === 3 && successCount > 0 && !saved && !saving) {
+          handleSave();
+        }
+      }, [step, successCount]);
+
       const headerRight = (
         <button onClick={onBack} className="btn-outline" style={{ padding:"5px 14px", fontSize:12 }}>← Dashboard</button>
       );
@@ -674,7 +681,7 @@
                       </div>
                       <div className="export-actions" style={{ display:"flex", gap:10, flexShrink:0 }}>
                         <button onClick={downloadAll} className="btn-ae" style={{ padding:"9px 16px", fontSize:13 }}>⬇️ Tout télécharger ({successCount} JPG)</button>
-                        {!saved && <button onClick={handleSave} disabled={saving} className="btn-outline" style={{ padding:"9px 16px", fontSize:13 }}>{saving?"Sauvegarde...":"💾 Sauvegarder"}</button>}
+                        {saving && <div style={{ fontSize:12, color:"#9ca3af", display:"flex", alignItems:"center", gap:6 }}><div className="spinner" style={{ width:12, height:12 }} />Sauvegarde...</div>}
                         {saved && <div style={{ padding:"9px 12px", fontSize:12, color:"#8dc63f", fontWeight:600 }}>✓ Sauvegardé</div>}
                       </div>
                     </div>
@@ -688,7 +695,7 @@
                           <div style={{ fontSize:13, fontWeight:600, color:"#166534", flex:1 }}>{successCount} photo{successCount>1?"s":""} OK</div>
                           <div className="export-actions" style={{ display:"flex", gap:8 }}>
                             <button onClick={downloadAll} className="btn-ae" style={{ padding:"7px 14px", fontSize:12 }}>⬇️ Télécharger ({successCount})</button>
-                            {!saved && <button onClick={handleSave} disabled={saving} className="btn-outline" style={{ padding:"7px 14px", fontSize:12 }}>{saving?"...":"💾 Sauvegarder"}</button>}
+                            {saving && <div style={{ fontSize:11, color:"#9ca3af" }}>...</div>}
                             {saved && <div style={{ padding:"7px 10px", fontSize:12, color:"#8dc63f", fontWeight:600 }}>✓</div>}
                           </div>
                         </div>
