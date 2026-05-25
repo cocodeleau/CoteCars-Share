@@ -134,7 +134,7 @@ async function compositeWithWatermark(carPngBuffer, width, height) {
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  const OPACITY = 0.10; // 10%
+  const OPACITY = 0.25; // 25%
   for (let i = 3; i < rawTile.length; i += 4) {
     rawTile[i] = Math.round(rawTile[i] * OPACITY);
   }
