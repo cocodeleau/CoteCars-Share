@@ -442,18 +442,22 @@
       const [activeTab, setActiveTab] = useState("historique");
 
       const tokenColor = tokens === null ? "#9ca3af" : tokens === 0 ? "#ef4444" : tokens <= 3 ? "#f59e0b" : "#8dc63f";
+      const tokenBg   = tokens === null ? "rgba(255,255,255,0.06)" : tokens === 0 ? "rgba(239,68,68,0.15)" : tokens <= 3 ? "rgba(245,158,11,0.15)" : "rgba(141,198,63,0.15)";
 
       const headerRight = (
         <>
-          {/* Solde jetons */}
+          {/* Solde jetons — badge bien visible */}
           <a href={`/shop.html?company=${companyId||"autoeasy"}`}
-            style={{ display:"flex", alignItems:"center", gap:6, padding:"5px 12px", background:"rgba(255,255,255,0.08)", border:`1px solid ${tokenColor}`, borderRadius:8, textDecoration:"none", transition:"all 0.15s" }}
-            title="Recharger des jetons">
-            <span style={{ fontSize:13 }}>⚡</span>
-            <span style={{ fontSize:12, fontWeight:700, color:tokenColor }}>
-              {tokens === null ? "..." : `${tokens} jeton${tokens > 1 ? "s" : ""}`}
-            </span>
-            {tokens <= 3 && tokens !== null && <span style={{ fontSize:10, color:tokenColor }}>· Recharger</span>}
+            style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 14px", background:tokenBg, border:`1.5px solid ${tokenColor}`, borderRadius:9, textDecoration:"none", transition:"all 0.15s", flexShrink:0 }}>
+            <span style={{ fontSize:15 }}>⚡</span>
+            <div style={{ display:"flex", flexDirection:"column", lineHeight:1.1 }}>
+              <span style={{ fontSize:14, fontWeight:800, color:tokenColor, letterSpacing:"-0.01em" }}>
+                {tokens === null ? "—" : tokens}
+              </span>
+              <span style={{ fontSize:9, fontWeight:600, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.06em" }}>
+                {tokens === null ? "chargement" : tokens <= 3 && tokens !== null ? "Recharger →" : "jetons"}
+              </span>
+            </div>
           </a>
           <button onClick={onNewSession} className="btn-ae" style={{ padding:"7px 16px", fontSize:12 }}>+ Nouveau traitement</button>
           <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:"rgba(255,255,255,0.6)" }}>
