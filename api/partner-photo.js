@@ -2,7 +2,7 @@
 //
 // Pipeline :
 //   1. Watermarkly  → détecte plaque + place logo AutoEasy
-//                     blur_intensity:10 = logo prioritaire, flou léger discret en fallback
+//                     Paramètres officiels recommandés par la documentation
 //   2. Photoroom v2 → détourage + fond #F2F2F2 + ombre ai.soft
 //   3. Sharp        → vignette AE en haut à droite
 //
@@ -37,9 +37,9 @@ async function withRetry(fn, maxAttempts = 3, backoffMs = [0, 2000, 4000]) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ÉTAPE 1 — WATERMARKLY
-// blur_intensity: 10 → logo prioritaire, flou léger discret en fallback
-// detection_threshold: 0.1 → seuil de détection stable
-// logo_size: 1.0     → taille exacte de la plaque
+// blur_intensity:      10   → flou fort en fallback si logo impossible
+// detection_threshold: 0.3  → valeur par défaut officielle pour les plaques
+// logo_size:           1.0  → taille max (plein cadre de la plaque)
 // ─────────────────────────────────────────────────────────────────────────────
 async function blurPlateWatermarkly(imageBuffer) {
   try {
@@ -48,9 +48,9 @@ async function blurPlateWatermarkly(imageBuffer) {
     const logoUrl = process.env.AUTOEASY_LOGO_URL || "";
 
     const params = new URLSearchParams({
-      blur_intensity:      "20",    // logo prioritaire, flou léger discret en fallback
+      blur_intensity:      "10",
       format:              "jpeg",
-      detection_threshold: "0.1",
+      detection_threshold: "0.3",
     });
 
     if (logoUrl) {
@@ -133,7 +133,7 @@ module.exports = async function handler(req, res) {
     }
 
     // ── 1. Watermarkly ───────────────────────────────────────────────────────
-    console.log("[Pipeline] Étape 1 — Watermarkly (blur_intensity:20)...");
+    console.log("[Pipeline] Étape 1 — Watermarkly (detection_threshold:0.3)...");
     const watermarklyResult = await blurPlateWatermarkly(imageBuffer);
     if (!watermarklyResult) {
       console.warn("[Pipeline] Watermarkly échoué — image originale utilisée");
