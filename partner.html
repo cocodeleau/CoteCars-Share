@@ -362,7 +362,6 @@
       const totalPhotos = filteredSessions.reduce((s,sess) => s + (sess.photoCount||0), 0);
 
       return (
-        <React.Fragment>
         <div className="ae-content fade-in" style={{ padding:"20px 28px", maxWidth:1200, margin:"0 auto" }}>
 
           {/* Bouton mobile nouveau traitement */}
@@ -472,6 +471,8 @@
               </div>
             )}
           </div>
+          {claimSession && <ClaimModal sess={claimSession} onClose={() => setClaimSession(null)} />}
+          {sessionDetail && <SessionDetailModal sess={sessionDetail} onClose={() => setSessionDetail(null)} onClaim={handleClaim} />}
         </div>
       );
     }
@@ -666,9 +667,6 @@
             )}
           </div>
         </div>
-        {claimSession && <ClaimModal sess={claimSession} onClose={() => setClaimSession(null)} />}
-        {sessionDetail && <SessionDetailModal sess={sessionDetail} onClose={() => setSessionDetail(null)} onClaim={handleClaim} />}
-        </React.Fragment>
       );
     }
 
