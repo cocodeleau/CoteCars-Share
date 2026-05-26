@@ -319,6 +319,7 @@
       const [sessions, setSessions] = useState([]);
       const [loading, setLoading] = useState(true);
       const [filterCommercial, setFilterCommercial] = useState("tous");
+      const [claimSession, setClaimSession] = useState(null);
 
       useEffect(() => {
         // Filtre : seulement les 30 derniers jours
@@ -451,8 +452,14 @@
                         <div style={{ fontSize:10, color:"#9ca3af", marginBottom:8 }}>
                           {sess.photoCount} photo{sess.photoCount>1?"s":""} · {new Date(sess.createdAt).toLocaleDateString("fr-FR")}
                         </div>
-                        <button onClick={() => downloadSession(sess)} className="btn-ae" style={{ width:"100%", padding:"6px", fontSize:10 }}>
+                        <button onClick={() => downloadSession(sess)} className="btn-ae" style={{ width:"100%", padding:"6px", fontSize:10, marginBottom:5 }}>
                           ⬇ Télécharger ({sess.photoCount} JPG)
+                        </button>
+                        <button onClick={() => setClaimSession(sess)}
+                          style={{ width:"100%", padding:"5px", fontSize:9, fontWeight:600, background:"transparent", border:"1px solid #e2e8f0", borderRadius:6, cursor:"pointer", color:"#9ca3af", fontFamily:"inherit", transition:"all 0.15s" }}
+                          onMouseOver={e=>{e.target.style.borderColor="#f59e0b";e.target.style.color="#b45309";}}
+                          onMouseOut={e=>{e.target.style.borderColor="#e2e8f0";e.target.style.color="#9ca3af";}}>
+                          ⚠ Signaler une erreur
                         </button>
                       </div>
                     </div>
@@ -461,6 +468,124 @@
               </div>
             )}
           </div>
+        </div>
+      );
+    }
+
+    // ── Modal Réclamation ─────────────────────────────────────────
+    function ClaimModal({ sess, onClose }) {
+      const [selectedPhotos, setSelectedPhotos] = useState([]);
+      const [description, setDescription] = useState("");
+      const [sending, setSending] = useState(false);
+      const [sent, setSent] = useState(false);
+
+      function togglePhoto(url) {
+        setSelectedPhotos(prev =>
+          prev.includes(url) ? prev.filter(u => u !== url) : [...prev, url]
+        );
+      }
+
+      async function handleSend() {
+        if (!description.trim()) return;
+        setSending(true);
+        try {
+          const res = await fetch("/api/partner-claim", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              commercialName: sess.commercialName || "Inconnu",
+              vehicleName: sess.vehicleName || "Véhicule",
+              sessionDate: new Date(sess.createdAt).toLocaleDateString("fr-FR"),
+              description,
+              selectedPhotos,
+              allPhotos: sess.photos || [],
+            }),
+          });
+          const data = await res.json();
+          if (!data.success) throw new Error(data.error);
+          setSent(true);
+        } catch(err) { alert("Erreur : " + err.message); }
+        setSending(false);
+      }
+
+      return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:16, backdropFilter:"blur(3px)" }}
+          onClick={e => e.target === e.currentTarget && onClose()}>
+          <div style={{ background:"white", borderRadius:14, width:"100%", maxWidth:480, maxHeight:"90vh", overflowY:"auto", boxShadow:"0 24px 60px rgba(0,0,0,0.2)" }}>
+
+            {/* Header modal */}
+            <div style={{ padding:"16px 20px", borderBottom:"1px solid #f3f4f6", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div>
+                <div style={{ fontSize:14, fontWeight:700, color:"#111" }}>Signaler une erreur</div>
+                <div style={{ fontSize:11, color:"#9ca3af", marginTop:2 }}>{sess.vehicleName||"Véhicule"} · {new Date(sess.createdAt).toLocaleDateString("fr-FR")}</div>
+              </div>
+              <button onClick={onClose} style={{ background:"#f3f4f6", border:"none", borderRadius:6, width:28, height:28, cursor:"pointer", fontSize:14, color:"#6b7280" }}>✕</button>
+            </div>
+
+            {sent ? (
+              <div style={{ padding:"40px 20px", textAlign:"center" }}>
+                <div style={{ fontSize:40, marginBottom:12 }}>✅</div>
+                <div style={{ fontSize:15, fontWeight:700, color:"#111", marginBottom:6 }}>Réclamation envoyée</div>
+                <div style={{ fontSize:13, color:"#6b7280", marginBottom:20 }}>Notre équipe a été notifiée et traitera votre demande.</div>
+                <button onClick={onClose} className="btn-ae" style={{ padding:"9px 20px", fontSize:13 }}>Fermer</button>
+              </div>
+            ) : (
+              <div style={{ padding:"18px 20px", display:"flex", flexDirection:"column", gap:16 }}>
+
+                {/* Sélection photos */}
+                {sess.photos?.length > 0 && (
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:8 }}>
+                      Photos concernées <span style={{ color:"#9ca3af", fontWeight:400, textTransform:"none" }}>(optionnel — cliquez pour sélectionner)</span>
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:`repeat(${Math.min(sess.photos.length, 3)},1fr)`, gap:8 }}>
+                      {sess.photos.map((url, i) => {
+                        const selected = selectedPhotos.includes(url);
+                        return (
+                          <div key={i} onClick={() => togglePhoto(url)}
+                            style={{ position:"relative", cursor:"pointer", borderRadius:8, overflow:"hidden", border:`2px solid ${selected?"#ef4444":"#e2e8f0"}`, transition:"border-color 0.15s" }}>
+                            <img src={url} alt="" style={{ width:"100%", aspectRatio:"4/3", objectFit:"cover", display:"block" }} />
+                            {selected && (
+                              <div style={{ position:"absolute", inset:0, background:"rgba(239,68,68,0.15)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                                <div style={{ background:"#ef4444", borderRadius:"50%", width:22, height:22, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:"white", fontWeight:700 }}>✓</div>
+                              </div>
+                            )}
+                            <div style={{ position:"absolute", bottom:3, left:3, background:"rgba(0,0,0,0.5)", color:"white", fontSize:8, padding:"1px 5px", borderRadius:3 }}>Photo {i+1}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {selectedPhotos.length > 0 && (
+                      <div style={{ fontSize:11, color:"#ef4444", marginTop:6, fontWeight:600 }}>
+                        {selectedPhotos.length} photo{selectedPhotos.length>1?"s":""} sélectionnée{selectedPhotos.length>1?"s":""}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Description */}
+                <div>
+                  <label style={{ fontSize:11, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>
+                    Description de l'erreur <span style={{ color:"#ef4444" }}>*</span>
+                  </label>
+                  <textarea value={description} onChange={e => setDescription(e.target.value)}
+                    placeholder="Ex: La plaque d'immatriculation n'a pas été masquée, fond incorrect, détourage incomplet..."
+                    rows={4}
+                    style={{ width:"100%", padding:"10px 12px", border:"1.5px solid #e2e8f0", borderRadius:9, fontSize:13, outline:"none", resize:"vertical", fontFamily:"inherit", color:"#111", lineHeight:1.5 }} />
+                </div>
+
+                {/* Boutons */}
+                <div style={{ display:"flex", gap:10 }}>
+                  <button onClick={onClose} className="btn-outline" style={{ flex:1, padding:"10px", fontSize:13 }}>Annuler</button>
+                  <button onClick={handleSend} disabled={!description.trim() || sending} className="btn-ae"
+                    style={{ flex:2, padding:"10px", fontSize:13, opacity:!description.trim()?0.5:1 }}>
+                    {sending ? "Envoi..." : "Envoyer la réclamation"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        {claimSession && <ClaimModal sess={claimSession} onClose={() => setClaimSession(null)} />}
         </div>
       );
     }
