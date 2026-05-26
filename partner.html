@@ -321,6 +321,7 @@
       const [filterCommercial, setFilterCommercial] = useState("tous");
       const [claimSession, setClaimSession] = useState(null);
       const [sessionDetail, setSessionDetail] = useState(null);
+      function handleClaim(s) { setSessionDetail(null); setClaimSession(s); }
 
       useEffect(() => {
         // Filtre : seulement les 30 derniers jours
@@ -664,7 +665,7 @@
           </div>
         </div>
         {claimSession && <ClaimModal sess={claimSession} onClose={() => setClaimSession(null)} />}
-        {sessionDetail && <SessionDetailModal sess={sessionDetail} onClose={() => setSessionDetail(null)} onClaim={(s) => { setSessionDetail(null); setClaimSession(s); }} />}
+        {sessionDetail && <SessionDetailModal sess={sessionDetail} onClose={() => setSessionDetail(null)} onClaim={handleClaim} />}
       );
     }
 
