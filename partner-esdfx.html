@@ -92,9 +92,22 @@
     const AE_VIGNETTE_URL    = "https://cotecars-test.vercel.app/vignette-AE.png";
     const COTECARS_LOGO_B64 = "https://cotecars-test.vercel.app/favicon.png";
 
-    // Accès strictement limité à l'adresse personnelle
-    const ALLOWED_EMAILS = ["corentin.millet974@gmail.com"];
-    const COMPANY_ID     = "esdfx";
+    // Emails chargés dynamiquement depuis Firestore (companies/cotecars)
+    let ALLOWED_EMAILS = [];
+    const COMPANY_ID = "cotecars";
+
+    async function loadAllowedEmails() {
+      try {
+        const doc = await db.collection("companies").doc(COMPANY_ID).get();
+        if (doc.exists) {
+          ALLOWED_EMAILS = (doc.data().emails || []).map(function(e) {
+            return e.trim().toLowerCase();
+          });
+        }
+      } catch(err) {
+        console.error("[loadAllowedEmails]", err);
+      }
+    }
 
     // ─────────────────────────────────────────────────────────────
     // processPartnerImage — appelle /api/partner-photo-esdfx
@@ -165,19 +178,21 @@
       const [loading,  setLoading]  = useState(false);
 
       async function handleLogin(e) {
-        e.preventDefault(); setError("");
-        if (!ALLOWED_EMAILS.includes(email.trim().toLowerCase())) {
-          setError("Accès réservé — espace personnel CoteCars.");
-          return;
-        }
-        setLoading(true);
-        try { await auth.signInWithEmailAndPassword(email, password); }
-        catch(err) {
+        e.preventDefault(); setError(""); setLoading(true);
+        try {
+          const cred = await auth.signInWithEmailAndPassword(email, password);
+          await loadAllowedEmails();
+          if (!ALLOWED_EMAILS.includes(cred.user.email?.toLowerCase())) {
+            await auth.signOut();
+            setError("Accès réservé — espace personnel CoteCars.");
+          }
+        } catch(err) {
           const msgs = {
             "auth/user-not-found":      "Email introuvable.",
             "auth/wrong-password":      "Mot de passe incorrect.",
             "auth/invalid-email":       "Email invalide.",
             "auth/too-many-requests":   "Trop de tentatives.",
+            "auth/invalid-credential":  "Email ou mot de passe incorrect.",
           };
           setError(msgs[err.code] || "Erreur de connexion.");
         }
@@ -188,6 +203,7 @@
         setError(""); setLoading(true);
         try {
           const result = await auth.signInWithPopup(googleProvider);
+          await loadAllowedEmails();
           if (!ALLOWED_EMAILS.includes(result.user.email?.toLowerCase())) {
             await auth.signOut();
             setError("Accès réservé — espace personnel CoteCars.");
@@ -983,6 +999,9 @@
 
       useEffect(() => {
         const unsub = auth.onAuthStateChanged(async u => {
+          if (u) {
+            await loadAllowedEmails();
+          }
           if (u && ALLOWED_EMAILS.includes(u.email?.toLowerCase())) {
             setUser(u);
           } else if (u) {
