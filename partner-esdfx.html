@@ -92,7 +92,7 @@
     const AE_VIGNETTE_URL    = "https://cotecars-test.vercel.app/vignette-AE.png";
     const COTECARS_LOGO_B64 = "https://cotecars-test.vercel.app/favicon.png";
 
-    // Emails chargés dynamiquement depuis Firestore (companies/cotecars)
+    // Emails chargés dynamiquement depuis Firestore
     let ALLOWED_EMAILS = [];
     const COMPANY_ID = "cotecars";
 
@@ -104,9 +104,7 @@
             return e.trim().toLowerCase();
           });
         }
-      } catch(err) {
-        console.error("[loadAllowedEmails]", err);
-      }
+      } catch(err) { console.error("[loadAllowedEmails]", err); }
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -188,11 +186,11 @@
           }
         } catch(err) {
           const msgs = {
-            "auth/user-not-found":      "Email introuvable.",
-            "auth/wrong-password":      "Mot de passe incorrect.",
-            "auth/invalid-email":       "Email invalide.",
-            "auth/too-many-requests":   "Trop de tentatives.",
-            "auth/invalid-credential":  "Email ou mot de passe incorrect.",
+            "auth/user-not-found":     "Email introuvable.",
+            "auth/wrong-password":     "Mot de passe incorrect.",
+            "auth/invalid-email":      "Email invalide.",
+            "auth/too-many-requests":  "Trop de tentatives.",
+            "auth/invalid-credential": "Email ou mot de passe incorrect.",
           };
           setError(msgs[err.code] || "Erreur de connexion.");
         }
@@ -999,9 +997,7 @@
 
       useEffect(() => {
         const unsub = auth.onAuthStateChanged(async u => {
-          if (u) {
-            await loadAllowedEmails();
-          }
+          if (u) await loadAllowedEmails();
           if (u && ALLOWED_EMAILS.includes(u.email?.toLowerCase())) {
             setUser(u);
           } else if (u) {
