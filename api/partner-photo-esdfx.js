@@ -1,12 +1,13 @@
 // api/partner-photo-esdfx.js
 //
 // Pipeline ESDFX (espace personnel) :
-//   1. Watermarkly → détecte plaque + place logo AutoEasy
+//   1. Watermarkly → détecte plaque + place le logo choisi (AutoEasy ou CoteCars)
 //   2. Sharp        → vignette AE en haut à droite
 //
 // Pas de Photoroom — fond original conservé
 //
-// Variables Vercel : WATERMARKLY_API_KEY  AUTOEASY_LOGO_URL  VIGNETTE_URL
+// Variables Vercel : WATERMARKLY_API_KEY  AUTOEASY_LOGO_URL  COTECARS_LOGO_URL  VIGNETTE_URL
+// Body attendu     : { image: "data:...", cachePlaque: "autoeasy" | "cotecars" }
 
 const fetch = require("node-fetch");
 const sharp = require("sharp");
@@ -34,12 +35,19 @@ async function withRetry(fn, maxAttempts = 3, backoffMs = [0, 2000, 4000]) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ÉTAPE 1 — WATERMARKLY
+// cachePlaque : "autoeasy" (défaut) | "cotecars"
 // ─────────────────────────────────────────────────────────────────────────────
-async function blurPlateWatermarkly(imageBuffer) {
+async function blurPlateWatermarkly(imageBuffer, cachePlaque) {
   try {
     const API_URL = "https://blur-api-eu1.watermarkly.com/blur/";
     const API_KEY = process.env.WATERMARKLY_API_KEY;
-    const logoUrl = process.env.AUTOEASY_LOGO_URL || "";
+
+    // Sélection du logo selon le cache plaque choisi
+    const logoUrl = cachePlaque === "cotecars"
+      ? (process.env.COTECARS_LOGO_URL || "")
+      : (process.env.AUTOEASY_LOGO_URL || "");
+
+    console.log(`[Watermarkly] Cache plaque : ${cachePlaque || "autoeasy"} — logo: ${logoUrl ? "OK" : "absent"}`);
 
     const params = new URLSearchParams({
       blur_intensity:      "10",
@@ -84,10 +92,13 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { image } = req.body;
+    const { image, cachePlaque } = req.body;
     if (!image) {
       return res.status(200).json({ success: false, error: 'Champ "image" manquant.' });
     }
+
+    // cachePlaque : "autoeasy" (défaut) | "cotecars"
+    const logoChoice = cachePlaque === "cotecars" ? "cotecars" : "autoeasy";
 
     const base64Data  = image.includes(",") ? image.split(",")[1] : image;
     const imageBuffer = Buffer.from(base64Data, "base64");
@@ -97,8 +108,8 @@ module.exports = async function handler(req, res) {
     }
 
     // ── 1. Watermarkly ───────────────────────────────────────────────────────
-    console.log("[ESDFX] Étape 1 — Watermarkly...");
-    const watermarklyResult = await blurPlateWatermarkly(imageBuffer);
+    console.log(`[ESDFX] Étape 1 — Watermarkly (logo: ${logoChoice})...`);
+    const watermarklyResult = await blurPlateWatermarkly(imageBuffer, logoChoice);
     if (!watermarklyResult) {
       console.warn("[ESDFX] Watermarkly échoué — image originale utilisée");
     }

@@ -97,7 +97,7 @@
     // Pipeline : Watermarkly (cache plaque) + vignette AE
     // Fond original conservé — pas de Photoroom
     // ─────────────────────────────────────────────────────────────
-    async function processPartnerImage(file, onProgress) {
+    async function processPartnerImage(file, onProgress, options = {}) {
       if (file.size > 20 * 1024 * 1024) throw new Error("Image trop volumineuse (max 20 Mo).");
 
       onProgress("Compression de la photo...", 10);
@@ -134,7 +134,7 @@
         response = await fetch("/api/partner-photo-esdfx", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ image: base64 }),
+          body:    JSON.stringify({ image: base64, cachePlaque: options?.cachePlaque || "autoeasy" }),
           signal:  controller.signal,
         });
         clearTimeout(timeoutId);
@@ -670,6 +670,7 @@
       const [progress,    setProgress]    = useState({ msg:"", pct:0 });
       const [currentIdx,  setCurrentIdx]  = useState(0);
       const [photoStatus, setPhotoStatus] = useState([]);
+      const [cachePlaque,  setCachePlaque]  = useState("autoeasy");
       const [saving,      setSaving]      = useState(false);
       const [saved,       setSaved]       = useState(false);
       const fileInputRef = useRef();
@@ -696,7 +697,8 @@
           setProgress({ msg:`Photo ${globalIdx+1}/${files.length} — démarrage...`, pct:0 });
           try {
             const result = await processPartnerImage(sourceFiles[i], (msg,pct) =>
-              setProgress({ msg:`Photo ${globalIdx+1}/${files.length} — ${msg}`, pct })
+              setProgress({ msg:`Photo ${globalIdx+1}/${files.length} — ${msg}`, pct }),
+              { cachePlaque }
             );
             results[globalIdx] = { dataUrl:result.dataUrl, plateDetected:result.plateDetected };
             setPhotoStatus(prev => { const n=[...prev]; n[globalIdx]="done"; return n; });
@@ -814,6 +816,38 @@
                       ))}
                     </div>
                   )}
+                  {/* Sélecteur cache plaque */}
+                  <div style={{ marginBottom:14 }}>
+                    <label style={{ fontSize:11, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:8 }}>
+                      Cache plaque
+                    </label>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                      {[
+                        { id:"autoeasy", label:"AutoEasy", initials:"AE", bg:"#8dc63f", color:"#1a1a2e" },
+                        { id:"cotecars", label:"CoteCars", initials:"CC", bg:"#1a3fdb", color:"white"   },
+                      ].map(opt => (
+                        <button key={opt.id} type="button"
+                          onClick={() => setCachePlaque(opt.id)}
+                          style={{
+                            display:"flex", alignItems:"center", gap:10, padding:"10px 12px",
+                            border:`2px solid ${cachePlaque===opt.id ? opt.bg : "#e2e8f0"}`,
+                            borderRadius:10, background:cachePlaque===opt.id ? `${opt.bg}18` : "white",
+                            cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s",
+                          }}>
+                          <div style={{ width:28, height:28, borderRadius:7, background:opt.bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                            <span style={{ fontSize:10, fontWeight:900, color:opt.color }}>{opt.initials}</span>
+                          </div>
+                          <div style={{ textAlign:"left" }}>
+                            <div style={{ fontSize:12, fontWeight:700, color:cachePlaque===opt.id ? "#111" : "#6b7280" }}>{opt.label}</div>
+                          </div>
+                          {cachePlaque===opt.id && (
+                            <div style={{ marginLeft:"auto", width:16, height:16, borderRadius:"50%", background:opt.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, color:opt.color, fontWeight:700 }}>✓</div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <button onClick={()=>handleProcess()} disabled={files.length===0} className="btn-ae" style={{ width:"100%", padding:"13px", fontSize:14 }}>
                     Traiter {files.length} photo{files.length>1?"s":""} →
                   </button>
