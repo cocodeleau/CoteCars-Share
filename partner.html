@@ -342,7 +342,7 @@
     }
 
     // ── Historique (onglet) ───────────────────────────────────────
-    function Historique({ user, onNewSession, commercials, commercialName }) {
+    function Historique({ user, onNewSession, commercials, commercialName, companyId }) {
       const [sessions, setSessions] = useState([]);
       const [loading, setLoading] = useState(true);
       const [filterCommercial, setFilterCommercial] = useState("tous");
@@ -357,7 +357,7 @@
         const cutoff = date30.toISOString();
 
         db.collection("partner_sessions")
-          .where("uid", "==", user.uid)
+          .where("companyId", "==", companyId || "autoeasy")
           .get()
           .then(snap => {
             const docs = snap.docs
@@ -748,7 +748,7 @@
               </a>
             </div>
           )}
-          {activeTab === "historique" && <Historique user={user} onNewSession={onNewSession} commercials={commercials} commercialName={commercialName} />}
+          {activeTab === "historique" && <Historique user={user} onNewSession={onNewSession} commercials={commercials} commercialName={commercialName} companyId={companyId} />}
         </div>
       );
     }
