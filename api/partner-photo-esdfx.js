@@ -125,7 +125,7 @@ module.exports = async function handler(req, res) {
       if (logoChoice === "cotecars") {
         // Vignette CoteCars — à la racine du projet Vercel
         const ccVigUrl = process.env.COTECARS_VIGNETTE_URL
-          || "https://cotecars-test.vercel.app/vignette-cotecars.png";
+          || "https://res.cloudinary.com/di3xa7ldg/image/upload/v1779874653/LOGO_COTECARS_3_rhfxxz.png";
         console.log(`[ESDFX] Vignette CoteCars URL : ${ccVigUrl}`);
         const ccVigRes = await fetch(ccVigUrl);
         if (!ccVigRes.ok) throw new Error(`Vignette CoteCars HTTP ${ccVigRes.status} — ${ccVigUrl}`);
