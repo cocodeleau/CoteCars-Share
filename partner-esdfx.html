@@ -88,6 +88,10 @@
     const { useState, useEffect, useRef } = React;
     let auth, db, storage, googleProvider;
 
+    // URLs / base64 des vignettes utilisées sur les photos
+    const AE_VIGNETTE_URL    = "https://cotecars-test.vercel.app/vignette-AE.png";
+    const COTECARS_LOGO_B64 = "https://cotecars-test.vercel.app/vignette-cotecars.png";
+
     // Accès strictement limité à l'adresse personnelle
     const ALLOWED_EMAILS = ["corentin.millet974@gmail.com"];
     const COMPANY_ID     = "esdfx";
@@ -199,9 +203,7 @@
             <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:"linear-gradient(90deg,#1e3a5f,#3b82f6)" }} />
             <div style={{ position:"absolute", bottom:-60, right:-60, width:200, height:200, borderRadius:"50%", background:"rgba(59,130,246,0.06)" }} />
             <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
-              <div style={{ width:44, height:44, borderRadius:10, background:"linear-gradient(135deg,#1e3a5f,#3b82f6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <span style={{ fontSize:14, fontWeight:900, color:"white", letterSpacing:"-0.02em" }}>EX</span>
-              </div>
+              <img src={COTECARS_LOGO_B64} alt="CoteCars" style={{ width:44, height:44, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
               <div>
                 <div style={{ fontSize:18, fontWeight:700, color:"white" }}>CoteCars</div>
                 <div style={{ fontSize:11, color:"rgba(255,255,255,0.35)" }}>Espace Personnel</div>
@@ -230,9 +232,7 @@
           <div className="login-right" style={{ background:"white", padding:"48px 40px", display:"flex", flexDirection:"column", justifyContent:"center" }}>
             <div className="login-form" style={{ maxWidth:340, width:"100%" }}>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
-                <div style={{ width:36, height:36, borderRadius:8, background:"linear-gradient(135deg,#1e3a5f,#3b82f6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  <span style={{ fontSize:12, fontWeight:900, color:"white" }}>EX</span>
-                </div>
+                <img src={COTECARS_LOGO_B64} alt="CoteCars" style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover" }} />
                 <div>
                   <div style={{ fontSize:15, fontWeight:700, color:"#111" }}>CoteCars</div>
                   <div style={{ fontSize:11, color:"#9ca3af" }}>Espace Personnel</div>
@@ -288,9 +288,7 @@
           <div className="sidebar-anim" style={{ position:"relative", width:240, background:"#0f1729", height:"100%", display:"flex", flexDirection:"column", borderRight:"2px solid #3b82f6", zIndex:401, flexShrink:0 }}>
             <div style={{ padding:"0 16px", height:52, display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid rgba(255,255,255,0.08)" }}>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <div style={{ width:28, height:28, borderRadius:7, background:"linear-gradient(135deg,#1e3a5f,#3b82f6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  <span style={{ fontSize:10, fontWeight:900, color:"white" }}>EX</span>
-                </div>
+                <img src={COTECARS_LOGO_B64} alt="CoteCars" style={{ width:28, height:28, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
                 <div>
                   <div style={{ fontSize:13, fontWeight:700, color:"white", lineHeight:1.2 }}>CoteCars</div>
                   <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)" }}>Espace Personnel</div>
@@ -340,9 +338,7 @@
               <div style={{ height:2, background:"white", borderRadius:2 }} />
             </button>
             <a href="/" style={{ display:"flex", alignItems:"center", gap:8, textDecoration:"none" }}>
-              <div style={{ width:28, height:28, borderRadius:7, background:"linear-gradient(135deg,#1e3a5f,#3b82f6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <span style={{ fontSize:11, fontWeight:900, color:"white" }}>EX</span>
-              </div>
+              <img src={COTECARS_LOGO_B64} alt="CoteCars" style={{ width:28, height:28, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
               <span className="ae-header-title" style={{ fontSize:14, fontWeight:700, color:"white" }}>CoteCars Studio</span>
             </a>
             <span className="ae-header-sub" style={{ fontSize:11, color:"rgba(255,255,255,0.35)" }}>/ {title}</span>
@@ -823,25 +819,23 @@
                     </label>
                     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
                       {[
-                        { id:"autoeasy", label:"AutoEasy", initials:"AE", bg:"#8dc63f", color:"#1a1a2e" },
-                        { id:"cotecars", label:"CoteCars", initials:"CC", bg:"#1a3fdb", color:"white"   },
+                        { id:"autoeasy", label:"AutoEasy", img:AE_VIGNETTE_URL },
+                        { id:"cotecars", label:"CoteCars", img:COTECARS_LOGO_B64 },
                       ].map(opt => (
                         <button key={opt.id} type="button"
                           onClick={() => setCachePlaque(opt.id)}
                           style={{
                             display:"flex", alignItems:"center", gap:10, padding:"10px 12px",
-                            border:`2px solid ${cachePlaque===opt.id ? opt.bg : "#e2e8f0"}`,
-                            borderRadius:10, background:cachePlaque===opt.id ? `${opt.bg}18` : "white",
+                            border:`2px solid ${cachePlaque===opt.id ? (opt.id==="autoeasy" ? "#8dc63f" : "#3b82f6") : "#e2e8f0"}`,
+                            borderRadius:10, background:cachePlaque===opt.id ? (opt.id==="autoeasy" ? "rgba(141,198,63,0.09)" : "rgba(59,130,246,0.09)") : "white",
                             cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s",
                           }}>
-                          <div style={{ width:28, height:28, borderRadius:7, background:opt.bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                            <span style={{ fontSize:10, fontWeight:900, color:opt.color }}>{opt.initials}</span>
-                          </div>
+                          <img src={opt.img} alt={opt.label} style={{ width:28, height:28, borderRadius:"50%", objectFit:"cover", flexShrink:0 }} />
                           <div style={{ textAlign:"left" }}>
                             <div style={{ fontSize:12, fontWeight:700, color:cachePlaque===opt.id ? "#111" : "#6b7280" }}>{opt.label}</div>
                           </div>
                           {cachePlaque===opt.id && (
-                            <div style={{ marginLeft:"auto", width:16, height:16, borderRadius:"50%", background:opt.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, color:opt.color, fontWeight:700 }}>✓</div>
+                            <div style={{ marginLeft:"auto", width:16, height:16, borderRadius:"50%", background:opt.id==="autoeasy"?"#8dc63f":"#3b82f6", display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, color:opt.id==="autoeasy"?"#1a1a2e":"white", fontWeight:700 }}>✓</div>
                           )}
                         </button>
                       ))}
@@ -1003,9 +997,7 @@
 
       if (loading) return (
         <div style={{ minHeight:"100vh", background:"#0f1729", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:16 }}>
-          <div style={{ width:44, height:44, borderRadius:10, background:"linear-gradient(135deg,#1e3a5f,#3b82f6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <span style={{ fontSize:18, fontWeight:900, color:"white" }}>EX</span>
-          </div>
+          <img src={COTECARS_LOGO_B64} alt="CoteCars" style={{ width:44, height:44, borderRadius:"50%", objectFit:"cover" }} />
           <div className="spinner" />
         </div>
       );

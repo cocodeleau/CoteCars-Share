@@ -124,7 +124,8 @@ module.exports = async function handler(req, res) {
       let vigBuf;
       if (logoChoice === "cotecars") {
         // Vignette CoteCars embarquée en base64
-        vigBuf = Buffer.from(COTECARS_VIGNETTE_B64, "base64");
+        const ccVigRes = await fetch("https://cotecars-test.vercel.app/vignette-cotecars.png");
+        vigBuf = Buffer.from(await ccVigRes.arrayBuffer());
       } else {
         // Vignette AutoEasy via URL
         const vignetteUrl = process.env.VIGNETTE_URL || "https://cotecars-test.vercel.app/vignette-AE.png";
