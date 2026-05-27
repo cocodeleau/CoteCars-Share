@@ -1116,6 +1116,58 @@
       );
     }
 
+
+    function PartenaireMenu() {
+      const [open, setOpen] = React.useState(false);
+      const ref             = React.useRef();
+      React.useEffect(() => {
+        function handler(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+      }, []);
+      return (
+        <div ref={ref} style={{ position:"relative" }}>
+          <button onClick={() => setOpen(o => !o)}
+            style={{ fontSize:12, fontWeight:700, color:"#8dc63f", background:"#1a1a2e", padding:"5px 12px", borderRadius:6, border:"1.5px solid #8dc63f", cursor:"pointer", letterSpacing:"0.04em", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}
+            onMouseOver={e => e.currentTarget.style.background="rgba(141,198,63,0.12)"}
+            onMouseOut={e  => e.currentTarget.style.background="#1a1a2e"}>
+            ⚡ Espace Partenaire <span style={{ fontSize:8, opacity:0.6 }}>{open ? "▲" : "▼"}</span>
+          </button>
+          {open && (
+            <div style={{ position:"absolute", top:"calc(100% + 8px)", right:0, background:"#1a1a2e", border:"1px solid rgba(255,255,255,0.1)", borderRadius:12, boxShadow:"0 12px 32px rgba(0,0,0,0.4)", minWidth:190, overflow:"hidden", zIndex:999 }}>
+              <div style={{ padding:"10px 16px 6px", fontSize:9, fontWeight:700, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:"0.1em" }}>Espaces Partenaires</div>
+              <a href="/partner.html" onClick={() => setOpen(false)}
+                style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 16px", textDecoration:"none", color:"rgba(255,255,255,0.85)" }}
+                onMouseOver={e => e.currentTarget.style.background="rgba(255,255,255,0.06)"}
+                onMouseOut={e  => e.currentTarget.style.background="transparent"}>
+                <div style={{ width:32, height:32, borderRadius:8, background:"#8dc63f", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <span style={{ fontSize:11, fontWeight:900, color:"#1a1a2e" }}>AE</span>
+                </div>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:"white" }}>AutoEasy</div>
+                  <div style={{ fontSize:10, color:"rgba(255,255,255,0.35)" }}>Espace commercial</div>
+                </div>
+              </a>
+              <div style={{ height:1, background:"rgba(255,255,255,0.07)", margin:"0 12px" }} />
+              <a href="/partner-esdfx.html" onClick={() => setOpen(false)}
+                style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 16px", textDecoration:"none", color:"rgba(255,255,255,0.85)" }}
+                onMouseOver={e => e.currentTarget.style.background="rgba(255,255,255,0.06)"}
+                onMouseOut={e  => e.currentTarget.style.background="transparent"}>
+                <div style={{ width:32, height:32, borderRadius:8, background:"linear-gradient(135deg,#1e3a5f,#3b82f6)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <span style={{ fontSize:10, fontWeight:900, color:"white" }}>EX</span>
+                </div>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:"white" }}>ESDFX</div>
+                  <div style={{ fontSize:10, color:"rgba(255,255,255,0.35)" }}>Espace personnel</div>
+                </div>
+              </a>
+              <div style={{ height:8 }} />
+            </div>
+          )}
+        </div>
+      );
+    }
+
     function LicensePlate({ value, onChange }) {
       return (
         <div style={{ display:"flex", alignItems:"stretch", borderRadius:12, overflow:"hidden", border:"2.5px solid #111", background:"white", height:56 }}>
@@ -1213,7 +1265,7 @@
               <div style={{ display:"flex", gap:20, alignItems:"center" }}>
                 <span style={{ fontSize:13, color:"var(--text3)" }}>🏷️ Nos annonces</span>
                 <span style={{ fontSize:13, color:"var(--text3)" }}>Comment ça marche</span>
-                  <a href="/partner.html" style={{ fontSize:12, fontWeight:700, color:"#8dc63f", background:"#1a1a2e", padding:"5px 12px", borderRadius:6, textDecoration:"none", letterSpacing:"0.04em" }}>⚡ Partenaire</a>
+                  <PartenaireMenu />
               </div>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"360px 1fr", minHeight:"calc(100vh - 56px)", marginTop:56, minWidth:900 }}>
@@ -3464,11 +3516,12 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                     </div>
                   </button>
                   <a href="/partner.html" style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", textDecoration:"none", borderBottom:"0.5px solid var(--border)" }}>
-                    <span style={{ fontSize:20 }}>⚡</span>
-                    <div>
-                      <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#8dc63f" }}>Espace Partenaire</p>
-                      <p style={{ margin:0, fontSize:11, color:"var(--text3)" }}>Accès professionnel</p>
-                    </div>
+                    <div style={{ width:32, height:32, borderRadius:8, background:"#8dc63f", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:11, fontWeight:900, color:"#1a1a2e" }}>AE</span></div>
+                    <div><p style={{ margin:0, fontSize:14, fontWeight:700, color:"#8dc63f" }}>AutoEasy</p><p style={{ margin:0, fontSize:11, color:"var(--text3)" }}>Espace commercial</p></div>
+                  </a>
+                  <a href="/partner-esdfx.html" style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", textDecoration:"none", borderBottom:"0.5px solid var(--border)" }}>
+                    <div style={{ width:32, height:32, borderRadius:8, background:"linear-gradient(135deg,#1e3a5f,#3b82f6)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:10, fontWeight:900, color:"white" }}>EX</span></div>
+                    <div><p style={{ margin:0, fontSize:14, fontWeight:700, color:"#60a5fa" }}>ESDFX</p><p style={{ margin:0, fontSize:11, color:"var(--text3)" }}>Espace personnel</p></div>
                   </a>
                   {user ? (
                     <button onClick={() => { auth.signOut(); setShowMobileMenu(false); }}
@@ -3624,7 +3677,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <div style={{ display:"flex", gap:20, alignItems:"center" }}>
                 <button onClick={() => setShowAnnonces(true)} style={{ fontSize:13, color:"#8fa0b8", fontWeight:500, background:"none", border:"none", cursor:"pointer" }}>🏷️ Nos annonces</button>
                 <span style={{ fontSize:13, color:"#8fa0b8", fontWeight:500 }}>Comment ça marche</span>
-                <a href="/partner.html" style={{ fontSize:12, fontWeight:700, color:"#8dc63f", background:"#1a1a2e", padding:"5px 12px", borderRadius:6, textDecoration:"none", letterSpacing:"0.04em" }}>⚡ Partenaire</a>
+                <PartenaireMenu />
                 <DarkToggle />
                 {user ? (
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>

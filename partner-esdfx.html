@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>ESDFX — Espace Personnel</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/favicon.png">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', -apple-system, sans-serif; background: #f5f5f7; }
+    :root { --ae-green: #8dc63f; --ae-dark: #1a1a2e; }
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+    @keyframes spin    { to { transform: rotate(360deg); } }
+    @keyframes fadeIn  { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes slideIn { from { transform:translateX(-100%); } to { transform:translateX(0); } }
+    .spinner { width: 20px; height: 20px; border: 2px solid rgba(141,198,63,0.3); border-top-color: #8dc63f; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    .sidebar-anim { animation: slideIn 0.22s cubic-bezier(.4,0,.2,1); }
+    .photo-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+    .photo-card { transition: transform 0.15s, box-shadow 0.15s; }
+    .btn-ae { background: #8dc63f; color: #1a1a2e; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .btn-ae:hover { background: #7db535; }
+    .btn-ae:disabled { background: #4a5568; color: #718096; cursor: not-allowed; }
+    .btn-outline { background: transparent; border: 1.5px solid #2d3448; color: #94a3b8; border-radius: 8px; cursor: pointer; font-family: inherit; }
+    .btn-outline:hover { border-color: #8dc63f; color: #8dc63f; }
+    .btn-retry { background: #fff7ed; border: 1.5px solid #fed7aa; color: #c2410c; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 600; }
+    .btn-retry:hover { background: #ffedd5; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 20px; cursor: pointer; border-left: 3px solid transparent; transition: all 0.15s; }
+    .nav-item:hover { background: rgba(255,255,255,0.05); }
+    .nav-item.active { background: rgba(141,198,63,0.1); border-left-color: #8dc63f; }
+    .nav-item.active span { color: #8dc63f; }
+    input, select { font-family: inherit; }
+    /* Badge ESDFX */
+    .esdfx-badge { background: linear-gradient(135deg, #1e3a5f, #0f2a45); border: 1.5px solid #3b82f6; border-radius: 6px; padding: 2px 8px; font-size: 10px; font-weight: 800; color: #60a5fa; letter-spacing: 0.06em; }
+    @media (max-width: 768px) {
+      .login-grid  { grid-template-columns: 1fr !important; }
+      .login-left  { display: none !important; }
+      .login-right { padding: 32px 20px !important; justify-content: flex-start !important; padding-top: 48px !important; }
+      .ae-header   { padding: 0 14px !important; }
+      .ae-header-title { font-size: 13px !important; }
+      .ae-header-sub  { display: none !important; }
+      .stats-grid  { grid-template-columns: 1fr !important; gap: 8px !important; }
+      .stepper-label { display: none !important; }
+      .stepper-wrap  { padding: 10px 14px !important; }
+      .step1-grid  { grid-template-columns: 1fr !important; }
+      .step1-panel-right { display: none !important; }
+      .ae-content  { padding: 12px !important; }
+      .export-actions { flex-direction: column !important; gap: 8px !important; }
+      .photos-grid { grid-template-columns: repeat(2,1fr) !important; }
+      .sessions-grid { grid-template-columns: repeat(2,1fr) !important; }
+      .processing-inner { width: 100% !important; max-width: 300px !important; }
+      .ae-header-btns-desktop { display: none !important; }
+    }
+    @media (max-width: 420px) {
+      .sessions-grid { grid-template-columns: 1fr !important; }
+      .photos-grid   { grid-template-columns: 1fr !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    window.__firebaseReady = fetch("/api/firebase-config")
+      .then(r => r.json())
+      .then(cfg => {
+        firebase.initializeApp(cfg);
+        window.__firebase = {
+          auth: firebase.auth(), db: firebase.firestore(),
+          storage: firebase.storage(), googleProvider: new firebase.auth.GoogleAuthProvider(),
+        };
+      })
+      .catch(err => {
+        console.error("[Firebase] Erreur :", err);
+        document.getElementById("root").innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#ef4444">Erreur de chargement.</div>';
+      });
+  </script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+    let auth, db, storage, googleProvider;
+
+    // Accès strictement limité à l'adresse personnelle
+    const ALLOWED_EMAILS = ["corentin.millet974@gmail.com"];
+    const COMPANY_ID     = "esdfx";
+
+    // ─────────────────────────────────────────────────────────────
+    // processPartnerImage — appelle /api/partner-photo-esdfx
+    // Pipeline : Watermarkly (cache plaque) + vignette AE
+    // Fond original conservé — pas de Photoroom
+    // ─────────────────────────────────────────────────────────────
+    async function processPartnerImage(file, onProgress) {
+      if (file.size > 20 * 1024 * 1024) throw new Error("Image trop volumineuse (max 20 Mo).");
+
+      onProgress("Compression de la photo...", 10);
+      const base64 = await new Promise((res, rej) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const maxDim = 1500;
+          const scale  = Math.min(maxDim / img.width, maxDim / img.height, 1);
+          canvas.width  = Math.round(img.width  * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+          res(canvas.toDataURL("image/jpeg", 0.8));
+        };
+        img.onerror = () => rej(new Error("Impossible de lire l'image."));
+        img.src = URL.createObjectURL(file);
+      });
+
+      onProgress("Envoi vers le serveur...", 20);
+
+      let currentPct = 25;
+      const progressTimer = setInterval(() => {
+        if (currentPct < 85) {
+          currentPct += 2;
+          const msg = currentPct < 50 ? "Détection de la plaque..." : currentPct < 75 ? "⏳ Cache plaque AUTOEASY en cours..." : "Vignette AE...";
+          onProgress(msg, currentPct);
+        }
+      }, 250);
+
+      let response;
+      try {
+        const controller = new AbortController();
+        const timeoutId  = setTimeout(() => controller.abort(), 60000);
+        response = await fetch("/api/partner-photo-esdfx", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ image: base64 }),
+          signal:  controller.signal,
+        });
+        clearTimeout(timeoutId);
+      } catch (fetchErr) {
+        clearInterval(progressTimer);
+        if (fetchErr.name === "AbortError") throw new Error("Timeout : la génération a dépassé 60s.");
+        throw fetchErr;
+      }
+      clearInterval(progressTimer);
+
+      if (!response.ok) throw new Error("Erreur serveur : " + response.status);
+      onProgress("Finalisation...", 93);
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || "Erreur inconnue.");
+      onProgress("Terminé !", 100);
+      return { dataUrl: data.result, plateDetected: data.plateDetected };
+    }
+
+    // ── LoginPage ─────────────────────────────────────────────────
+    function LoginPage() {
+      const [email,    setEmail]    = useState("");
+      const [password, setPassword] = useState("");
+      const [error,    setError]    = useState("");
+      const [loading,  setLoading]  = useState(false);
+
+      async function handleLogin(e) {
+        e.preventDefault(); setError("");
+        if (!ALLOWED_EMAILS.includes(email.trim().toLowerCase())) {
+          setError("Accès réservé — espace personnel ESDFX.");
+          return;
+        }
+        setLoading(true);
+        try { await auth.signInWithEmailAndPassword(email, password); }
+        catch(err) {
+          const msgs = {
+            "auth/user-not-found":      "Email introuvable.",
+            "auth/wrong-password":      "Mot de passe incorrect.",
+            "auth/invalid-email":       "Email invalide.",
+            "auth/too-many-requests":   "Trop de tentatives.",
+          };
+          setError(msgs[err.code] || "Erreur de connexion.");
+        }
+        setLoading(false);
+      }
+
+      async function handleGoogle() {
+        setError(""); setLoading(true);
+        try {
+          const result = await auth.signInWithPopup(googleProvider);
+          if (!ALLOWED_EMAILS.includes(result.user.email?.toLowerCase())) {
+            await auth.signOut();
+            setError("Accès réservé — espace personnel ESDFX.");
+          }
+        } catch(err) { setError("Erreur Google : " + err.message); }
+        setLoading(false);
+      }
+
+      return (
+        <div className="login-grid" style={{ minHeight:"100vh", display:"grid", gridTemplateColumns:"1fr 1fr" }}>
+          {/* Panneau gauche */}
+          <div className="login-left" style={{ background:"#0f1729", padding:"48px 40px", display:"flex", flexDirection:"column", justifyContent:"center", gap:20, position:"relative", overflow:"hidden" }}>
+            <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:"linear-gradient(90deg,#1e3a5f,#3b82f6)" }} />
+            <div style={{ position:"absolute", bottom:-60, right:-60, width:200, height:200, borderRadius:"50%", background:"rgba(59,130,246,0.06)" }} />
+            <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
+              <div style={{ width:44, height:44, borderRadius:10, background:"linear-gradient(135deg,#1e3a5f,#3b82f6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <span style={{ fontSize:14, fontWeight:900, color:"white", letterSpacing:"-0.02em" }}>EX</span>
+              </div>
+              <div>
+                <div style={{ fontSize:18, fontWeight:700, color:"white" }}>ESDFX</div>
+                <div style={{ fontSize:11, color:"rgba(255,255,255,0.35)" }}>Espace Personnel</div>
+              </div>
+            </div>
+            <div style={{ fontSize:26, fontWeight:700, color:"white", lineHeight:1.3 }}>Studio Photo<br/><span style={{color:"#60a5fa"}}>Personnel</span></div>
+            <div style={{ fontSize:13, color:"rgba(255,255,255,0.45)", lineHeight:1.7 }}>Traitement photo véhicule pour usage personnel. Cache plaque AUTOEASY, vignette AE — fond original conservé.</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:8 }}>
+              {[
+                "Cache plaque AUTOEASY (Watermarkly)",
+                "Fond original conservé — pas de recadrage",
+                "Vignette AE en haut à droite",
+                "Gratuit — aucune consommation de jeton",
+              ].map((item,i) => (
+                <div key={i} style={{ display:"flex", alignItems:"center", gap:10, fontSize:13, color:"rgba(255,255,255,0.6)" }}>
+                  <div style={{ width:7, height:7, borderRadius:"50%", background:"#3b82f6", flexShrink:0 }} />{item}
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop:16 }}>
+              <a href="/" style={{ fontSize:12, color:"rgba(255,255,255,0.25)", textDecoration:"none" }}>← Retour à CoteCars</a>
+            </div>
+          </div>
+
+          {/* Panneau droit */}
+          <div className="login-right" style={{ background:"white", padding:"48px 40px", display:"flex", flexDirection:"column", justifyContent:"center" }}>
+            <div className="login-form" style={{ maxWidth:340, width:"100%" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
+                <div style={{ width:36, height:36, borderRadius:8, background:"linear-gradient(135deg,#1e3a5f,#3b82f6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <span style={{ fontSize:12, fontWeight:900, color:"white" }}>EX</span>
+                </div>
+                <div>
+                  <div style={{ fontSize:15, fontWeight:700, color:"#111" }}>ESDFX</div>
+                  <div style={{ fontSize:11, color:"#9ca3af" }}>Espace Personnel</div>
+                </div>
+              </div>
+              <h1 style={{ fontSize:22, fontWeight:700, color:"#111", marginBottom:6 }}>Connexion</h1>
+              <p style={{ fontSize:13, color:"#6b7280", marginBottom:28 }}>Accès réservé — espace personnel.</p>
+              <form onSubmit={handleLogin} style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                <div>
+                  <label style={{ fontSize:11, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Email</label>
+                  <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="votre@email.com" required
+                    style={{ width:"100%", padding:"12px 14px", border:"1.5px solid #e2e8f0", borderRadius:10, fontSize:14, outline:"none", color:"#111" }} />
+                </div>
+                <div>
+                  <label style={{ fontSize:11, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Mot de passe</label>
+                  <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" required
+                    style={{ width:"100%", padding:"12px 14px", border:"1.5px solid #e2e8f0", borderRadius:10, fontSize:14, outline:"none", color:"#111" }} />
+                </div>
+                {error && (
+                  <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:8, padding:"10px 14px", fontSize:13, color:"#ef4444" }}>{error}</div>
+                )}
+                <button type="submit" disabled={loading} className="btn-ae" style={{ padding:"13px", fontSize:15, borderRadius:10, marginTop:4 }}>
+                  {loading ? "Connexion..." : "Se connecter"}
+                </button>
+              </form>
+              <div style={{ display:"flex", alignItems:"center", gap:10, margin:"16px 0" }}>
+                <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
+                <span style={{ fontSize:12, color:"#9ca3af" }}>ou</span>
+                <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
+              </div>
+              <button onClick={handleGoogle} disabled={loading}
+                style={{ width:"100%", padding:"12px", border:"1.5px solid #e2e8f0", borderRadius:10, background:"white", display:"flex", alignItems:"center", justifyContent:"center", gap:10, cursor:"pointer", fontSize:14, fontWeight:600, color:"#374151" }}>
+                <img src="https://www.google.com/favicon.ico" width={16} height={16} alt="" />Continuer avec Google
+              </button>
+              <p style={{ fontSize:11, color:"#9ca3af", textAlign:"center", marginTop:16 }}>
+                Accès exclusivement réservé à l'espace personnel ESDFX.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Sidebar ───────────────────────────────────────────────────
+    function Sidebar({ user, open, onClose, activeTab, onTabChange }) {
+      if (!open) return null;
+      const navItems = [
+        { id:"historique", icon:"🕐", label:"Historique", available:true },
+      ];
+      return (
+        <div style={{ position:"fixed", inset:0, zIndex:400, display:"flex" }}>
+          <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.45)", backdropFilter:"blur(2px)" }} onClick={onClose} />
+          <div className="sidebar-anim" style={{ position:"relative", width:240, background:"#0f1729", height:"100%", display:"flex", flexDirection:"column", borderRight:"2px solid #3b82f6", zIndex:401, flexShrink:0 }}>
+            <div style={{ padding:"0 16px", height:52, display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width:28, height:28, borderRadius:7, background:"linear-gradient(135deg,#1e3a5f,#3b82f6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <span style={{ fontSize:10, fontWeight:900, color:"white" }}>EX</span>
+                </div>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:"white", lineHeight:1.2 }}>ESDFX</div>
+                  <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)" }}>Espace Personnel</div>
+                </div>
+              </div>
+              <button onClick={onClose} style={{ background:"rgba(255,255,255,0.08)", border:"none", color:"rgba(255,255,255,0.5)", cursor:"pointer", width:28, height:28, borderRadius:6, fontSize:14, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+            </div>
+            <div style={{ flex:1, paddingTop:8 }}>
+              <div style={{ padding:"8px 20px 6px", fontSize:9, fontWeight:700, color:"rgba(255,255,255,0.25)", textTransform:"uppercase", letterSpacing:"0.1em" }}>Navigation</div>
+              {navItems.map(item => (
+                <div key={item.id}
+                  className={`nav-item${activeTab===item.id?" active":""}`}
+                  onClick={() => { onTabChange(item.id); onClose(); }}>
+                  <span style={{ fontSize:16 }}>{item.icon}</span>
+                  <span style={{ fontSize:13, fontWeight:600, color:activeTab===item.id?"#8dc63f":"rgba(255,255,255,0.7)" }}>{item.label}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding:"14px 16px", borderTop:"1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
+                <div style={{ width:30, height:30, borderRadius:"50%", background:"linear-gradient(135deg,#1e3a5f,#3b82f6)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:"white", fontWeight:700, flexShrink:0 }}>
+                  {user.email?.[0]?.toUpperCase()}
+                </div>
+                <div style={{ overflow:"hidden" }}>
+                  <div style={{ fontSize:12, fontWeight:600, color:"white", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{user.email?.split("@")[0]}</div>
+                  <div style={{ fontSize:10, color:"rgba(255,255,255,0.3)" }}>Personnel</div>
+                </div>
+              </div>
+              <button onClick={() => auth.signOut()} style={{ width:"100%", padding:"8px", background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.25)", borderRadius:8, color:"#f87171", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                🚪 Déconnexion
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── AEHeader ──────────────────────────────────────────────────
+    function AEHeader({ title, rightSlot, onMenuToggle }) {
+      return (
+        <div className="ae-header" style={{ background:"#0f1729", borderBottom:"2px solid #3b82f6", padding:"0 20px", height:52, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:100 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <button onClick={onMenuToggle}
+              style={{ display:"flex", flexDirection:"column", justifyContent:"center", gap:4.5, width:34, height:34, background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:7, cursor:"pointer", padding:"0 8px", flexShrink:0 }}>
+              <div style={{ height:2, background:"white", borderRadius:2 }} />
+              <div style={{ height:2, background:"white", borderRadius:2 }} />
+              <div style={{ height:2, background:"white", borderRadius:2 }} />
+            </button>
+            <a href="/" style={{ display:"flex", alignItems:"center", gap:8, textDecoration:"none" }}>
+              <div style={{ width:28, height:28, borderRadius:7, background:"linear-gradient(135deg,#1e3a5f,#3b82f6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <span style={{ fontSize:11, fontWeight:900, color:"white" }}>EX</span>
+              </div>
+              <span className="ae-header-title" style={{ fontSize:14, fontWeight:700, color:"white" }}>ESDFX Studio</span>
+            </a>
+            <span className="ae-header-sub" style={{ fontSize:11, color:"rgba(255,255,255,0.35)" }}>/ {title}</span>
+          </div>
+          <div className="ae-header-btns-desktop" style={{ display:"flex", alignItems:"center", gap:10 }}>
+            {rightSlot}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Historique ────────────────────────────────────────────────
+    function Historique({ user, onNewSession }) {
+      const [sessions, setSessions] = useState([]);
+      const [loading,  setLoading]  = useState(true);
+      const [sessionDetail, setSessionDetail] = useState(null);
+      const [claimSession,  setClaimSession]  = useState(null);
+
+      useEffect(() => {
+        const date30 = new Date();
+        date30.setDate(date30.getDate() - 30);
+        const cutoff = date30.toISOString();
+        db.collection("partner_sessions")
+          .where("uid", "==", user.uid)
+          .where("companyId", "==", COMPANY_ID)
+          .get()
+          .then(snap => {
+            const docs = snap.docs
+              .map(d => ({ id:d.id, ...d.data() }))
+              .filter(s => s.createdAt >= cutoff)
+              .sort((a,b) => b.createdAt.localeCompare(a.createdAt));
+            setSessions(docs);
+            setLoading(false);
+          })
+          .catch(err => { console.error("[sessions]", err); setLoading(false); });
+      }, []);
+
+      const totalPhotos = sessions.reduce((s, sess) => s + (sess.photoCount||0), 0);
+
+      async function downloadSession(sess) {
+        if (!sess.photos?.length) return;
+        for (let i=0; i<sess.photos.length; i++) {
+          const a = document.createElement("a");
+          a.href = sess.photos[i];
+          a.download = `${sess.vehicleName?.replace(/\s/g,"_")||"vehicule"}_photo_${i+1}.jpg`;
+          a.target = "_blank";
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          await new Promise(r => setTimeout(r, 400));
+        }
+      }
+
+      return (
+        <div className="ae-content fade-in" style={{ padding:"20px 28px", maxWidth:1200, margin:"0 auto" }}>
+          <button onClick={onNewSession} className="btn-ae" style={{ display:"none", width:"100%", padding:"12px", fontSize:14, marginBottom:14, borderRadius:10 }} id="esdfx-new-btn">
+            + Nouveau traitement
+          </button>
+          <style>{`@media(max-width:768px){#esdfx-new-btn{display:block!important}}`}</style>
+
+          {/* Stats */}
+          <div className="stats-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:20 }}>
+            {[
+              { label:"Véhicules (30j)", value:sessions.length, sub:"Espace personnel ESDFX" },
+              { label:"Photos traitées", value:totalPhotos, sub:"~"+(sessions.length?Math.round(totalPhotos/sessions.length*10)/10:0)+" par véhicule" },
+              { label:"Dernier traitement", value:sessions[0]?new Date(sessions[0].createdAt).toLocaleDateString("fr-FR"):"—", sub:sessions[0]?.vehicleName||"Aucun" },
+            ].map((s,i) => (
+              <div key={i} style={{ background:"white", borderRadius:12, padding:"14px 16px", border:"0.5px solid #e2e8f0" }}>
+                <div style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>{s.label}</div>
+                <div style={{ fontSize:24, fontWeight:700, color:"#111", marginBottom:2 }}>{s.value}</div>
+                <div style={{ fontSize:11, color:"#3b82f6" }}>{s.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Liste */}
+          <div style={{ background:"white", borderRadius:14, border:"0.5px solid #e2e8f0", overflow:"hidden" }}>
+            <div style={{ padding:"14px 18px", borderBottom:"0.5px solid #e2e8f0", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <span style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em" }}>Historique ESDFX</span>
+                <span style={{ background:"#eff6ff", color:"#1d4ed8", fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:99, border:"1px solid #bfdbfe" }}>30 jours</span>
+              </div>
+              <span style={{ fontSize:12, color:"#9ca3af" }}>{sessions.length} session{sessions.length>1?"s":""}</span>
+            </div>
+
+            {loading && <div style={{ padding:40, textAlign:"center" }}><div className="spinner" style={{ margin:"0 auto" }} /></div>}
+
+            {!loading && sessions.length === 0 && (
+              <div style={{ padding:"60px 20px", textAlign:"center" }}>
+                <div style={{ fontSize:40, marginBottom:12 }}>📷</div>
+                <div style={{ fontSize:15, fontWeight:600, color:"#374151", marginBottom:6 }}>Aucune session sur les 30 derniers jours</div>
+                <div style={{ fontSize:13, color:"#9ca3af", marginBottom:20 }}>Commencez votre premier traitement photo.</div>
+                <button onClick={onNewSession} className="btn-ae" style={{ padding:"10px 20px", fontSize:13 }}>+ Nouveau traitement</button>
+              </div>
+            )}
+
+            {!loading && sessions.length > 0 && (
+              <div className="sessions-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:12, padding:16 }}>
+                {sessions.map(sess => {
+                  const created  = new Date(sess.createdAt);
+                  const expires  = new Date(created.getTime() + 30*24*60*60*1000);
+                  const daysLeft = Math.ceil((expires - new Date()) / (1000*60*60*24));
+                  return (
+                    <div key={sess.id} className="photo-card" style={{ border:"0.5px solid #e2e8f0", borderRadius:10, overflow:"hidden", background:"#fafafa", cursor:"pointer" }}
+                      onClick={() => setSessionDetail(sess)}>
+                      <div style={{ height:110, background:"#0f1729", overflow:"hidden", position:"relative" }}>
+                        {sess.photos?.[0]
+                          ? <img src={sess.photos[0]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                          : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28 }}>🚗</div>}
+                        <div style={{ position:"absolute", bottom:0, left:0, right:0, height:16, background:"#0f1729", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <span style={{ fontSize:7, fontWeight:800, color:"#60a5fa", letterSpacing:"0.1em" }}>ESDFX</span>
+                        </div>
+                        <div style={{ position:"absolute", top:6, right:6, background:daysLeft<=5?"rgba(239,68,68,0.85)":"rgba(0,0,0,0.55)", borderRadius:4, padding:"2px 6px", fontSize:9, fontWeight:700, color:"white" }}>
+                          {daysLeft}j
+                        </div>
+                      </div>
+                      <div style={{ padding:"10px 12px" }}>
+                        <div style={{ fontSize:12, fontWeight:700, color:"#111", marginBottom:4 }}>{sess.vehicleName||"Véhicule"}</div>
+                        <div style={{ fontSize:10, color:"#9ca3af", marginBottom:8 }}>
+                          {sess.photoCount} photo{sess.photoCount>1?"s":""} · {new Date(sess.createdAt).toLocaleDateString("fr-FR")}
+                        </div>
+                        <button onClick={e=>{ e.stopPropagation(); downloadSession(sess); }} className="btn-ae" style={{ width:"100%", padding:"6px", fontSize:10, marginBottom:5 }}>
+                          ⬇ Télécharger ({sess.photoCount} JPG)
+                        </button>
+                        <button onClick={e=>{ e.stopPropagation(); setClaimSession(sess); }}
+                          style={{ width:"100%", padding:"5px", fontSize:9, fontWeight:600, background:"transparent", border:"1px solid #e2e8f0", borderRadius:6, cursor:"pointer", color:"#9ca3af", fontFamily:"inherit" }}
+                          onMouseOver={e=>{e.target.style.borderColor="#f59e0b";e.target.style.color="#b45309";}}
+                          onMouseOut={e=>{e.target.style.borderColor="#e2e8f0";e.target.style.color="#9ca3af";}}>
+                          ⚠ Signaler une erreur
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {sessionDetail && (
+            <SessionDetailModal sess={sessionDetail} onClose={() => setSessionDetail(null)} onClaim={s=>{ setSessionDetail(null); setClaimSession(s); }} />
+          )}
+          {claimSession && <ClaimModal sess={claimSession} onClose={() => setClaimSession(null)} />}
+        </div>
+      );
+    }
+
+    // ── Modal Détail Session ──────────────────────────────────────
+    function SessionDetailModal({ sess, onClose, onClaim }) {
+      const slug = (sess.vehicleName || "vehicule").replace(/\s/g, "_");
+      function dlOne(url, i) {
+        const a = document.createElement("a"); a.href=url; a.download=slug+"_photo_"+(i+1)+".jpg"; a.target="_blank";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      }
+      function dlAll() { (sess.photos||[]).forEach((url,i) => setTimeout(() => dlOne(url,i), i*400)); }
+
+      return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:16, backdropFilter:"blur(3px)" }}
+          onClick={e => e.target===e.currentTarget && onClose()}>
+          <div style={{ background:"white", borderRadius:16, width:"100%", maxWidth:640, maxHeight:"90vh", overflowY:"auto", boxShadow:"0 24px 60px rgba(0,0,0,0.25)", display:"flex", flexDirection:"column" }}>
+            <div style={{ padding:"16px 20px", borderBottom:"1px solid #f3f4f6", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
+              <div>
+                <div style={{ fontSize:15, fontWeight:700, color:"#111" }}>{sess.vehicleName||"Véhicule"}</div>
+                <div style={{ fontSize:11, color:"#9ca3af", marginTop:2 }}>{new Date(sess.createdAt).toLocaleDateString("fr-FR")} · {sess.photoCount} photo{sess.photoCount>1?"s":""}</div>
+              </div>
+              <button onClick={onClose} style={{ background:"#f3f4f6", border:"none", borderRadius:6, width:28, height:28, cursor:"pointer", fontSize:14, color:"#6b7280" }}>✕</button>
+            </div>
+            <div style={{ padding:20, flex:1 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:12 }}>
+                {(sess.photos||[]).map((url,i) => (
+                  <div key={i} style={{ borderRadius:10, overflow:"hidden", border:"0.5px solid #e2e8f0" }}>
+                    <img src={url} alt={"Photo "+(i+1)} style={{ width:"100%", aspectRatio:"4/3", objectFit:"cover", display:"block" }} />
+                    <div style={{ padding:"8px 10px" }}>
+                      <div style={{ fontSize:10, color:"#9ca3af", marginBottom:6 }}>Photo {i+1}</div>
+                      <button onClick={() => dlOne(url,i)} className="btn-ae" style={{ width:"100%", padding:"5px", fontSize:10 }}>⬇ Télécharger</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ padding:"14px 20px", borderTop:"1px solid #f3f4f6", display:"flex", gap:10, flexShrink:0 }}>
+              <button onClick={dlAll} className="btn-ae" style={{ flex:2, padding:"10px", fontSize:13 }}>⬇ Tout télécharger ({sess.photoCount} JPG)</button>
+              <button onClick={() => onClaim(sess)} style={{ flex:1, padding:"10px", fontSize:12, fontWeight:600, background:"transparent", border:"1.5px solid #e2e8f0", borderRadius:8, cursor:"pointer", color:"#9ca3af", fontFamily:"inherit" }}>⚠ Signaler</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Modal Réclamation ─────────────────────────────────────────
+    function ClaimModal({ sess, onClose }) {
+      const [selectedPhotos, setSelectedPhotos] = useState([]);
+      const [description,    setDescription]    = useState("");
+      const [sending, setSending] = useState(false);
+      const [sent,    setSent]    = useState(false);
+
+      function togglePhoto(url) {
+        setSelectedPhotos(prev => prev.includes(url) ? prev.filter(u=>u!==url) : [...prev, url]);
+      }
+
+      async function handleSend() {
+        if (!description.trim()) return;
+        setSending(true);
+        try {
+          const res = await fetch("/api/partner-claim", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              commercialName: "ESDFX (Corentin)",
+              vehicleName:    sess.vehicleName || "Véhicule",
+              sessionDate:    new Date(sess.createdAt).toLocaleDateString("fr-FR"),
+              description, selectedPhotos, allPhotos: sess.photos || [],
+            }),
+          });
+          const data = await res.json();
+          if (!data.success) throw new Error(data.error);
+          setSent(true);
+        } catch(err) { alert("Erreur : " + err.message); }
+        setSending(false);
+      }
+
+      return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:16, backdropFilter:"blur(3px)" }}
+          onClick={e => e.target===e.currentTarget && onClose()}>
+          <div style={{ background:"white", borderRadius:14, width:"100%", maxWidth:480, maxHeight:"90vh", overflowY:"auto", boxShadow:"0 24px 60px rgba(0,0,0,0.2)" }}>
+            <div style={{ padding:"16px 20px", borderBottom:"1px solid #f3f4f6", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div>
+                <div style={{ fontSize:14, fontWeight:700, color:"#111" }}>Signaler une erreur</div>
+                <div style={{ fontSize:11, color:"#9ca3af", marginTop:2 }}>{sess.vehicleName||"Véhicule"} · {new Date(sess.createdAt).toLocaleDateString("fr-FR")}</div>
+              </div>
+              <button onClick={onClose} style={{ background:"#f3f4f6", border:"none", borderRadius:6, width:28, height:28, cursor:"pointer", fontSize:14, color:"#6b7280" }}>✕</button>
+            </div>
+            {sent ? (
+              <div style={{ padding:"40px 20px", textAlign:"center" }}>
+                <div style={{ fontSize:40, marginBottom:12 }}>✅</div>
+                <div style={{ fontSize:15, fontWeight:700, color:"#111", marginBottom:6 }}>Réclamation envoyée</div>
+                <div style={{ fontSize:13, color:"#6b7280", marginBottom:20 }}>Votre signalement a bien été enregistré.</div>
+                <button onClick={onClose} className="btn-ae" style={{ padding:"9px 20px", fontSize:13 }}>Fermer</button>
+              </div>
+            ) : (
+              <div style={{ padding:"18px 20px", display:"flex", flexDirection:"column", gap:16 }}>
+                {sess.photos?.length > 0 && (
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:8 }}>
+                      Photos concernées <span style={{ color:"#9ca3af", fontWeight:400, textTransform:"none" }}>(optionnel)</span>
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:`repeat(${Math.min(sess.photos.length,3)},1fr)`, gap:8 }}>
+                      {sess.photos.map((url,i) => {
+                        const selected = selectedPhotos.includes(url);
+                        return (
+                          <div key={i} onClick={() => togglePhoto(url)}
+                            style={{ position:"relative", cursor:"pointer", borderRadius:8, overflow:"hidden", border:`2px solid ${selected?"#ef4444":"#e2e8f0"}`, transition:"border-color 0.15s" }}>
+                            <img src={url} alt="" style={{ width:"100%", aspectRatio:"4/3", objectFit:"cover", display:"block" }} />
+                            {selected && (
+                              <div style={{ position:"absolute", inset:0, background:"rgba(239,68,68,0.15)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                                <div style={{ background:"#ef4444", borderRadius:"50%", width:22, height:22, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:"white", fontWeight:700 }}>✓</div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label style={{ fontSize:11, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>
+                    Description <span style={{ color:"#ef4444" }}>*</span>
+                  </label>
+                  <textarea value={description} onChange={e=>setDescription(e.target.value)}
+                    placeholder="Ex: La plaque n'a pas été masquée, vignette manquante..."
+                    rows={4}
+                    style={{ width:"100%", padding:"10px 12px", border:"1.5px solid #e2e8f0", borderRadius:9, fontSize:13, outline:"none", resize:"vertical", fontFamily:"inherit", color:"#111", lineHeight:1.5 }} />
+                </div>
+                <div style={{ display:"flex", gap:10 }}>
+                  <button onClick={onClose} className="btn-outline" style={{ flex:1, padding:"10px", fontSize:13 }}>Annuler</button>
+                  <button onClick={handleSend} disabled={!description.trim()||sending} className="btn-ae"
+                    style={{ flex:2, padding:"10px", fontSize:13, opacity:!description.trim()?0.5:1 }}>
+                    {sending ? "Envoi..." : "Envoyer"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Dashboard ─────────────────────────────────────────────────
+    function Dashboard({ user, onNewSession }) {
+      const [menuOpen,  setMenuOpen]  = useState(false);
+      const [activeTab, setActiveTab] = useState("historique");
+
+      const headerRight = (
+        <>
+          {/* Badge gratuit */}
+          <div style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 14px", background:"rgba(59,130,246,0.12)", border:"1.5px solid #3b82f6", borderRadius:9 }}>
+            <span style={{ fontSize:14 }}>∞</span>
+            <div style={{ display:"flex", flexDirection:"column", lineHeight:1.1 }}>
+              <span style={{ fontSize:13, fontWeight:800, color:"#60a5fa" }}>Gratuit</span>
+              <span style={{ fontSize:9, fontWeight:600, color:"rgba(255,255,255,0.35)", textTransform:"uppercase", letterSpacing:"0.06em" }}>illimité</span>
+            </div>
+          </div>
+          <button onClick={onNewSession} className="btn-ae" style={{ padding:"7px 16px", fontSize:12 }}>+ Nouveau traitement</button>
+          <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:"rgba(255,255,255,0.6)" }}>
+            <div style={{ width:28, height:28, borderRadius:"50%", background:"linear-gradient(135deg,#1e3a5f,#3b82f6)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, color:"white", fontWeight:700 }}>
+              {user.email?.[0]?.toUpperCase()}
+            </div>
+          </div>
+        </>
+      );
+
+      return (
+        <div style={{ minHeight:"100vh", background:"#f5f5f7", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+          <Sidebar user={user} open={menuOpen} onClose={() => setMenuOpen(false)} activeTab={activeTab} onTabChange={setActiveTab} />
+          <AEHeader title={activeTab==="historique"?"Historique":activeTab} rightSlot={headerRight} onMenuToggle={() => setMenuOpen(m=>!m)} />
+          {activeTab === "historique" && <Historique user={user} onNewSession={onNewSession} />}
+        </div>
+      );
+    }
+
+    // ── Studio Photo ──────────────────────────────────────────────
+    function Studio({ user, onBack }) {
+      const [step,        setStep]        = useState(1);
+      const [files,       setFiles]       = useState([]);
+      const [vehicleName, setVehicleName] = useState("");
+      const [processed,   setProcessed]   = useState([]);
+      const [failed,      setFailed]      = useState([]);
+      const [progress,    setProgress]    = useState({ msg:"", pct:0 });
+      const [currentIdx,  setCurrentIdx]  = useState(0);
+      const [photoStatus, setPhotoStatus] = useState([]);
+      const [saving,      setSaving]      = useState(false);
+      const [saved,       setSaved]       = useState(false);
+      const fileInputRef = useRef();
+
+      function handleFiles(e) {
+        const newFiles = Array.from(e.target.files).filter(f => f.type.startsWith("image/"));
+        setFiles(prev => [...prev, ...newFiles].slice(0, 6));
+      }
+      function removeFile(i) { setFiles(prev => prev.filter((_,idx) => idx !== i)); }
+
+      async function handleProcess(filesToProcess=null) {
+        const sourceFiles = filesToProcess || files;
+        if (!sourceFiles.length) return;
+        if (!filesToProcess) {
+          setStep(2); setProcessed([]); setFailed([]);
+          setPhotoStatus(sourceFiles.map(() => "waiting"));
+        }
+        const results  = filesToProcess ? [...processed] : [];
+        const failedIdx = [];
+        for (let i=0; i<sourceFiles.length; i++) {
+          const globalIdx = filesToProcess ? failed[i] : i;
+          setCurrentIdx(globalIdx);
+          setPhotoStatus(prev => { const n=[...prev]; n[globalIdx]="processing"; return n; });
+          setProgress({ msg:`Photo ${globalIdx+1}/${files.length} — démarrage...`, pct:0 });
+          try {
+            const result = await processPartnerImage(sourceFiles[i], (msg,pct) =>
+              setProgress({ msg:`Photo ${globalIdx+1}/${files.length} — ${msg}`, pct })
+            );
+            results[globalIdx] = { dataUrl:result.dataUrl, plateDetected:result.plateDetected };
+            setPhotoStatus(prev => { const n=[...prev]; n[globalIdx]="done"; return n; });
+          } catch(err) {
+            results[globalIdx] = null; failedIdx.push(globalIdx);
+            setPhotoStatus(prev => { const n=[...prev]; n[globalIdx]="error"; return n; });
+          }
+        }
+        setProcessed(results); setFailed(failedIdx); setStep(3);
+      }
+
+      async function retryFailed() {
+        if (!failed.length) return;
+        const failedFiles = failed.map(i => files[i]);
+        setStep(2);
+        setPhotoStatus(prev => { const n=[...prev]; failed.forEach(i=>{ n[i]="waiting"; }); return n; });
+        await handleProcess(failedFiles);
+      }
+
+      async function handleSave() {
+        setSaving(true);
+        try {
+          const successPhotos = processed.filter(Boolean);
+          const now           = new Date();
+          const expiresAt     = new Date(now.getTime() + 30*24*60*60*1000).toISOString();
+          const photoUrls     = await Promise.all(successPhotos.map(async (p,i) => {
+            const res  = await fetch(p.dataUrl); const blob = await res.blob();
+            const ref  = storage.ref(`partner_photos/${user.uid}/esdfx/${Date.now()}_${i}.jpg`);
+            await ref.put(blob, { contentType:"image/jpeg" }); return ref.getDownloadURL();
+          }));
+          await db.collection("partner_sessions").add({
+            uid:          user.uid,
+            userEmail:    user.email,
+            companyId:    COMPANY_ID,
+            commercialName: "ESDFX (Corentin)",
+            vehicleName:  vehicleName || "Véhicule",
+            photoCount:   photoUrls.length,
+            photos:       photoUrls,
+            createdAt:    now.toISOString(),
+            expiresAt,
+          });
+          setSaved(true);
+        } catch(err) { alert("Erreur sauvegarde : " + err.message); }
+        setSaving(false);
+      }
+
+      const successCount = processed.filter(Boolean).length;
+      const failCount    = failed.length;
+
+      // Sauvegarde automatique dès que le traitement est terminé
+      useEffect(() => {
+        if (step === 3 && successCount > 0 && !saved && !saving) {
+          handleSave();
+        }
+      }, [step, successCount]);
+
+      function downloadAll() {
+        processed.filter(Boolean).forEach((p,i) => {
+          const a = document.createElement("a"); a.href = p.dataUrl;
+          a.download = `${vehicleName?.replace(/\s/g,"_")||"vehicule"}_photo_${i+1}.jpg`;
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        });
+      }
+
+      const headerRight = (
+        <button onClick={onBack} className="btn-outline" style={{ padding:"5px 14px", fontSize:12 }}>← Dashboard</button>
+      );
+
+      return (
+        <div style={{ minHeight:"100vh", background:"#f5f5f7", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+          <AEHeader title="Nouveau traitement" rightSlot={headerRight} onMenuToggle={onBack} />
+          <div className="ae-content" style={{ padding:"20px 28px", maxWidth:1000, margin:"0 auto" }}>
+
+            {/* Stepper */}
+            <div className="stepper-wrap" style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:"14px 20px", marginBottom:20, display:"flex", alignItems:"center", gap:0 }}>
+              {[{n:1,label:"Upload photos"},{n:2,label:"Traitement"},{n:3,label:"Export"}].map((s,i) => (
+                <React.Fragment key={s.n}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <div style={{ width:26, height:26, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, flexShrink:0,
+                      background:step>s.n?"#8dc63f":"transparent", border:step===s.n?"2px solid #8dc63f":step>s.n?"none":"2px solid #e2e8f0",
+                      color:step>s.n?"#1a1a2e":step===s.n?"#8dc63f":"#9ca3af" }}>
+                      {step>s.n?"✓":s.n}
+                    </div>
+                    <span className="stepper-label" style={{ fontSize:12, fontWeight:step===s.n?700:400, color:step===s.n?"#111":"#9ca3af" }}>{s.label}</span>
+                  </div>
+                  {i<2 && <div style={{ flex:1, height:1, background:step>s.n?"#8dc63f":"#e2e8f0", margin:"0 10px" }}/>}
+                </React.Fragment>
+              ))}
+            </div>
+
+            {/* ── ÉTAPE 1 ── */}
+            {step===1 && (
+              <div className="fade-in step1-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+                <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:18 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:14 }}>Informations véhicule</div>
+                  <label style={{ fontSize:11, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Nom du véhicule</label>
+                  <input type="text" value={vehicleName} onChange={e=>setVehicleName(e.target.value)} placeholder="Ex: Renault Clio 2018"
+                    style={{ width:"100%", padding:"11px 14px", border:"1.5px solid #e2e8f0", borderRadius:8, fontSize:14, outline:"none", marginBottom:16, color:"#111" }} />
+                  <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:10 }}>Photos ({files.length}/6)</div>
+                  <label style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", border:"2px dashed #e2e8f0", borderRadius:12, padding:"20px 16px", cursor:"pointer", background:"#fafafa", marginBottom:12 }}
+                    onDragOver={e=>e.preventDefault()}
+                    onDrop={e=>{ e.preventDefault(); const f=Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith("image/")); setFiles(prev=>[...prev,...f].slice(0,6)); }}>
+                    <span style={{ fontSize:26, marginBottom:6 }}>📸</span>
+                    <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Glissez ou cliquez</span>
+                    <span style={{ fontSize:11, color:"#9ca3af", marginTop:3 }}>JPG, PNG · Max 6 · Max 20 Mo</span>
+                    <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFiles} style={{ display:"none" }} />
+                  </label>
+                  {files.length>0 && (
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:14 }}>
+                      {files.map((f,i) => (
+                        <div key={i} style={{ position:"relative" }}>
+                          <img src={URL.createObjectURL(f)} alt="" style={{ width:"100%", aspectRatio:"4/3", objectFit:"cover", borderRadius:8, border:"0.5px solid #e2e8f0" }} />
+                          <button onClick={()=>removeFile(i)} style={{ position:"absolute", top:3, right:3, width:18, height:18, borderRadius:"50%", background:"rgba(0,0,0,0.6)", color:"white", border:"none", cursor:"pointer", fontSize:10, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button onClick={()=>handleProcess()} disabled={files.length===0} className="btn-ae" style={{ width:"100%", padding:"13px", fontSize:14 }}>
+                    Traiter {files.length} photo{files.length>1?"s":""} →
+                  </button>
+                </div>
+
+                <div className="step1-panel-right" style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:18 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:14 }}>Ce qui sera fait</div>
+                  {[
+                    {icon:"🔍", title:"Détection plaque (Watermarkly)", desc:"Localisation et cache de la plaque d'immatriculation."},
+                    {icon:"⬛", title:"Logo AUTOEASY sur la plaque",    desc:"Le bandeau AUTOEASY remplace la plaque détectée."},
+                    {icon:"🖼️", title:"Fond original conservé",         desc:"Pas de recadrage ni suppression de fond."},
+                    {icon:"🏷️", title:"Vignette AE en haut à droite",   desc:"Petite vignette AutoEasy ajoutée sur la photo."},
+                  ].map((item,i) => (
+                    <div key={i} style={{ display:"flex", gap:12, marginBottom:16, alignItems:"flex-start" }}>
+                      <div style={{ width:36, height:36, borderRadius:8, background:"#f5f5f7", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{item.icon}</div>
+                      <div><div style={{ fontSize:13, fontWeight:600, color:"#111", marginBottom:2 }}>{item.title}</div><div style={{ fontSize:12, color:"#6b7280", lineHeight:1.5 }}>{item.desc}</div></div>
+                    </div>
+                  ))}
+                  <div style={{ background:"#eff6ff", border:"1px solid #bfdbfe", borderRadius:8, padding:"10px 14px", fontSize:12, color:"#1d4ed8" }}>
+                    ⚡ Environ <strong>5–10 secondes</strong> par photo. Gratuit — aucun jeton consommé.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── ÉTAPE 2 ── */}
+            {step===2 && (
+              <div className="fade-in" style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", padding:"40px 24px", textAlign:"center" }}>
+                <div className="processing-inner" style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:18, maxWidth:360, margin:"0 auto" }}>
+                  <div className="spinner" style={{ width:48, height:48, borderWidth:4 }} />
+                  <div style={{ fontSize:17, fontWeight:700, color:"#111" }}>Cache plaque en cours</div>
+                  <div style={{ fontSize:13, color:"#6b7280", minHeight:20 }}>{progress.msg}</div>
+                  <div style={{ width:"100%" }}>
+                    <div style={{ background:"#f3f4f6", borderRadius:99, overflow:"hidden", height:8, marginBottom:8 }}>
+                      <div style={{ height:"100%", background:"#8dc63f", borderRadius:99, width:`${progress.pct}%`, transition:"width 0.4s ease" }} />
+                    </div>
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#9ca3af" }}>
+                      <span>Photo {currentIdx+1}/{files.length}</span><span>{progress.pct}%</span>
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", flexWrap:"wrap", justifyContent:"center", gap:8, marginTop:4 }}>
+                    {files.map((f,i) => {
+                      const status = photoStatus[i]||"waiting";
+                      return (
+                        <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+                          <div style={{ width:56, height:40, borderRadius:6, overflow:"hidden", border:status==="done"?"2px solid #8dc63f":status==="processing"?"2px solid #f59e0b":status==="error"?"2px solid #ef4444":"1px solid #e2e8f0", opacity:status==="waiting"?0.4:1 }}>
+                            <img src={URL.createObjectURL(f)} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                          </div>
+                          <div style={{ fontSize:9, fontWeight:600, color:status==="done"?"#8dc63f":status==="processing"?"#f59e0b":status==="error"?"#ef4444":"#9ca3af" }}>
+                            {status==="done"?"✓ OK":status==="processing"?"⏳":status==="error"?"✗":"•"}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── ÉTAPE 3 ── */}
+            {step===3 && (
+              <div className="fade-in">
+                {failCount===0 ? (
+                  <div style={{ background:"#f0fdf4", border:"1px solid #86efac", borderRadius:12, padding:"14px 18px", marginBottom:16 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+                      <span style={{ fontSize:22 }}>✅</span>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:14, fontWeight:700, color:"#166534" }}>{successCount} photo{successCount>1?"s":""} traitée{successCount>1?"s":""} avec succès !</div>
+                        <div style={{ fontSize:12, color:"#15803d" }}>Watermarkly · Vignette AE</div>
+                      </div>
+                      <div className="export-actions" style={{ display:"flex", gap:10, flexShrink:0 }}>
+                        <button onClick={downloadAll} className="btn-ae" style={{ padding:"9px 16px", fontSize:13 }}>⬇️ Tout télécharger ({successCount} JPG)</button>
+                        {saving && <div style={{ fontSize:12, color:"#9ca3af", display:"flex", alignItems:"center", gap:6 }}><div className="spinner" style={{ width:12, height:12 }} />Sauvegarde...</div>}
+                        {saved  && <div style={{ padding:"9px 12px", fontSize:12, color:"#8dc63f", fontWeight:600 }}>✓ Sauvegardé</div>}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:16 }}>
+                    {successCount>0 && (
+                      <div style={{ background:"#f0fdf4", border:"1px solid #86efac", borderRadius:12, padding:"14px 18px" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+                          <span style={{ fontSize:20 }}>✅</span>
+                          <div style={{ fontSize:13, fontWeight:600, color:"#166534", flex:1 }}>{successCount} photo{successCount>1?"s":""} OK</div>
+                          <div className="export-actions" style={{ display:"flex", gap:8 }}>
+                            <button onClick={downloadAll} className="btn-ae" style={{ padding:"7px 14px", fontSize:12 }}>⬇️ Télécharger ({successCount})</button>
+                            {saving && <div style={{ fontSize:11, color:"#9ca3af" }}>...</div>}
+                            {saved  && <div style={{ padding:"7px 10px", fontSize:12, color:"#8dc63f", fontWeight:600 }}>✓</div>}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:12, padding:"14px 18px" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+                        <span style={{ fontSize:20 }}>⚠️</span>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontSize:13, fontWeight:700, color:"#991b1b" }}>{failCount} photo{failCount>1?"s":""} en erreur</div>
+                          <div style={{ fontSize:12, color:"#b91c1c" }}>Photo{failCount>1?"s":""} {failed.map(i=>i+1).join(", ")}</div>
+                        </div>
+                        <button onClick={retryFailed} className="btn-retry" style={{ padding:"7px 14px", fontSize:12 }}>🔄 Relancer</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {successCount>0 && (
+                  <div style={{ background:"white", borderRadius:12, border:"0.5px solid #e2e8f0", overflow:"hidden" }}>
+                    <div style={{ padding:"12px 18px", borderBottom:"0.5px solid #e2e8f0" }}>
+                      <span style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em" }}>Photos traitées</span>
+                    </div>
+                    <div className="photos-grid" style={{ display:"grid", gridTemplateColumns:`repeat(${Math.min(successCount,3)},1fr)`, gap:12, padding:16 }}>
+                      {processed.map((p,i) => p && (
+                        <div key={i} style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                          <div style={{ position:"relative" }}>
+                            <img src={p.dataUrl} alt="" style={{ width:"100%", borderRadius:8, border:"0.5px solid #e2e8f0" }} />
+                            {!p.plateDetected && (
+                              <div style={{ position:"absolute", top:6, right:6, background:"rgba(245,158,11,0.9)", borderRadius:4, padding:"2px 6px", fontSize:9, fontWeight:700, color:"white" }}>Plaque non détectée</div>
+                            )}
+                          </div>
+                          <button onClick={()=>{ const a=document.createElement("a"); a.href=p.dataUrl; a.download=`${vehicleName?.replace(/\s/g,"_")||"vehicule"}_photo_${i+1}.jpg`; a.click(); }} className="btn-outline" style={{ width:"100%", padding:"7px", fontSize:11 }}>
+                            📥 photo_{i+1}.jpg
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ── App ───────────────────────────────────────────────────────
+    function App() {
+      const [user,    setUser]    = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [view,    setView]    = useState("dashboard");
+
+      useEffect(() => {
+        const unsub = auth.onAuthStateChanged(async u => {
+          if (u && ALLOWED_EMAILS.includes(u.email?.toLowerCase())) {
+            setUser(u);
+          } else if (u) {
+            await auth.signOut(); setUser(null);
+          } else {
+            setUser(null);
+          }
+          setLoading(false);
+        });
+        return unsub;
+      }, []);
+
+      if (loading) return (
+        <div style={{ minHeight:"100vh", background:"#0f1729", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:16 }}>
+          <div style={{ width:44, height:44, borderRadius:10, background:"linear-gradient(135deg,#1e3a5f,#3b82f6)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <span style={{ fontSize:18, fontWeight:900, color:"white" }}>EX</span>
+          </div>
+          <div className="spinner" />
+        </div>
+      );
+
+      if (!user) return <LoginPage />;
+      if (view === "studio") return <Studio user={user} onBack={() => setView("dashboard")} />;
+      return <Dashboard user={user} onNewSession={() => setView("studio")} />;
+    }
+
+    window.__firebaseReady.then(() => {
+      auth = window.__firebase.auth; db = window.__firebase.db;
+      storage = window.__firebase.storage; googleProvider = window.__firebase.googleProvider;
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    });
+  </script>
+</body>
+</html>
