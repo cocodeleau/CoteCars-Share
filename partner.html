@@ -92,10 +92,26 @@
     const { useState, useEffect, useRef } = React;
     let auth, db, storage, googleProvider;
 
-    const ALLOWED_EMAILS = ["corentin.millet974@gmail.com"];
+    // Emails et companyMap chargés dynamiquement depuis Firestore
+    let ALLOWED_EMAILS = [];
+    let COMPANY_MAP = {};
 
-    // Mapping email → companyId
-    const COMPANY_MAP = { "corentin.millet974@gmail.com": "autoeasy" };
+    async function loadAllowedEmails() {
+      try {
+        const snap = await db.collection("companies").get();
+        snap.docs.forEach(function(doc) {
+          const data = doc.data();
+          const emails = data.emails || [];
+          emails.forEach(function(email) {
+            const e = email.trim().toLowerCase();
+            ALLOWED_EMAILS.push(e);
+            COMPANY_MAP[e] = doc.id;
+          });
+        });
+      } catch(err) {
+        console.error("[loadAllowedEmails]", err);
+      }
+    }
 
     async function processPartnerImage(file, onProgress) {
       if (file.size > 20 * 1024 * 1024) throw new Error("Image trop volumineuse (max 20 Mo).");
@@ -156,6 +172,7 @@
 
       async function handleLogin(e) {
         e.preventDefault(); setError("");
+        if (ALLOWED_EMAILS.length === 0) await loadAllowedEmails();
         if (!ALLOWED_EMAILS.includes(email.trim().toLowerCase())) { setError("Accès réservé aux partenaires AutoEasy."); return; }
         setLoading(true);
         try { await auth.signInWithEmailAndPassword(email, password); }
@@ -169,6 +186,7 @@
       async function handleGoogle() {
         setError(""); setLoading(true);
         try {
+          if (ALLOWED_EMAILS.length === 0) await loadAllowedEmails();
           const result = await auth.signInWithPopup(googleProvider);
           if (!ALLOWED_EMAILS.includes(result.user.email?.toLowerCase())) { await auth.signOut(); setError("Accès réservé aux partenaires AutoEasy."); }
         } catch(err) { setError("Erreur Google : " + err.message); }
@@ -1061,6 +1079,8 @@
 
       useEffect(() => {
         const unsub = auth.onAuthStateChanged(async u => {
+          // Charger la liste des emails autorisés avant de vérifier
+          if (ALLOWED_EMAILS.length === 0) await loadAllowedEmails();
           if (u && ALLOWED_EMAILS.includes(u.email?.toLowerCase())) {
             setUser(u);
             const cid = COMPANY_MAP[u.email?.toLowerCase()];
