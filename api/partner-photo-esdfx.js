@@ -116,14 +116,21 @@ module.exports = async function handler(req, res) {
 
     let finalBuffer = watermarklyResult ?? imageBuffer;
 
-    // ── 2. Vignette AE ───────────────────────────────────────────────────────
-    console.log("[ESDFX] Étape 2 — Vignette AE...");
+    // ── 2. Vignette (AutoEasy ou CoteCars selon le cache plaque choisi) ─────
+    console.log(`[ESDFX] Étape 2 — Vignette (${logoChoice})...`);
     const { width: imgW } = await sharp(finalBuffer).metadata();
-    const vignetteUrl = process.env.VIGNETTE_URL || "https://cotecars-test.vercel.app/vignette-AE.png";
 
     try {
-      const vigRes     = await fetch(vignetteUrl);
-      const vigBuf     = Buffer.from(await vigRes.arrayBuffer());
+      let vigBuf;
+      if (logoChoice === "cotecars") {
+        // Vignette CoteCars embarquée en base64
+        vigBuf = Buffer.from(COTECARS_VIGNETTE_B64, "base64");
+      } else {
+        // Vignette AutoEasy via URL
+        const vignetteUrl = process.env.VIGNETTE_URL || "https://cotecars-test.vercel.app/vignette-AE.png";
+        const vigRes      = await fetch(vignetteUrl);
+        vigBuf            = Buffer.from(await vigRes.arrayBuffer());
+      }
       const VIG_SIZE   = Math.round(imgW * 0.08);
       const VIG_PAD    = Math.round(imgW * 0.02);
       const vigResized = await sharp(vigBuf)
@@ -136,7 +143,6 @@ module.exports = async function handler(req, res) {
       console.log(`[ESDFX] Vignette OK — ${VIG_SIZE}px`);
     } catch (e) {
       console.warn("[ESDFX] Vignette échouée :", e.message);
-      // Assure qu'on renvoie bien du JPEG même sans vignette
       finalBuffer = await sharp(finalBuffer).jpeg({ quality: 92 }).toBuffer();
     }
 
