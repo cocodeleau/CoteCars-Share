@@ -6,7 +6,7 @@
 //
 // Pas de Photoroom — fond original conservé
 //
-// Variables Vercel : WATERMARKLY_API_KEY  AUTOEASY_LOGO_URL  COTECARS_LOGO_URL  VIGNETTE_URL
+// Variables Vercel : WATERMARKLY_API_KEY  AUTOEASY_LOGO_URL  COTECARS_LOGO_URL  VIGNETTE_URL  COTECARS_VIGNETTE_URL
 // Body attendu     : { image: "data:...", cachePlaque: "autoeasy" | "cotecars" }
 
 const fetch = require("node-fetch");
@@ -123,14 +123,21 @@ module.exports = async function handler(req, res) {
     try {
       let vigBuf;
       if (logoChoice === "cotecars") {
-        // Vignette CoteCars embarquée en base64
-        const ccVigRes = await fetch("https://cotecars-test.vercel.app/vignette-cotecars.png");
+        // Vignette CoteCars — à la racine du projet Vercel
+        const ccVigUrl = process.env.COTECARS_VIGNETTE_URL
+          || "https://cotecars-test.vercel.app/vignette-cotecars.png";
+        console.log(`[ESDFX] Vignette CoteCars URL : ${ccVigUrl}`);
+        const ccVigRes = await fetch(ccVigUrl);
+        if (!ccVigRes.ok) throw new Error(`Vignette CoteCars HTTP ${ccVigRes.status} — ${ccVigUrl}`);
         vigBuf = Buffer.from(await ccVigRes.arrayBuffer());
       } else {
-        // Vignette AutoEasy via URL
-        const vignetteUrl = process.env.VIGNETTE_URL || "https://cotecars-test.vercel.app/vignette-AE.png";
-        const vigRes      = await fetch(vignetteUrl);
-        vigBuf            = Buffer.from(await vigRes.arrayBuffer());
+        // Vignette AutoEasy — URL via variable d'env
+        const vignetteUrl = process.env.VIGNETTE_URL
+          || "https://cotecars-test.vercel.app/vignette-AE.png";
+        console.log(`[ESDFX] Vignette AutoEasy URL : ${vignetteUrl}`);
+        const vigRes = await fetch(vignetteUrl);
+        if (!vigRes.ok) throw new Error(`Vignette AE HTTP ${vigRes.status} — ${vignetteUrl}`);
+        vigBuf = Buffer.from(await vigRes.arrayBuffer());
       }
       const VIG_SIZE   = Math.round(imgW * 0.08);
       const VIG_PAD    = Math.round(imgW * 0.02);
