@@ -92,16 +92,17 @@
     const { useState, useEffect, useRef } = React;
     let auth, db, storage, googleProvider;
 
-    // Emails et companyMap chargés dynamiquement depuis Firestore
+    // Emails et companyMap chargés depuis Firestore (après auth)
     let ALLOWED_EMAILS = [];
     let COMPANY_MAP = {};
 
     async function loadAllowedEmails() {
       try {
         const snap = await db.collection("companies").get();
+        ALLOWED_EMAILS = [];
+        COMPANY_MAP = {};
         snap.docs.forEach(function(doc) {
-          const data = doc.data();
-          const emails = data.emails || [];
+          const emails = doc.data().emails || [];
           emails.forEach(function(email) {
             const e = email.trim().toLowerCase();
             ALLOWED_EMAILS.push(e);
@@ -171,13 +172,17 @@
       const [loading, setLoading] = useState(false);
 
       async function handleLogin(e) {
-        e.preventDefault(); setError("");
-        if (ALLOWED_EMAILS.length === 0) await loadAllowedEmails();
-        if (!ALLOWED_EMAILS.includes(email.trim().toLowerCase())) { setError("Accès réservé aux partenaires AutoEasy."); return; }
-        setLoading(true);
-        try { await auth.signInWithEmailAndPassword(email, password); }
-        catch(err) {
-          const msgs = { "auth/user-not-found":"Email introuvable.", "auth/wrong-password":"Mot de passe incorrect.", "auth/invalid-email":"Email invalide.", "auth/too-many-requests":"Trop de tentatives." };
+        e.preventDefault(); setError(""); setLoading(true);
+        try {
+          const cred = await auth.signInWithEmailAndPassword(email, password);
+          // Charger la liste après auth
+          await loadAllowedEmails();
+          if (!ALLOWED_EMAILS.includes(cred.user.email?.toLowerCase())) {
+            await auth.signOut();
+            setError("Accès réservé aux partenaires AutoEasy.");
+          }
+        } catch(err) {
+          const msgs = { "auth/user-not-found":"Email introuvable.", "auth/wrong-password":"Mot de passe incorrect.", "auth/invalid-email":"Email invalide.", "auth/too-many-requests":"Trop de tentatives.", "auth/invalid-credential":"Email ou mot de passe incorrect." };
           setError(msgs[err.code] || "Erreur de connexion.");
         }
         setLoading(false);
@@ -186,9 +191,13 @@
       async function handleGoogle() {
         setError(""); setLoading(true);
         try {
-          if (ALLOWED_EMAILS.length === 0) await loadAllowedEmails();
           const result = await auth.signInWithPopup(googleProvider);
-          if (!ALLOWED_EMAILS.includes(result.user.email?.toLowerCase())) { await auth.signOut(); setError("Accès réservé aux partenaires AutoEasy."); }
+          // Charger la liste après auth (user connecté = peut lire Firestore)
+          await loadAllowedEmails();
+          if (!ALLOWED_EMAILS.includes(result.user.email?.toLowerCase())) {
+            await auth.signOut();
+            setError("Accès réservé aux partenaires AutoEasy.");
+          }
         } catch(err) { setError("Erreur Google : " + err.message); }
         setLoading(false);
       }
@@ -1079,8 +1088,10 @@
 
       useEffect(() => {
         const unsub = auth.onAuthStateChanged(async u => {
-          // Charger la liste des emails autorisés avant de vérifier
-          if (ALLOWED_EMAILS.length === 0) await loadAllowedEmails();
+          if (u) {
+            // User connecté : charger les emails autorisés depuis Firestore
+            await loadAllowedEmails();
+          }
           if (u && ALLOWED_EMAILS.includes(u.email?.toLowerCase())) {
             setUser(u);
             const cid = COMPANY_MAP[u.email?.toLowerCase()];
