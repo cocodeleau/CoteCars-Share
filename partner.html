@@ -92,27 +92,10 @@
     const { useState, useEffect, useRef } = React;
     let auth, db, storage, googleProvider;
 
-    // Emails et companyMap chargés depuis Firestore (après auth)
-    let ALLOWED_EMAILS = [];
-    let COMPANY_MAP = {};
+    const ALLOWED_EMAILS = ["corentin.millet974@gmail.com"];
 
-    async function loadAllowedEmails() {
-      try {
-        const snap = await db.collection("companies").get();
-        ALLOWED_EMAILS = [];
-        COMPANY_MAP = {};
-        snap.docs.forEach(function(doc) {
-          const emails = doc.data().emails || [];
-          emails.forEach(function(email) {
-            const e = email.trim().toLowerCase();
-            ALLOWED_EMAILS.push(e);
-            COMPANY_MAP[e] = doc.id;
-          });
-        });
-      } catch(err) {
-        console.error("[loadAllowedEmails]", err);
-      }
-    }
+    // Mapping email → companyId
+    const COMPANY_MAP = { "corentin.millet974@gmail.com": "autoeasy" };
 
     async function processPartnerImage(file, onProgress) {
       if (file.size > 20 * 1024 * 1024) throw new Error("Image trop volumineuse (max 20 Mo).");
@@ -172,17 +155,12 @@
       const [loading, setLoading] = useState(false);
 
       async function handleLogin(e) {
-        e.preventDefault(); setError(""); setLoading(true);
-        try {
-          const cred = await auth.signInWithEmailAndPassword(email, password);
-          // Charger la liste après auth
-          await loadAllowedEmails();
-          if (!ALLOWED_EMAILS.includes(cred.user.email?.toLowerCase())) {
-            await auth.signOut();
-            setError("Accès réservé aux partenaires AutoEasy.");
-          }
-        } catch(err) {
-          const msgs = { "auth/user-not-found":"Email introuvable.", "auth/wrong-password":"Mot de passe incorrect.", "auth/invalid-email":"Email invalide.", "auth/too-many-requests":"Trop de tentatives.", "auth/invalid-credential":"Email ou mot de passe incorrect." };
+        e.preventDefault(); setError("");
+        if (!ALLOWED_EMAILS.includes(email.trim().toLowerCase())) { setError("Accès réservé aux partenaires AutoEasy."); return; }
+        setLoading(true);
+        try { await auth.signInWithEmailAndPassword(email, password); }
+        catch(err) {
+          const msgs = { "auth/user-not-found":"Email introuvable.", "auth/wrong-password":"Mot de passe incorrect.", "auth/invalid-email":"Email invalide.", "auth/too-many-requests":"Trop de tentatives." };
           setError(msgs[err.code] || "Erreur de connexion.");
         }
         setLoading(false);
@@ -192,12 +170,7 @@
         setError(""); setLoading(true);
         try {
           const result = await auth.signInWithPopup(googleProvider);
-          // Charger la liste après auth (user connecté = peut lire Firestore)
-          await loadAllowedEmails();
-          if (!ALLOWED_EMAILS.includes(result.user.email?.toLowerCase())) {
-            await auth.signOut();
-            setError("Accès réservé aux partenaires AutoEasy.");
-          }
+          if (!ALLOWED_EMAILS.includes(result.user.email?.toLowerCase())) { await auth.signOut(); setError("Accès réservé aux partenaires AutoEasy."); }
         } catch(err) { setError("Erreur Google : " + err.message); }
         setLoading(false);
       }
@@ -342,13 +315,9 @@
     }
 
     // ── Historique (onglet) ───────────────────────────────────────
-    function Historique({ user, onNewSession, commercials, commercialName, companyId }) {
+    function Historique({ user, onNewSession }) {
       const [sessions, setSessions] = useState([]);
       const [loading, setLoading] = useState(true);
-      const [filterCommercial, setFilterCommercial] = useState("tous");
-      const [claimSession, setClaimSession] = useState(null);
-      const [sessionDetail, setSessionDetail] = useState(null);
-      function handleClaim(s) { setSessionDetail(null); setClaimSession(s); }
 
       useEffect(() => {
         // Filtre : seulement les 30 derniers jours
@@ -357,7 +326,7 @@
         const cutoff = date30.toISOString();
 
         db.collection("partner_sessions")
-          .where("companyId", "==", companyId || "autoeasy")
+          .where("uid", "==", user.uid)
           .get()
           .then(snap => {
             const docs = snap.docs
@@ -369,10 +338,6 @@
           })
           .catch(err => { console.error("[partner_sessions]", err); setLoading(false); });
       }, []);
-
-      const filteredSessions = filterCommercial === "tous"
-        ? sessions
-        : sessions.filter(s => s.commercialName === filterCommercial);
 
       async function downloadSession(sess) {
         if (!sess.photos?.length) return;
@@ -386,7 +351,7 @@
         }
       }
 
-      const totalPhotos = filteredSessions.reduce((s,sess) => s + (sess.photoCount||0), 0);
+      const totalPhotos = sessions.reduce((s,sess) => s + (sess.photoCount||0), 0);
 
       return (
         <div className="ae-content fade-in" style={{ padding:"20px 28px", maxWidth:1200, margin:"0 auto" }}>
@@ -400,9 +365,9 @@
           {/* Stats */}
           <div className="stats-grid" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:20 }}>
             {[
-              { label:"Véhicules (30j)", value:filteredSessions.length, sub: filterCommercial==="tous" ? "Tous les commerciaux" : filterCommercial },
-              { label:"Photos traitées", value:totalPhotos, sub:"~"+(filteredSessions.length?Math.round(totalPhotos/filteredSessions.length*10)/10:0)+" par véhicule" },
-              { label:"Dernier traitement", value:filteredSessions[0]?new Date(filteredSessions[0].createdAt).toLocaleDateString("fr-FR"):"—", sub:filteredSessions[0]?.vehicleName||"Aucun" },
+              { label:"Véhicules (30j)", value:sessions.length, sub:"Depuis 30 jours" },
+              { label:"Photos traitées", value:totalPhotos, sub:"~"+(sessions.length?Math.round(totalPhotos/sessions.length*10)/10:0)+" par véhicule" },
+              { label:"Dernier traitement", value:sessions[0]?new Date(sessions[0].createdAt).toLocaleDateString("fr-FR"):"—", sub:sessions[0]?.vehicleName||"Aucun" },
             ].map((s,i) => (
               <div key={i} style={{ background:"white", borderRadius:12, padding:"14px 16px", border:"0.5px solid #e2e8f0" }}>
                 <div style={{ fontSize:10, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>{s.label}</div>
@@ -414,20 +379,12 @@
 
           {/* Liste sessions */}
           <div style={{ background:"white", borderRadius:14, border:"0.5px solid #e2e8f0", overflow:"hidden" }}>
-            <div style={{ padding:"14px 18px", borderBottom:"0.5px solid #e2e8f0", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:10 }}>
+            <div style={{ padding:"14px 18px", borderBottom:"0.5px solid #e2e8f0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <span style={{ fontSize:12, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em" }}>Historique des sessions</span>
                 <span style={{ background:"#f0fdf4", color:"#166534", fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:99, border:"1px solid #86efac" }}>30 jours</span>
               </div>
-              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                {/* Filtre commercial */}
-                <select value={filterCommercial} onChange={e => setFilterCommercial(e.target.value)}
-                  style={{ padding:"5px 10px", border:"1.5px solid #e2e8f0", borderRadius:8, fontSize:12, color:"#374151", background:"white", cursor:"pointer", outline:"none", fontFamily:"inherit" }}>
-                  <option value="tous">👥 Tous les commerciaux</option>
-                  {(commercials||[]).map((c,i) => <option key={i} value={c}>👤 {c}</option>)}
-                </select>
-                <span style={{ fontSize:12, color:"#9ca3af" }}>{filteredSessions.length} session{filteredSessions.length>1?"s":""}</span>
-              </div>
+              <span style={{ fontSize:12, color:"#9ca3af" }}>{sessions.length} session{sessions.length>1?"s":""}</span>
             </div>
 
             {loading && <div style={{ padding:40, textAlign:"center" }}><div className="spinner" style={{ margin:"0 auto" }} /></div>}
@@ -441,23 +398,15 @@
               </div>
             )}
 
-            {!loading && sessions.length > 0 && filteredSessions.length === 0 && (
-              <div style={{ padding:"40px 20px", textAlign:"center" }}>
-                <div style={{ fontSize:32, marginBottom:10 }}>🔍</div>
-                <div style={{ fontSize:14, fontWeight:600, color:"#374151", marginBottom:6 }}>Aucune session pour ce commercial</div>
-                <div style={{ fontSize:12, color:"#9ca3af" }}>Sélectionnez "Tous les commerciaux" ou un autre nom.</div>
-              </div>
-            )}
-            {!loading && filteredSessions.length > 0 && (
+            {!loading && sessions.length > 0 && (
               <div className="sessions-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:12, padding:16 }}>
-                {filteredSessions.map(sess => {
+                {sessions.map(sess => {
                   // Calcul jours restants avant expiration
                   const created = new Date(sess.createdAt);
                   const expires = new Date(created.getTime() + 30*24*60*60*1000);
                   const daysLeft = Math.ceil((expires - new Date()) / (1000*60*60*24));
                   return (
-                    <div key={sess.id} className="photo-card" style={{ border:"0.5px solid #e2e8f0", borderRadius:10, overflow:"hidden", background:"#fafafa", cursor:"pointer" }}
-                      onClick={() => setSessionDetail(sess)}>
+                    <div key={sess.id} className="photo-card" style={{ border:"0.5px solid #e2e8f0", borderRadius:10, overflow:"hidden", background:"#fafafa" }}>
                       <div style={{ height:110, background:"#1a1a2e", overflow:"hidden", position:"relative" }}>
                         {sess.photos?.[0]
                           ? <img src={sess.photos[0]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
@@ -472,224 +421,16 @@
                       </div>
                       <div style={{ padding:"10px 12px" }}>
                         <div style={{ fontSize:12, fontWeight:700, color:"#111", marginBottom:2 }}>{sess.vehicleName||"Véhicule"}</div>
-                        {/* Nom du commercial */}
-                        {sess.commercialName && sess.commercialName !== "Inconnu" && (
-                          <div style={{ display:"flex", alignItems:"center", gap:4, marginBottom:4 }}>
-                            <div style={{ width:14, height:14, borderRadius:"50%", background:"#e0f2fe", display:"flex", alignItems:"center", justifyContent:"center", fontSize:8, flexShrink:0 }}>👤</div>
-                            <span style={{ fontSize:10, color:"#0369a1", fontWeight:600 }}>{sess.commercialName}</span>
-                          </div>
-                        )}
                         <div style={{ fontSize:10, color:"#9ca3af", marginBottom:8 }}>
                           {sess.photoCount} photo{sess.photoCount>1?"s":""} · {new Date(sess.createdAt).toLocaleDateString("fr-FR")}
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); downloadSession(sess); }} className="btn-ae" style={{ width:"100%", padding:"6px", fontSize:10, marginBottom:5 }}>
+                        <button onClick={() => downloadSession(sess)} className="btn-ae" style={{ width:"100%", padding:"6px", fontSize:10 }}>
                           ⬇ Télécharger ({sess.photoCount} JPG)
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setClaimSession(sess); }}
-                          style={{ width:"100%", padding:"5px", fontSize:9, fontWeight:600, background:"transparent", border:"1px solid #e2e8f0", borderRadius:6, cursor:"pointer", color:"#9ca3af", fontFamily:"inherit", transition:"all 0.15s" }}
-                          onMouseOver={e=>{e.target.style.borderColor="#f59e0b";e.target.style.color="#b45309";}}
-                          onMouseOut={e=>{e.target.style.borderColor="#e2e8f0";e.target.style.color="#9ca3af";}}>
-                          ⚠ Signaler une erreur
-                        </button>
                       </div>
                     </div>
                   );
                 })}
-              </div>
-            )}
-          </div>
-          {claimSession && <ClaimModal sess={claimSession} onClose={() => setClaimSession(null)} />}
-          {sessionDetail && <SessionDetailModal sess={sessionDetail} onClose={() => setSessionDetail(null)} onClaim={handleClaim} />}
-        </div>
-      );
-    }
-
-    // ── Modal Détail Session ──────────────────────────────────────
-    function SessionDetailModal({ sess, onClose, onClaim }) {
-      const vehicleSlug = (sess.vehicleName || "vehicule").replace(/\s/g, "_");
-
-      function downloadOne(url, idx) {
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = vehicleSlug + "_photo_" + (idx + 1) + ".jpg";
-        a.target = "_blank";
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      }
-
-      function downloadAll() {
-        const photos = sess.photos || [];
-        photos.forEach(function(url, idx) {
-          setTimeout(function() { downloadOne(url, idx); }, idx * 400);
-        });
-      }
-
-      const photos = sess.photos || [];
-      const hasCommercial = sess.commercialName && sess.commercialName !== "Inconnu";
-
-      return (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:16, backdropFilter:"blur(3px)" }}
-          onClick={function(e) { if (e.target === e.currentTarget) onClose(); }}>
-          <div style={{ background:"white", borderRadius:16, width:"100%", maxWidth:640, maxHeight:"90vh", overflowY:"auto", boxShadow:"0 24px 60px rgba(0,0,0,0.25)", display:"flex", flexDirection:"column" }}>
-
-            <div style={{ padding:"16px 20px", borderBottom:"1px solid #f3f4f6", display:"flex", alignItems:"center", justifyContent:"space-between", flexShrink:0 }}>
-              <div>
-                <div style={{ fontSize:15, fontWeight:700, color:"#111" }}>{sess.vehicleName||"Véhicule"}</div>
-                <div style={{ fontSize:11, color:"#9ca3af", marginTop:2 }}>
-                  {new Date(sess.createdAt).toLocaleDateString("fr-FR")}
-                  {hasCommercial && <span style={{ color:"#0369a1", fontWeight:600, marginLeft:8 }}>· 👤 {sess.commercialName}</span>}
-                  <span style={{ marginLeft:8 }}>· {sess.photoCount} photo{sess.photoCount > 1 ? "s" : ""}</span>
-                </div>
-              </div>
-              <button onClick={onClose} style={{ background:"#f3f4f6", border:"none", borderRadius:6, width:28, height:28, cursor:"pointer", fontSize:14, color:"#6b7280", flexShrink:0 }}>✕</button>
-            </div>
-
-            <div style={{ padding:20, flex:1 }}>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:12 }}>
-                {photos.map(function(url, i) {
-                  return (
-                    <div key={i} style={{ borderRadius:10, overflow:"hidden", border:"0.5px solid #e2e8f0", background:"#f9fafb" }}>
-                      <div style={{ position:"relative", background:"#1a1a2e" }}>
-                        <img src={url} alt={"Photo " + (i+1)} style={{ width:"100%", aspectRatio:"4/3", objectFit:"cover", display:"block" }} />
-                        <div style={{ position:"absolute", bottom:0, left:0, right:0, height:14, background:"#1a1a2e", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                          <span style={{ fontSize:7, fontWeight:800, color:"white", letterSpacing:"0.08em" }}>AUTOEASY</span>
-                        </div>
-                      </div>
-                      <div style={{ padding:"8px 10px" }}>
-                        <div style={{ fontSize:10, color:"#9ca3af", marginBottom:6 }}>Photo {i+1}</div>
-                        <button onClick={function() { downloadOne(url, i); }} className="btn-ae" style={{ width:"100%", padding:"5px", fontSize:10 }}>
-                          ⬇ Télécharger
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div style={{ padding:"14px 20px", borderTop:"1px solid #f3f4f6", display:"flex", gap:10, flexShrink:0 }}>
-              <button onClick={downloadAll} className="btn-ae" style={{ flex:2, padding:"10px", fontSize:13 }}>
-                ⬇ Tout télécharger ({sess.photoCount} JPG)
-              </button>
-              <button onClick={function() { onClaim(sess); }}
-                style={{ flex:1, padding:"10px", fontSize:12, fontWeight:600, background:"transparent", border:"1.5px solid #e2e8f0", borderRadius:8, cursor:"pointer", color:"#9ca3af", fontFamily:"inherit" }}>
-                ⚠ Signaler
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // ── Modal Réclamation ─────────────────────────────────────────
-    function ClaimModal({ sess, onClose }) {
-      const [selectedPhotos, setSelectedPhotos] = useState([]);
-      const [description, setDescription] = useState("");
-      const [sending, setSending] = useState(false);
-      const [sent, setSent] = useState(false);
-
-      function togglePhoto(url) {
-        setSelectedPhotos(prev =>
-          prev.includes(url) ? prev.filter(u => u !== url) : [...prev, url]
-        );
-      }
-
-      async function handleSend() {
-        if (!description.trim()) return;
-        setSending(true);
-        try {
-          const res = await fetch("/api/partner-claim", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              commercialName: sess.commercialName || "Inconnu",
-              vehicleName: sess.vehicleName || "Véhicule",
-              sessionDate: new Date(sess.createdAt).toLocaleDateString("fr-FR"),
-              description,
-              selectedPhotos,
-              allPhotos: sess.photos || [],
-            }),
-          });
-          const data = await res.json();
-          if (!data.success) throw new Error(data.error);
-          setSent(true);
-        } catch(err) { alert("Erreur : " + err.message); }
-        setSending(false);
-      }
-
-      return (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:16, backdropFilter:"blur(3px)" }}
-          onClick={e => e.target === e.currentTarget && onClose()}>
-          <div style={{ background:"white", borderRadius:14, width:"100%", maxWidth:480, maxHeight:"90vh", overflowY:"auto", boxShadow:"0 24px 60px rgba(0,0,0,0.2)" }}>
-
-            {/* Header modal */}
-            <div style={{ padding:"16px 20px", borderBottom:"1px solid #f3f4f6", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-              <div>
-                <div style={{ fontSize:14, fontWeight:700, color:"#111" }}>Signaler une erreur</div>
-                <div style={{ fontSize:11, color:"#9ca3af", marginTop:2 }}>{sess.vehicleName||"Véhicule"} · {new Date(sess.createdAt).toLocaleDateString("fr-FR")}</div>
-              </div>
-              <button onClick={onClose} style={{ background:"#f3f4f6", border:"none", borderRadius:6, width:28, height:28, cursor:"pointer", fontSize:14, color:"#6b7280" }}>✕</button>
-            </div>
-
-            {sent ? (
-              <div style={{ padding:"40px 20px", textAlign:"center" }}>
-                <div style={{ fontSize:40, marginBottom:12 }}>✅</div>
-                <div style={{ fontSize:15, fontWeight:700, color:"#111", marginBottom:6 }}>Réclamation envoyée</div>
-                <div style={{ fontSize:13, color:"#6b7280", marginBottom:20 }}>Notre équipe a été notifiée et traitera votre demande.</div>
-                <button onClick={onClose} className="btn-ae" style={{ padding:"9px 20px", fontSize:13 }}>Fermer</button>
-              </div>
-            ) : (
-              <div style={{ padding:"18px 20px", display:"flex", flexDirection:"column", gap:16 }}>
-
-                {/* Sélection photos */}
-                {sess.photos?.length > 0 && (
-                  <div>
-                    <div style={{ fontSize:11, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:8 }}>
-                      Photos concernées <span style={{ color:"#9ca3af", fontWeight:400, textTransform:"none" }}>(optionnel — cliquez pour sélectionner)</span>
-                    </div>
-                    <div style={{ display:"grid", gridTemplateColumns:`repeat(${Math.min(sess.photos.length, 3)},1fr)`, gap:8 }}>
-                      {sess.photos.map((url, i) => {
-                        const selected = selectedPhotos.includes(url);
-                        return (
-                          <div key={i} onClick={() => togglePhoto(url)}
-                            style={{ position:"relative", cursor:"pointer", borderRadius:8, overflow:"hidden", border:`2px solid ${selected?"#ef4444":"#e2e8f0"}`, transition:"border-color 0.15s" }}>
-                            <img src={url} alt="" style={{ width:"100%", aspectRatio:"4/3", objectFit:"cover", display:"block" }} />
-                            {selected && (
-                              <div style={{ position:"absolute", inset:0, background:"rgba(239,68,68,0.15)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                                <div style={{ background:"#ef4444", borderRadius:"50%", width:22, height:22, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, color:"white", fontWeight:700 }}>✓</div>
-                              </div>
-                            )}
-                            <div style={{ position:"absolute", bottom:3, left:3, background:"rgba(0,0,0,0.5)", color:"white", fontSize:8, padding:"1px 5px", borderRadius:3 }}>Photo {i+1}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {selectedPhotos.length > 0 && (
-                      <div style={{ fontSize:11, color:"#ef4444", marginTop:6, fontWeight:600 }}>
-                        {selectedPhotos.length} photo{selectedPhotos.length>1?"s":""} sélectionnée{selectedPhotos.length>1?"s":""}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Description */}
-                <div>
-                  <label style={{ fontSize:11, fontWeight:700, color:"#374151", textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>
-                    Description de l'erreur <span style={{ color:"#ef4444" }}>*</span>
-                  </label>
-                  <textarea value={description} onChange={e => setDescription(e.target.value)}
-                    placeholder="Ex: La plaque d'immatriculation n'a pas été masquée, fond incorrect, détourage incomplet..."
-                    rows={4}
-                    style={{ width:"100%", padding:"10px 12px", border:"1.5px solid #e2e8f0", borderRadius:9, fontSize:13, outline:"none", resize:"vertical", fontFamily:"inherit", color:"#111", lineHeight:1.5 }} />
-                </div>
-
-                {/* Boutons */}
-                <div style={{ display:"flex", gap:10 }}>
-                  <button onClick={onClose} className="btn-outline" style={{ flex:1, padding:"10px", fontSize:13 }}>Annuler</button>
-                  <button onClick={handleSend} disabled={!description.trim() || sending} className="btn-ae"
-                    style={{ flex:2, padding:"10px", fontSize:13, opacity:!description.trim()?0.5:1 }}>
-                    {sending ? "Envoi..." : "Envoyer la réclamation"}
-                  </button>
-                </div>
               </div>
             )}
           </div>
@@ -698,7 +439,7 @@
     }
 
     // ── Dashboard (shell avec navigation) ────────────────────────
-    function Dashboard({ user, tokens, companyId, commercials, commercialName, onNewSession }) {
+    function Dashboard({ user, tokens, companyId, onNewSession }) {
       const [menuOpen, setMenuOpen] = useState(false);
       const [activeTab, setActiveTab] = useState("historique");
 
@@ -748,7 +489,7 @@
               </a>
             </div>
           )}
-          {activeTab === "historique" && <Historique user={user} onNewSession={onNewSession} commercials={commercials} commercialName={commercialName} companyId={companyId} />}
+          {activeTab === "historique" && <Historique user={user} onNewSession={onNewSession} />}
         </div>
       );
     }
@@ -1088,10 +829,6 @@
 
       useEffect(() => {
         const unsub = auth.onAuthStateChanged(async u => {
-          if (u) {
-            // User connecté : charger les emails autorisés depuis Firestore
-            await loadAllowedEmails();
-          }
           if (u && ALLOWED_EMAILS.includes(u.email?.toLowerCase())) {
             setUser(u);
             const cid = COMPANY_MAP[u.email?.toLowerCase()];
@@ -1143,7 +880,7 @@
       if (!user) return <LoginPage />;
       if (user && commercials.length > 0 && !commercialName) return <CommercialModal commercials={commercials} onSelect={handleSelectCommercial} />;
       if (view==="studio") return <Studio user={user} tokens={tokens} companyId={companyId} commercialName={commercialName} onBack={()=>setView("dashboard")} onTokenUsed={deductToken} />;
-      return <Dashboard user={user} tokens={tokens} companyId={companyId} commercials={commercials} commercialName={commercialName} onNewSession={()=>setView("studio")} />;
+      return <Dashboard user={user} tokens={tokens} companyId={companyId} onNewSession={()=>setView("studio")} />;
     }
 
     window.__firebaseReady.then(() => {
