@@ -2592,7 +2592,8 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       if (selected) return <AnnonceDetail annonce={selected} onBack={()=>setSelected(null)} user={user} />;
 
       return (
-        <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif", marginLeft: isMobile ? 0 : 220 }}>
+        <div className="annonces-root" style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+          <style>{`.annonces-root { margin-left: 0; } @media(min-width:900px){ .annonces-root { margin-left: 220px; } }`}</style>
 
           {/* ── MENU HAMBURGER ANNONCES (mobile) ── */}
           {isMobile && showAnnonceMenu && (
@@ -2791,11 +2792,13 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       }
 
       return (
-        <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif", marginLeft: isMobile ? 0 : 220 }}>
+        <div className="detail-root" style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
           <style>{`
+            .detail-root { margin-left: 0; }
             .detail-mobile { display: block; }
             .detail-desktop { display: none; }
             @media(min-width: 900px) {
+              .detail-root { margin-left: 220px; }
               .detail-mobile { display: none !important; }
               .detail-desktop { display: block !important; }
             }
@@ -3072,7 +3075,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       }
 
       return (
-        <div style={{ minHeight:"100vh", background:"var(--bg)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px", paddingLeft: "calc(220px + 24px)" }}>
+        <div className="errorpage-root"> style={{ minHeight:"100vh", background:"var(--bg)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px", paddingLeft: "calc(220px + 24px)" }}>
           <div style={{ position:"relative", marginBottom:16 }}>
             <div style={{ fontSize:64, animation:"bounce 1.5s infinite", display:"inline-block" }}>🚗</div>
             <div style={{ position:"absolute", top:-8, right:-8, fontSize:26, animation:"spin 2s linear infinite", display:"inline-block" }}>⚠️</div>
@@ -3458,7 +3461,9 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             @keyframes pulseGreen{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
             .cc-mobile{display:flex;flex-direction:column;background:var(--bg);}
             .cc-desktop{display:none;}
-            @media(min-width:900px){.cc-mobile{display:none!important;}.cc-desktop{display:block!important;}body{overflow-x:auto;}}
+            .errorpage-root{margin-left:0;}
+            @media(min-width:900px){.cc-mobile{display:none!important;}.cc-desktop{display:block!important;}
+            .errorpage-root{margin-left:220px;}body{overflow-x:auto;}}
           `}</style>
           {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
           {showPuissanceConfirm && pendingResult && (
