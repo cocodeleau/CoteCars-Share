@@ -2796,16 +2796,18 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           <style>{`
             .detail-root { margin-left: 0; }
             .detail-mobile { display: block; }
+            .detail-nav-mobile { display: flex; }
             .detail-desktop { display: none; }
             @media(min-width: 900px) {
               .detail-root { margin-left: 220px; }
               .detail-mobile { display: none !important; }
+              .detail-nav-mobile { display: none !important; }
               .detail-desktop { display: block !important; }
             }
           `}</style>
 
           {/* ── Navbar commune ── */}
-          <div style={{ background:"var(--nav-bg)", padding:"0 20px", height:56, display: isMobile ? "flex" : "none", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
+          <div className="detail-nav-mobile" style={{ background:"var(--nav-bg)", padding:"0 20px", height:56, justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
               <span style={{ fontWeight:800, fontSize:22, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
