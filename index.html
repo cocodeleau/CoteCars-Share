@@ -1642,7 +1642,7 @@
       }
 
       return (
-        <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+        <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif", marginLeft: isMobile ? 0 : 220 }}>
 
           {/* ── MENU HAMBURGER RESULTS (mobile) ── */}
           {isMobile && showResultMenu && (
@@ -1674,7 +1674,7 @@
           )}
 
           {/* ── NAVBAR RESULTS ── */}
-          <div style={{ background:"var(--nav-bg)", padding: isMobile ? "0 16px" : "0 24px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
+          <div style={{ background:"var(--nav-bg)", padding: isMobile ? "0 16px" : "0 24px", height:56, display: isMobile ? "flex" : "none", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
             <span onClick={onReset} style={{ fontWeight:800, fontSize: isMobile ? 22 : 32, color:"var(--text)", letterSpacing:"-0.5px", cursor:"pointer" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
             <div style={{ display:"flex", alignItems:"center", gap: isMobile ? 8 : 10 }}>
               <DarkToggle />
@@ -2592,7 +2592,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       if (selected) return <AnnonceDetail annonce={selected} onBack={()=>setSelected(null)} user={user} />;
 
       return (
-        <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+        <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif", marginLeft: isMobile ? 0 : 220 }}>
 
           {/* ── MENU HAMBURGER ANNONCES (mobile) ── */}
           {isMobile && showAnnonceMenu && (
@@ -2791,7 +2791,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       }
 
       return (
-        <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
+        <div style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif", marginLeft: isMobile ? 0 : 220 }}>
           <style>{`
             .detail-mobile { display: block; }
             .detail-desktop { display: none; }
@@ -2802,7 +2802,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           `}</style>
 
           {/* ── Navbar commune ── */}
-          <div style={{ background:"var(--nav-bg)", padding:"0 20px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
+          <div style={{ background:"var(--nav-bg)", padding:"0 20px", height:56, display: isMobile ? "flex" : "none", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
               <span style={{ fontWeight:800, fontSize:22, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
@@ -3072,7 +3072,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       }
 
       return (
-        <div style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh", background:"var(--bg)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px" }}>
+        <div style={{ minHeight:"100vh", background:"var(--bg)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px", paddingLeft: "calc(220px + 24px)" }}>
           <div style={{ position:"relative", marginBottom:16 }}>
             <div style={{ fontSize:64, animation:"bounce 1.5s infinite", display:"inline-block" }}>🚗</div>
             <div style={{ position:"absolute", top:-8, right:-8, fontSize:26, animation:"spin 2s linear infinite", display:"inline-block" }}>⚠️</div>
@@ -3174,6 +3174,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
       const [state, setState] = useState("home");
       const [showAnnonces, setShowAnnonces] = React.useState(false);
+      const [showPartenaireModal, setShowPartenaireModal] = React.useState(false);
       const [showCreateAnnonce, setShowCreateAnnonce] = React.useState(false);
       const [showPrepareLbc, setShowPrepareLbc] = React.useState(false);
       const [showMobileMenu, setShowMobileMenu] = React.useState(false);
@@ -3356,12 +3357,95 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
         if (user) db.collection("historique").doc(user?.uid).delete().catch(() => {});
       }
 
-      if (showAnnonces) return <AnnoncesPage onBack={() => setShowAnnonces(false)} user={user} />;
-      if (state === "loading") return <>{showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}<Spinner /></>;
-      if (state === "results") return <>{showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}{showCreateAnnonce && <CreateAnnonce result={result} plate={plate} user={user} onClose={() => setShowCreateAnnonce(false)} onPublished={() => {}} />}{showPrepareLbc && <PrepareAnnonceLbc result={result} plate={plate} user={user} km={km} onClose={() => setShowPrepareLbc(false)} />}<Results result={result} plate={plate} onReset={handleReset} user={user} onElargi={handleElargi} setShowLoginModal={setShowLoginModal} onCreateAnnonce={() => setShowCreateAnnonce(true)} onPrepareLbc={() => setShowPrepareLbc(true)} /></>;
-      if (state === "error") return (
-        <ErrorPage apiErr={apiErr} plaque={plate} onReset={handleReset} />
-      );
+
+      // ── Sidebar desktop globale (réutilisée dans tous les états) ──
+      function renderDesktopSidebar() {
+        return (
+          <div className="cc-desktop">
+            <aside style={{ width:220, background:"var(--nav-bg)", borderRight:"1px solid var(--border)", position:"fixed", top:0, left:0, height:"100vh", display:"flex", flexDirection:"column", zIndex:20 }}>
+              <div style={{ padding:"20px 16px 16px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
+                <div style={{ width:34, height:34, borderRadius:10, background:"#1B3FDB", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <svg width="17" height="17" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg>
+                </div>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontSize:17, fontWeight:800, color:"var(--text)", lineHeight:1, whiteSpace:"nowrap" }}>Cote<span style={{ color:"#1B3FDB" }}>Cars</span></div>
+                  <div style={{ fontSize:10, color:"var(--text3)", fontWeight:500 }}>Estimation auto</div>
+                </div>
+              </div>
+              <nav style={{ flex:1, padding:"10px 8px", display:"flex", flexDirection:"column", gap:2, overflowY:"auto" }}>
+                <div style={{ fontSize:9, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:".1em", padding:"8px 10px 4px" }}>Menu</div>
+                <button onClick={() => { setState("home"); setShowAnnonces(false); }} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, border:"none", background: state==="home" && !showAnnonces ? "#EFF3FF" : "none", cursor:"pointer", textAlign:"left", width:"100%", fontFamily:"inherit" }} onMouseOver={e=>{ if(!(state==="home"&&!showAnnonces)) e.currentTarget.style.background="var(--bg)" }} onMouseOut={e=>{ if(!(state==="home"&&!showAnnonces)) e.currentTarget.style.background="none" }}>
+                  <svg width="15" height="15" fill="none" stroke={state==="home"&&!showAnnonces?"#1B3FDB":"var(--text3)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                  <span style={{ fontSize:13, fontWeight:600, color: state==="home"&&!showAnnonces?"#1B3FDB":"var(--text2)" }}>Accueil</span>
+                </button>
+                <button onClick={() => setShowAnnonces(true)} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, border:"none", background: showAnnonces ? "#EFF3FF" : "none", cursor:"pointer", textAlign:"left", width:"100%", fontFamily:"inherit" }} onMouseOver={e=>{ if(!showAnnonces) e.currentTarget.style.background="var(--bg)" }} onMouseOut={e=>{ if(!showAnnonces) e.currentTarget.style.background="none" }}>
+                  <svg width="15" height="15" fill="none" stroke={showAnnonces?"#1B3FDB":"var(--text3)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M7 17m-2 0a2 2 0 1 0 4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg>
+                  <span style={{ fontSize:13, fontWeight:500, color: showAnnonces?"#1B3FDB":"var(--text2)" }}>Nos annonces</span>
+                </button>
+                <button onClick={() => setShowPartenaireModal(true)} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, border:"none", background:"none", cursor:"pointer", textAlign:"left", width:"100%", fontFamily:"inherit" }} onMouseOver={e=>e.currentTarget.style.background="var(--bg)"} onMouseOut={e=>e.currentTarget.style.background="none"}>
+                  <svg width="15" height="15" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  <span style={{ fontSize:13, fontWeight:500, color:"#f59e0b" }}>Espace Partenaire</span>
+                </button>
+              </nav>
+              <div style={{ padding:"12px 8px", borderTop:"1px solid var(--border)", flexShrink:0 }}>
+                {user ? (
+                  <div style={{ display:"flex", alignItems:"center", gap:9, padding:"9px 12px", borderRadius:12, cursor:"pointer" }} onMouseOver={e=>e.currentTarget.style.background="var(--bg)"} onMouseOut={e=>e.currentTarget.style.background="transparent"}>
+                    {user.photoURL ? <img src={user.photoURL} width={28} height={28} style={{ borderRadius:"50%", flexShrink:0 }} alt="" /> : <div style={{ width:28, height:28, borderRadius:"50%", background:"#1B3FDB", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:700, fontSize:12, flexShrink:0 }}>{user.email?.[0]?.toUpperCase()}</div>}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:12, fontWeight:600, color:"var(--text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.displayName || user.email?.split("@")[0]}</div>
+                      <button onClick={() => auth.signOut()} style={{ fontSize:10, color:"#ef4444", background:"none", border:"none", cursor:"pointer", padding:0, fontFamily:"inherit" }}>Se déconnecter</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowLoginModal(true)} style={{ width:"100%", padding:"10px 0", background:"#1B3FDB", color:"white", border:"none", borderRadius:12, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Se connecter</button>
+                )}
+              </div>
+            </aside>
+            {showPartenaireModal && (
+              <div onClick={() => setShowPartenaireModal(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+                <div onClick={e => e.stopPropagation()} style={{ background:"var(--card)", borderRadius:24, padding:"36px 32px", width:"100%", maxWidth:520, boxShadow:"0 24px 64px rgba(0,0,0,0.2)" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
+                    <div style={{ width:42, height:42, borderRadius:11, background:"#1B3FDB", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <svg width="19" height="19" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:19, fontWeight:800, color:"var(--text)" }}>Espace Partenaires</div>
+                      <div style={{ fontSize:12, color:"var(--text3)" }}>Accès professionnel</div>
+                    </div>
+                    <button onClick={() => setShowPartenaireModal(false)} style={{ width:32, height:32, borderRadius:"50%", background:"var(--bg)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, color:"var(--text2)", flexShrink:0 }}>✕</button>
+                  </div>
+                  <p style={{ fontSize:14, color:"var(--text2)", lineHeight:1.7, margin:"0 0 22px", paddingBottom:20, borderBottom:"1px solid var(--border)" }}>Cet espace est dédié à nos partenaires professionnels de l&apos;automobile. Sélectionnez votre espace de travail.</p>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+                    <a href="/partner.html" style={{ display:"flex", flexDirection:"column", gap:10, padding:"20px 18px", borderRadius:18, border:"1.5px solid var(--border)", textDecoration:"none", background:"var(--card)", transition:"all .15s" }} onMouseOver={e=>{e.currentTarget.style.borderColor="#8dc63f";e.currentTarget.style.background="#f0fdf4"}} onMouseOut={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.background="var(--card)"}}>
+                      <div style={{ width:44, height:44, borderRadius:12, background:"#1a1a2e", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, fontWeight:900, color:"#8dc63f" }}>AE</div>
+                      <div>
+                        <div style={{ fontSize:15, fontWeight:700, color:"var(--text)", marginBottom:4 }}>AutoEasy Studio</div>
+                        <div style={{ fontSize:12, color:"var(--text2)", lineHeight:1.5 }}>Traitement photo pro, fond studio IA, bandeau AUTOEASY.</div>
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:12, fontWeight:600, color:"#8dc63f" }}>Accéder →</div>
+                    </a>
+                    <a href="/partner-esdfx.html" style={{ display:"flex", flexDirection:"column", gap:10, padding:"20px 18px", borderRadius:18, border:"1.5px solid var(--border)", textDecoration:"none", background:"var(--card)", transition:"all .15s" }} onMouseOver={e=>{e.currentTarget.style.borderColor="#1B3FDB";e.currentTarget.style.background="#EFF3FF"}} onMouseOut={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.background="var(--card)"}}>
+                      <div style={{ width:44, height:44, borderRadius:12, background:"#1B3FDB", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <svg width="20" height="20" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:15, fontWeight:700, color:"var(--text)", marginBottom:4 }}>CoteCars Pro</div>
+                        <div style={{ fontSize:12, color:"var(--text2)", lineHeight:1.5 }}>Espace dédié aux professionnels CoteCars.</div>
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:12, fontWeight:600, color:"#1B3FDB" }}>Accéder →</div>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      if (showAnnonces) return <>{renderDesktopSidebar()}<AnnoncesPage onBack={() => setShowAnnonces(false)} user={user} /></>;
+      if (state === "loading") return <>{renderDesktopSidebar()}{showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}<Spinner /></>;
+      if (state === "results") return <>{renderDesktopSidebar()}{showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}{showCreateAnnonce && <CreateAnnonce result={result} plate={plate} user={user} onClose={() => setShowCreateAnnonce(false)} onPublished={() => {}} />}{showPrepareLbc && <PrepareAnnonceLbc result={result} plate={plate} user={user} km={km} onClose={() => setShowPrepareLbc(false)} />}<Results result={result} plate={plate} onReset={handleReset} user={user} onElargi={handleElargi} setShowLoginModal={setShowLoginModal} onCreateAnnonce={() => setShowCreateAnnonce(true)} onPrepareLbc={() => setShowPrepareLbc(true)} /></>;
+      if (state === "error") return (<>{renderDesktopSidebar()}<ErrorPage apiErr={apiErr} plaque={plate} onReset={handleReset} /></>);
 
       const BLUE = "#1a3fdb";
       const BLUE_DARK = "#0f28a8";
@@ -3696,14 +3780,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <svg width="15" height="15" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M7 17m-2 0a2 2 0 1 0 4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg>
                   <span style={{ fontSize:13, fontWeight:500, color:"var(--text2)" }}>Nos annonces</span>
                 </button>
-                <a href="/partner.html" style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, textDecoration:"none", background:"none" }} onMouseOver={e=>e.currentTarget.style.background="var(--bg)"} onMouseOut={e=>e.currentTarget.style.background="none"}>
-                  <svg width="15" height="15" fill="none" stroke="#8dc63f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                  <span style={{ fontSize:13, fontWeight:500, color:"#8dc63f" }}>Espace Partenaire</span>
-                </a>
-                <a href="/partner-esdfx.html" style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, textDecoration:"none", background:"none" }} onMouseOver={e=>e.currentTarget.style.background="var(--bg)"} onMouseOut={e=>e.currentTarget.style.background="none"}>
-                  <svg width="15" height="15" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                  <span style={{ fontSize:13, fontWeight:500, color:"#60a5fa" }}>CoteCars Pro</span>
-                </a>
+                <button onClick={() => setShowPartenaireModal(true)} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, border:"none", background:"none", cursor:"pointer", textAlign:"left", width:"100%", fontFamily:"inherit" }} onMouseOver={e=>e.currentTarget.style.background="var(--bg)"} onMouseOut={e=>e.currentTarget.style.background="none"}>
+                  <svg width="15" height="15" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  <span style={{ fontSize:13, fontWeight:500, color:"#f59e0b" }}>Espace Partenaire</span>
+                </button>
               </nav>
               {/* Profil bas */}
               <div style={{ padding:"12px 8px", borderTop:"1px solid var(--border)", flexShrink:0 }}>
@@ -3729,10 +3809,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
               {/* Header sticky */}
               <header style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 28px", height:58, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10, flexShrink:0 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:9, background:"var(--bg)", border:"1.5px solid var(--border)", borderRadius:50, padding:"8px 18px", maxWidth:300 }}>
-                  <svg width="13" height="13" fill="none" stroke="var(--text3)" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                  <span style={{ fontSize:13, color:"var(--text3)" }}>Rechercher une plaque...</span>
-                </div>
+                <div style={{ fontSize:15, fontWeight:700, color:"var(--text)" }}>Cote<span style={{color:"#1B3FDB"}}>Cars</span></div>
                 <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                   <DarkToggle />
                   <PartenaireMenu />
