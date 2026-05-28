@@ -3666,131 +3666,202 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               </p>
             </div>
           </div>
-          {/* ═══ DESKTOP ≥ 900px ═══ */}
-          <div className="cc-desktop" style={{ minWidth:900 }}>
-            <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
-              <span style={{ fontWeight:800, fontSize:32, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
-              <div style={{ display:"flex", gap:20, alignItems:"center" }}>
-                <button onClick={() => setShowAnnonces(true)} style={{ fontSize:13, color:"var(--text2)", fontWeight:500, background:"none", border:"none", cursor:"pointer" }}>🏷️ Nos annonces</button>
-                <span style={{ fontSize:13, color:"var(--text2)", fontWeight:500 }}>Comment ça marche</span>
-                <PartenaireMenu />
-                <DarkToggle />
+          {/* ═══ DESKTOP ≥ 900px — FlyScope Layout ═══ */}
+          <div className="cc-desktop" style={{ minWidth:900, display:"flex" }}>
+
+            {/* ── SIDEBAR BLANCHE ── */}
+            <aside style={{ width:220, background:"var(--nav-bg)", borderRight:"1px solid var(--border)", position:"fixed", top:0, left:0, height:"100vh", display:"flex", flexDirection:"column", zIndex:20 }}>
+              {/* Logo */}
+              <div style={{ padding:"20px 16px 16px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
+                <div style={{ width:34, height:34, borderRadius:10, background:"#1B3FDB", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <svg width="17" height="17" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
+                    <path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/>
+                    <path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/>
+                  </svg>
+                </div>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontSize:17, fontWeight:800, color:"var(--text)", lineHeight:1, whiteSpace:"nowrap" }}>Cote<span style={{ color:"#1B3FDB" }}>Cars</span></div>
+                  <div style={{ fontSize:10, color:"var(--text3)", fontWeight:500 }}>Estimation auto</div>
+                </div>
+              </div>
+              {/* Nav */}
+              <nav style={{ flex:1, padding:"10px 8px", display:"flex", flexDirection:"column", gap:2, overflowY:"auto" }}>
+                <div style={{ fontSize:9, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:".1em", padding:"8px 10px 4px" }}>Menu</div>
+                <button style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, border:"none", background:"#EFF3FF", cursor:"pointer", textAlign:"left", width:"100%", fontFamily:"inherit" }}>
+                  <svg width="15" height="15" fill="none" stroke="#1B3FDB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                  <span style={{ fontSize:13, fontWeight:600, color:"#1B3FDB" }}>Accueil</span>
+                </button>
+                <button onClick={() => setShowAnnonces(true)} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, border:"none", background:"none", cursor:"pointer", textAlign:"left", width:"100%", fontFamily:"inherit" }} onMouseOver={e=>e.currentTarget.style.background="var(--bg)"} onMouseOut={e=>e.currentTarget.style.background="none"}>
+                  <svg width="15" height="15" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M7 17m-2 0a2 2 0 1 0 4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg>
+                  <span style={{ fontSize:13, fontWeight:500, color:"var(--text2)" }}>Nos annonces</span>
+                </button>
+                <a href="/partner.html" style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, textDecoration:"none", background:"none" }} onMouseOver={e=>e.currentTarget.style.background="var(--bg)"} onMouseOut={e=>e.currentTarget.style.background="none"}>
+                  <svg width="15" height="15" fill="none" stroke="#8dc63f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  <span style={{ fontSize:13, fontWeight:500, color:"#8dc63f" }}>Espace Partenaire</span>
+                </a>
+                <a href="/partner-esdfx.html" style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, textDecoration:"none", background:"none" }} onMouseOver={e=>e.currentTarget.style.background="var(--bg)"} onMouseOut={e=>e.currentTarget.style.background="none"}>
+                  <svg width="15" height="15" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  <span style={{ fontSize:13, fontWeight:500, color:"#60a5fa" }}>CoteCars Pro</span>
+                </a>
+              </nav>
+              {/* Profil bas */}
+              <div style={{ padding:"12px 8px", borderTop:"1px solid var(--border)", flexShrink:0 }}>
                 {user ? (
-                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    {user?.photoURL && <img src={user.photoURL} width={28} height={28} style={{ borderRadius:"50%", border:"2px solid #e2e8f5" }} alt="" />}
-                    <button onClick={() => auth.signOut()} style={{ fontSize:12, color:"var(--text2)", background:"var(--bg)", padding:"6px 16px", borderRadius:50, border:"1px solid var(--border)", cursor:"pointer", fontWeight:500 }}>Déconnexion</button>
+                  <div style={{ display:"flex", alignItems:"center", gap:9, padding:"9px 12px", borderRadius:12, cursor:"pointer" }} onMouseOver={e=>e.currentTarget.style.background="var(--bg)"} onMouseOut={e=>e.currentTarget.style.background="transparent"}>
+                    {user.photoURL
+                      ? <img src={user.photoURL} width={28} height={28} style={{ borderRadius:"50%", flexShrink:0 }} alt="" />
+                      : <div style={{ width:28, height:28, borderRadius:"50%", background:"#1B3FDB", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:700, fontSize:12, flexShrink:0 }}>{user.email?.[0]?.toUpperCase()}</div>
+                    }
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:12, fontWeight:600, color:"var(--text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.displayName || user.email?.split("@")[0]}</div>
+                      <button onClick={() => auth.signOut()} style={{ fontSize:10, color:"#ef4444", background:"none", border:"none", cursor:"pointer", padding:0, fontFamily:"inherit" }}>Se déconnecter</button>
+                    </div>
                   </div>
                 ) : (
-                  <button onClick={() => setShowLoginModal(true)} style={{ background:"#1B3FDB", color:"white", borderRadius:50, padding:"8px 20px", fontSize:13, fontWeight:600, border:"none", cursor:"pointer" }}>Se connecter</button>
+                  <button onClick={() => setShowLoginModal(true)} style={{ width:"100%", padding:"10px 0", background:"#1B3FDB", color:"white", border:"none", borderRadius:12, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Se connecter</button>
                 )}
               </div>
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"360px 1fr", minHeight:"calc(100vh - 56px)", marginTop:56 }}>
-              <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"32px 28px", position:"sticky", top:56, height:"calc(100vh - 56px)", overflow:"hidden", display:"flex", flexDirection:"column", justifyContent:"space-between" }}>
-                <div style={{ position:"absolute", top:-60, right:-60, width:200, height:200, borderRadius:"50%", background:"rgba(255,255,255,0.06)" }} />
-                <div style={{ position:"absolute", bottom:-40, left:-20, width:150, height:150, borderRadius:"50%", background:"rgba(255,255,255,0.04)" }} />
-                <div style={{ position:"relative", zIndex:1 }}>
-                  <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(255,255,255,0.12)", borderRadius:999, padding:"5px 14px", marginBottom:18 }}>
-                    <div className="pulse" style={{ width:7, height:7, borderRadius:"50%", background:"#93c5fd", display:"inline-block" }} />
-                    <span style={{ fontSize:11, color:"rgba(255,255,255,0.8)", fontWeight:600 }}>{(()=>{ const d=new Date(); const seed=(d.getFullYear()*366+d.getMonth()*31+d.getDate())*9301+49297; const base=1800+((seed%17))*35+(d.getDate()*12); return `+${base.toLocaleString("fr-FR")} analyses ce mois-ci`; })()}</span>
-                  </div>
-                  <h1 style={{ color:"white", fontSize:22, fontWeight:700, lineHeight:1.3, margin:"0 0 6px" }}>Connaissez le vrai<br/>prix de votre voiture</h1>
-                  <p style={{ color:"rgba(255,255,255,0.6)", fontSize:12, lineHeight:1.6, margin:"0 0 20px" }}>Basé sur les vraies annonces Leboncoin, pas sur l&apos;Argus.</p>
-                  <div>
-                    <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6, display:"block" }}>Plaque d&apos;immatriculation</label>
-                    <div style={{ marginBottom:12 }}><LicensePlate value={plate} onChange={handlePlateChange} /></div>
-                    <div style={{ marginBottom:12 }}>
-                        <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5, display:"block" }}>Kilométrage</label>
-                        <div style={{ display:"flex", alignItems:"center", background:"rgba(255,255,255,0.1)", borderRadius:10, border:"1px solid rgba(255,255,255,0.18)", height:42, overflow:"hidden" }}>
-                          <input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="85 000"
-                            style={{ flex:1, padding:"0 10px", fontSize:14, fontWeight:600, border:"none", outline:"none", background:"transparent", color:"white" }} inputMode="numeric" />
-                          <span style={{ padding:"0 10px", color:"rgba(255,255,255,0.5)", fontSize:12 }}>km</span>
-                        </div>
+            </aside>
+
+            {/* ── MAIN AREA ── */}
+            <div style={{ marginLeft:220, flex:1, display:"flex", flexDirection:"column", minHeight:"100vh", minWidth:0 }}>
+
+              {/* Header sticky */}
+              <header style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 28px", height:58, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10, flexShrink:0 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:9, background:"var(--bg)", border:"1.5px solid var(--border)", borderRadius:50, padding:"8px 18px", maxWidth:300 }}>
+                  <svg width="13" height="13" fill="none" stroke="var(--text3)" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  <span style={{ fontSize:13, color:"var(--text3)" }}>Rechercher une plaque...</span>
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                  <DarkToggle />
+                  <PartenaireMenu />
+                </div>
+              </header>
+
+              {/* Contenu scrollable */}
+              <div style={{ flex:1, overflowY:"auto", overflowX:"hidden", background:"var(--bg)" }}>
+
+                {/* HERO */}
+                <div style={{ background:"linear-gradient(160deg,#1B3FDB,#0f28a8)", padding:"36px 40px 60px", position:"relative", overflow:"hidden" }}>
+                  <div style={{ position:"absolute", top:-60, right:-60, width:220, height:220, borderRadius:"50%", background:"rgba(255,255,255,0.06)" }} />
+                  <div style={{ position:"absolute", bottom:-40, left:-20, width:160, height:160, borderRadius:"50%", background:"rgba(255,255,255,0.04)" }} />
+                  <div style={{ position:"relative", zIndex:1 }}>
+                    <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(255,255,255,0.12)", borderRadius:999, padding:"5px 14px", marginBottom:16 }}>
+                      <div className="pulse" style={{ width:7, height:7, borderRadius:"50%", background:"#93c5fd", display:"inline-block" }} />
+                      <span style={{ fontSize:11, color:"rgba(255,255,255,0.85)", fontWeight:600 }}>{(()=>{ const d=new Date(); const seed=(d.getFullYear()*366+d.getMonth()*31+d.getDate())*9301+49297; const base=1800+((seed%17))*35+(d.getDate()*12); return `+${base.toLocaleString("fr-FR")} analyses ce mois-ci`; })()}</span>
                     </div>
-                    <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6, display:"block" }}>Boîte de vitesse</label>
-                    <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-                      {[{ val:"1", label:"🔧 Manuelle" }, { val:"2", label:"⚙️ Automatique" }].map(opt => (
-                        <button key={opt.val} onClick={() => setGearbox(opt.val)}
-                          style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1.5px solid ${gearbox === opt.val ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.2)"}`, background: gearbox === opt.val ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)", color: gearbox === opt.val ? "white" : "rgba(255,255,255,0.45)", fontWeight:600, fontSize:13, cursor:"pointer" }}>
-                          {opt.label}
+                    <h1 style={{ color:"white", fontSize:30, fontWeight:800, lineHeight:1.2, margin:"0 0 10px", letterSpacing:"-0.5px" }}>Connaissez le vrai prix<br/>de votre voiture</h1>
+                    <p style={{ color:"rgba(255,255,255,0.65)", fontSize:14, margin:0, lineHeight:1.6 }}>Basé sur les vraies annonces Leboncoin, pas sur l&apos;Argus.</p>
+                  </div>
+                </div>
+
+                {/* FORM CARD — chevauche le hero */}
+                <div style={{ padding:"0 36px", marginTop:-28, position:"relative", zIndex:5, marginBottom:32 }}>
+                  <div style={{ background:"var(--card)", borderRadius:24, padding:"26px 28px", boxShadow:"0 4px 24px rgba(27,63,219,0.13),0 1px 4px rgba(0,0,0,0.06)", border:"0.5px solid var(--border)" }}>
+                    <div style={{ display:"grid", gridTemplateColumns:"2fr 1.1fr 1.2fr auto", gap:14, alignItems:"end" }}>
+                      <div>
+                        <label style={{ fontSize:11, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8, display:"block" }}>Plaque d&apos;immatriculation</label>
+                        <LicensePlate value={plate} onChange={handlePlateChange} />
+                        {plate.length >= 7 && loadingFin && <p style={{ margin:"4px 0 0", fontSize:11, color:"var(--text3)" }}>Chargement des finitions...</p>}
+                      </div>
+                      <div>
+                        <label style={{ fontSize:11, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8, display:"block" }}>Kilométrage</label>
+                        <div style={{ display:"flex", alignItems:"center", border:"1.5px solid var(--input-border)", borderRadius:12, overflow:"hidden", height:52, background:"var(--input-bg)" }}>
+                          <input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="85 000"
+                            style={{ flex:1, padding:"0 12px", fontSize:15, fontWeight:600, border:"none", outline:"none", background:"transparent", color:"var(--text)" }} inputMode="numeric" />
+                          <span style={{ padding:"0 12px", color:"var(--text3)", fontWeight:600, fontSize:13 }}>km</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize:11, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8, display:"block" }}>Boîte de vitesse</label>
+                        <div style={{ display:"flex", gap:6, height:52 }}>
+                          {[{ val:"1", label:"🔧 Manuelle" }, { val:"2", label:"⚙️ Auto" }].map(opt => (
+                            <button key={opt.val} onClick={() => setGearbox(opt.val)}
+                              style={{ flex:1, borderRadius:12, border:`1.5px solid ${gearbox === opt.val ? "#1B3FDB" : "var(--border)"}`, background: gearbox === opt.val ? "#EFF3FF" : "var(--card)", color: gearbox === opt.val ? "#1B3FDB" : "var(--text3)", fontWeight:600, fontSize:12, cursor:"pointer" }}>
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label style={{ fontSize:11, fontWeight:700, color:"transparent", marginBottom:8, display:"block" }}>-</label>
+                        <button onClick={handleAnalyze} style={{ height:52, background:"#1B3FDB", color:"white", fontWeight:700, fontSize:14, borderRadius:50, padding:"0 28px", border:"none", cursor:"pointer", whiteSpace:"nowrap", boxShadow:"0 4px 16px rgba(27,63,219,0.3)" }}>
+                          Analyser →
                         </button>
-                      ))}
+                      </div>
                     </div>
                     {finitionsList.length > 0 && (
-                      <div style={{ marginBottom:12 }}>
-                        <label style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.55)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5, display:"block" }}>Finition</label>
+                      <div style={{ marginTop:16, paddingTop:16, borderTop:"1px solid var(--border)" }}>
+                        <label style={{ fontSize:11, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8, display:"block" }}>
+                          Finition{vehicleInfo ? ` · ${vehicleInfo.marque} ${vehicleInfo.modele}` : ""}
+                        </label>
                         <select value={finition} onChange={e => setFinition(e.target.value)}
-                          style={{ width:"100%", height:42, padding:"0 10px", fontSize:13, fontWeight:600, color: finition ? "white" : "rgba(255,255,255,0.5)", border:"1px solid rgba(255,255,255,0.18)", borderRadius:10, background:"rgba(255,255,255,0.1)", cursor:"pointer", outline:"none" }}>
-                          <option value="" style={{color:"#333"}}>Toutes les finitions</option>
-                          {finitionsList.map(f => <option key={f} value={f} style={{color:"#333"}}>{f}</option>)}
+                          style={{ width:"100%", height:46, padding:"0 14px", fontSize:14, fontWeight:600, color: finition ? "var(--text)" : "var(--text3)", border:"1.5px solid var(--border)", borderRadius:12, background:"var(--card)", cursor:"pointer", outline:"none" }}>
+                          <option value="">Toutes les finitions</option>
+                          {finitionsList.map(f => <option key={f} value={f}>{f}</option>)}
                         </select>
+                        <p style={{ margin:"6px 0 0", fontSize:11, color:"#f59e0b" }}>💡 Sélectionnez la finition pour plus de précision.</p>
                       </div>
                     )}
-                    {err && <p style={{ color:"#fca5a5", fontSize:12, margin:"0 0 10px" }}>{err}</p>}
-                    <button onClick={handleAnalyze} style={{ width:"100%", background:"white", color:"#1B3FDB", fontWeight:800, fontSize:15, borderRadius:50, padding:"14px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 20px rgba(0,0,0,0.15)", letterSpacing:"-0.01em" }}>
-                      Analyser le marché →
-                    </button>
+                    {err && <p style={{ color:"#ef4444", fontSize:13, margin:"12px 0 0" }}>{err}</p>}
                   </div>
                 </div>
-                <div style={{ display:"flex", gap:14, flexWrap:"wrap", position:"relative", zIndex:1 }}>
-                  {["Instantané","100% gratuit","Données réelles","100% privé"].map((t,i) => (
-                    <div key={i} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"rgba(255,255,255,0.5)" }}>
-                      <div style={{ width:5, height:5, borderRadius:"50%", background:"#60a5fa", flexShrink:0 }} />{t}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div style={{ padding:"32px 40px", overflowY:"auto", overflowX:"hidden", display:"flex", flexDirection:"column", gap:28, minWidth:0, background:"var(--bg)" }}>
-                {historique.length > 0 && (
-                  <div>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
-                      <span style={{ fontSize:15, fontWeight:700, color:"var(--text)" }}>🕐 Recherches récentes</span>
-                      <button onClick={clearHistorique} style={{ fontSize:12, fontWeight:600, color:"var(--text3)", background:"var(--bg)", border:"1px solid var(--border)", borderRadius:50, padding:"4px 14px", cursor:"pointer" }}>Effacer</button>
-                    </div>
-                    <div style={{ background:"var(--card)", borderRadius:20, border:"0.5px solid var(--border)", boxShadow:"0 1px 4px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.06)", overflow:"hidden" }}>
-                      {historique.slice(0,5).map((h, i) => (
-                        <button key={i} onClick={() => { setPlate(h.plate); setKm(h.km ? String(h.km) : ""); }}
-                          style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 20px", borderBottom: i < Math.min(historique.length,5)-1 ? "1px solid var(--hist-border)" : "none", background:"var(--card)", border:"none", cursor:"pointer", textAlign:"left" }}>
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <p style={{ margin:0, fontSize:13, fontWeight:700, color:"var(--text)" }}>{h.plate}</p>
-                            <p style={{ margin:"2px 0 0", fontSize:11, color:"var(--text3)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nom}{h.finition ? " · " + h.finition : ""}</p>
-                          </div>
-                          {h.stats && (
-                            <div style={{ display:"flex", gap:6, flexShrink:0, marginLeft:12 }}>
-                              <span style={{ fontSize:11, fontWeight:700, color:"#f59e0b", background:"#fffbeb", padding:"3px 10px", borderRadius:50 }}>⚡️ {h.stats.pMin?.toLocaleString("fr-FR")}€</span>
-                              <span style={{ fontSize:11, fontWeight:700, color:"#1B3FDB", background:"#EFF3FF", padding:"3px 10px", borderRadius:50 }}>🎯 {h.stats.p25?.toLocaleString("fr-FR")}€</span>
-                              <span style={{ fontSize:11, fontWeight:700, color:"#6366f1", background:"#eef2ff", padding:"3px 10px", borderRadius:50 }}>💎 {h.stats.p50?.toLocaleString("fr-FR")}€</span>
+
+                {/* CONTENU : historique + comment ça marche */}
+                <div style={{ padding:"0 36px 40px", display:"flex", flexDirection:"column", gap:28 }}>
+                  {historique.length > 0 && (
+                    <div>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+                        <span style={{ fontSize:16, fontWeight:700, color:"var(--text)" }}>🕐 Recherches récentes</span>
+                        <button onClick={clearHistorique} style={{ fontSize:12, fontWeight:600, color:"var(--text3)", background:"var(--bg)", border:"1px solid var(--border)", borderRadius:50, padding:"5px 16px", cursor:"pointer" }}>Effacer</button>
+                      </div>
+                      <div style={{ background:"var(--card)", borderRadius:20, border:"0.5px solid var(--border)", boxShadow:"0 1px 4px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.06)", overflow:"hidden" }}>
+                        {historique.slice(0,5).map((h, i) => (
+                          <button key={i} onClick={() => { setPlate(h.plate); setKm(h.km ? String(h.km) : ""); }}
+                            style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 22px", borderBottom: i < Math.min(historique.length,5)-1 ? "1px solid var(--hist-border)" : "none", background:"var(--card)", border:"none", cursor:"pointer", textAlign:"left" }}>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <p style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--text)" }}>{h.plate}</p>
+                              <p style={{ margin:"3px 0 0", fontSize:12, color:"var(--text2)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nom}{h.finition ? " · " + h.finition : ""}</p>
                             </div>
-                          )}
-                          <span style={{ fontSize:10, color:"#8fa0b8", marginLeft:12, flexShrink:0 }}>{h.date}</span>
-                        </button>
+                            {h.stats && (
+                              <div style={{ display:"flex", gap:6, flexShrink:0, marginLeft:16 }}>
+                                <span style={{ fontSize:11, fontWeight:700, color:"#f59e0b", background:"#fffbeb", padding:"3px 10px", borderRadius:50 }}>⚡️ {h.stats.pMin?.toLocaleString("fr-FR")}€</span>
+                                <span style={{ fontSize:11, fontWeight:700, color:"#1B3FDB", background:"#EFF3FF", padding:"3px 10px", borderRadius:50 }}>🎯 {h.stats.p25?.toLocaleString("fr-FR")}€</span>
+                                <span style={{ fontSize:11, fontWeight:700, color:"#6366f1", background:"#eef2ff", padding:"3px 10px", borderRadius:50 }}>💎 {h.stats.p50?.toLocaleString("fr-FR")}€</span>
+                              </div>
+                            )}
+                            <span style={{ fontSize:11, color:"var(--text3)", marginLeft:16, flexShrink:0 }}>{h.date}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <div style={{ fontSize:16, fontWeight:700, color:"var(--text)", marginBottom:16 }}>💡 Comment ça marche</div>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16 }}>
+                      {[
+                        { num:"1", title:"Entrez votre plaque", desc:"Identification automatique via la base SIV officielle." },
+                        { num:"2", title:"On analyse Leboncoin", desc:"Annonces de pros filtrées en temps réel pour votre modèle." },
+                        { num:"3", title:"3 prix précis", desc:"Agressif, marché ou haut — choisissez votre stratégie." },
+                      ].map((s,i) => (
+                        <div key={i} style={{ background:"var(--card)", borderRadius:20, padding:24, border:"0.5px solid var(--border)", boxShadow:"0 1px 4px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.05)" }}>
+                          <div style={{ width:36, height:36, borderRadius:10, background:"var(--badge-bg)", color:"#1B3FDB", fontSize:16, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>{s.num}</div>
+                          <div style={{ fontSize:15, fontWeight:700, color:"var(--text)", marginBottom:6 }}>{s.title}</div>
+                          <div style={{ fontSize:13, color:"var(--text2)", lineHeight:1.6 }}>{s.desc}</div>
+                        </div>
                       ))}
                     </div>
                   </div>
-                )}
-                <div>
-                  <div style={{ fontSize:15, fontWeight:700, color:"var(--text)", marginBottom:16 }}>💡 Comment ça marche</div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16 }}>
-                    {[
-                      { num:"1", title:"Entrez votre plaque", desc:"Identification automatique via la base SIV officielle." },
-                      { num:"2", title:"On analyse Leboncoin", desc:"Annonces de pros filtrées en temps réel pour votre modèle." },
-                      { num:"3", title:"3 prix précis", desc:"Agressif, marché ou haut — choisissez votre stratégie." },
-                    ].map((s,i) => (
-                      <div key={i} style={{ background:"var(--card)", borderRadius:20, padding:22, border:"0.5px solid var(--border)", boxShadow:"0 1px 4px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.05)" }}>
-                        <div style={{ width:36, height:36, borderRadius:10, background:"var(--badge-bg)", color:"#1B3FDB", fontSize:16, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12 }}>{s.num}</div>
-                        <div style={{ fontSize:15, fontWeight:700, color:"var(--text)", marginBottom:6 }}>{s.title}</div>
-                        <div style={{ fontSize:13, color:"var(--text2)", lineHeight:1.5 }}>{s.desc}</div>
-                      </div>
-                    ))}
+                  <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:20, padding:"18px 22px" }}>
+                    <p style={{ margin:"0 0 5px", fontSize:14, color:"#1B3FDB", fontWeight:700 }}>🔒 Vos données restent privées</p>
+                    <p style={{ margin:0, fontSize:13, color:"#3b5bdb", lineHeight:1.6 }}>On ne stocke ni votre plaque, ni vos informations personnelles.</p>
+                  </div>
+                  <div style={{ textAlign:"center", paddingTop:8, borderTop:"1px solid var(--border)" }}>
+                    <p style={{ fontSize:11, color:"var(--text3)", margin:0 }}>© 2025 CoteCars · <a href="/mentions-legales.html" style={{color:"var(--text3)"}}>Mentions légales</a> · <a href="/cgu.html" style={{color:"var(--text3)"}}>CGU</a></p>
                   </div>
                 </div>
-                <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:20, padding:"18px 22px" }}>
-                  <p style={{ margin:"0 0 5px", fontSize:14, color:"#1B3FDB", fontWeight:700 }}>🔒 Vos données restent privées</p>
-                  <p style={{ margin:0, fontSize:13, color:"#3b5bdb", lineHeight:1.6 }}>On ne stocke ni votre plaque, ni vos informations personnelles.</p>
-                </div>
-                <div style={{ textAlign:"center", paddingTop:8, borderTop:"1px solid #e8edf5" }}>
-                  <p style={{ fontSize:11, color:"#c0cce0", margin:0 }}>© 2025 CoteCars · <a href="/mentions-legales.html" style={{color:"#c0cce0"}}>Mentions légales</a> · <a href="/cgu.html" style={{color:"#c0cce0"}}>CGU</a></p>
-                </div>
+
               </div>
             </div>
           </div>
