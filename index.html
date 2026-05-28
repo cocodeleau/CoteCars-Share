@@ -83,12 +83,12 @@
   
 <style id="theme-style">
   :root {
-    --nav-bg: linear-gradient(to right, #ECF6FA, #ffffff);
-    --bg: #f0f4fa;
+    --nav-bg: #ffffff;
+    --bg: #F5F5F7;
     --bg2: #ffffff;
     --bg3: #f9fafb;
     --card: #ffffff;
-    --border: #e2e8f0;
+    --border: #e5e7eb;
     --text: #111111;
     --text2: #6b7280;
     --text3: #9ca3af;
@@ -97,13 +97,13 @@
     --input-bg: #ffffff;
     --input-border: #e2e8f5;
     --step-bg: #f0f4f8;
-    --badge-bg: #eff4ff;
-    --badge-border: #93c5fd;
+    --badge-bg: #EFF3FF;
+    --badge-border: #bfdbfe;
     --badge-text: #1e3a8a;
     --price-badge-bg: #eff4ff;
   }
   body.dark {
-    --nav-bg: linear-gradient(to right, #1C1C1C, #111827);
+    --nav-bg: #1a1a2e;
     --bg: #161b27;
     --bg2: #1e2330;
     --bg3: #252d40;
@@ -167,6 +167,18 @@
 
     const EMERALD = "#1a3fdb";
 
+
+    function useIsMobile(breakpoint) {
+      var bp = breakpoint || 768;
+      const [isMobile, setIsMobile] = React.useState(window.innerWidth < bp);
+      React.useEffect(function() {
+        const handler = function() { setIsMobile(window.innerWidth < bp); };
+        window.addEventListener("resize", handler);
+        return function() { window.removeEventListener("resize", handler); };
+      }, []);
+      return isMobile;
+    }
+
     function LoginModal({ onClose }) {
       const [mode, setMode] = React.useState("login"); // login | register | forgot
       const [email, setEmail] = React.useState("");
@@ -221,7 +233,7 @@
       return (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:"20px" }}
           onClick={e => { if(e.target === e.currentTarget && onClose) onClose(); }}>
-          <div style={{ background:"var(--card)", borderRadius:20, padding:"28px 24px", width:"100%", maxWidth:360, boxShadow:"0 20px 60px rgba(0,0,0,0.2)", border:"0.5px solid var(--border)" }}>
+          <div style={{ background:"var(--card)", borderRadius:24, padding:"32px 28px", width:"100%", maxWidth:380, boxShadow:"0 24px 64px rgba(0,0,0,0.18)", border:"0.5px solid var(--border)" }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
               <span style={{ fontWeight:800, fontSize:18, color:"var(--text)" }}>
                 {mode === "login" ? "Connexion" : mode === "register" ? "Créer un compte" : "Mot de passe oublié"}
@@ -1104,9 +1116,57 @@
       );
     }
 
+
+    function PartenaireMenu() {
+      const [open, setOpen] = React.useState(false);
+      const ref             = React.useRef();
+      React.useEffect(() => {
+        function handler(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+      }, []);
+      return (
+        <div ref={ref} style={{ position:"relative" }}>
+          <button onClick={() => setOpen(o => !o)}
+            style={{ fontSize:12, fontWeight:700, color:"#8dc63f", background:"#1a1a2e", padding:"5px 12px", borderRadius:6, border:"1.5px solid #8dc63f", cursor:"pointer", letterSpacing:"0.04em", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}
+            onMouseOver={e => e.currentTarget.style.background="rgba(141,198,63,0.12)"}
+            onMouseOut={e  => e.currentTarget.style.background="#1a1a2e"}>
+            ⚡ Espace Partenaire <span style={{ fontSize:8, opacity:0.6 }}>{open ? "▲" : "▼"}</span>
+          </button>
+          {open && (
+            <div style={{ position:"absolute", top:"calc(100% + 8px)", right:0, background:"#1a1a2e", border:"1px solid rgba(255,255,255,0.1)", borderRadius:12, boxShadow:"0 12px 32px rgba(0,0,0,0.4)", minWidth:190, overflow:"hidden", zIndex:999 }}>
+              <div style={{ padding:"10px 16px 6px", fontSize:9, fontWeight:700, color:"rgba(255,255,255,0.3)", textTransform:"uppercase", letterSpacing:"0.1em" }}>Espaces Partenaires</div>
+              <a href="/partner.html" onClick={() => setOpen(false)}
+                style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 16px", textDecoration:"none", color:"rgba(255,255,255,0.85)" }}
+                onMouseOver={e => e.currentTarget.style.background="rgba(255,255,255,0.06)"}
+                onMouseOut={e  => e.currentTarget.style.background="transparent"}>
+                <div style={{ width:32, height:32, borderRadius:"50%", flexShrink:0, backgroundImage:'url("https://cotecars-test.vercel.app/vignette-AE.png")', backgroundSize:"150%", backgroundPosition:"center" }} />
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:"white" }}>AutoEasy</div>
+                  
+                </div>
+              </a>
+              <div style={{ height:1, background:"rgba(255,255,255,0.07)", margin:"0 12px" }} />
+              <a href="/partner-esdfx.html" onClick={() => setOpen(false)}
+                style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 16px", textDecoration:"none", color:"rgba(255,255,255,0.85)" }}
+                onMouseOver={e => e.currentTarget.style.background="rgba(255,255,255,0.06)"}
+                onMouseOut={e  => e.currentTarget.style.background="transparent"}>
+                <div style={{ width:32, height:32, borderRadius:"50%", flexShrink:0, backgroundImage:'url("https://cotecars-test.vercel.app/favicon.png")', backgroundSize:"cover", backgroundPosition:"center" }} />
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:"white" }}>CoteCars</div>
+                  
+                </div>
+              </a>
+              <div style={{ height:8 }} />
+            </div>
+          )}
+        </div>
+      );
+    }
+
     function LicensePlate({ value, onChange }) {
       return (
-        <div style={{ display:"flex", alignItems:"stretch", borderRadius:12, overflow:"hidden", border:"2.5px solid #111", background:"white", height:56 }}>
+        <div style={{ display:"flex", alignItems:"stretch", borderRadius:14, overflow:"hidden", border:"2px solid #111", background:"white", height:52 }}>
           <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", background:"#1d4ed8", width:32, minWidth:32, paddingBottom:4 }}>
             <span style={{ color:"white", fontWeight:800, fontSize:11 }}>F</span>
           </div>
@@ -1201,7 +1261,7 @@
               <div style={{ display:"flex", gap:20, alignItems:"center" }}>
                 <span style={{ fontSize:13, color:"var(--text3)" }}>🏷️ Nos annonces</span>
                 <span style={{ fontSize:13, color:"var(--text3)" }}>Comment ça marche</span>
-                  <a href="/partner.html" style={{ fontSize:12, fontWeight:700, color:"#8dc63f", background:"#1a1a2e", padding:"5px 12px", borderRadius:6, textDecoration:"none", letterSpacing:"0.04em" }}>⚡ Partenaire</a>
+                  <PartenaireMenu />
               </div>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"360px 1fr", minHeight:"calc(100vh - 56px)", marginTop:56, minWidth:900 }}>
@@ -1547,6 +1607,7 @@
       const [showLogin, setShowLogin] = useState(false);
       const [showCount, setShowCount] = useState(6);
       const isConnected = !!user;
+      const isMobile = useIsMobile();
       const { veh, nom, ads, stats, finition, peuResultats } = result;
       const fmt = n => n ? n.toLocaleString("fr-FR") + " €" : "N/A";
       const allAds = [...ads].filter(a => a.price?.[0] > 500).sort((a, b) => a.price?.[0] - b.price[0]);
@@ -1641,7 +1702,7 @@
           <div style={{ padding: isMobile ? "12px 12px 80px" : "24px 28px 80px", maxWidth:1200, margin:"0 auto" }}>
 
             {/* ── CARTE VÉHICULE ── */}
-            <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:14, padding: isMobile ? "12px 14px" : "18px 20px", marginBottom:14 }}>
+            <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:20, padding: isMobile ? "14px 16px" : "20px 24px", marginBottom:16, boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}>
               {isMobile ? (
                 <div>
                   <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
@@ -1662,7 +1723,7 @@
                   )}
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ margin:0, color:"var(--badge-text)", fontWeight:600, fontSize:15 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
-                    {nom && <p style={{ margin:"6px 0 0", color:"#1a3fdb", fontWeight:800, fontSize:20 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
+                    {nom && <p style={{ margin:"6px 0 0", color:"#1B3FDB", fontWeight:800, fontSize:22 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
                     <p style={{ margin:"6px 0 0", color:"var(--badge-text)", fontSize:15 }}>
                       {veh.AWN_energie} · {veh.AWN_puissance_CH} ch
                       {veh.AWN_boite ? ` · ${veh.AWN_boite}` : ""}
@@ -1693,7 +1754,7 @@
             </div>
             {stats ? (
               <div style={{ position:"relative", marginBottom:16 }}>
-              <div style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", boxShadow:"0 1px 3px rgba(0,0,0,0.04)", overflow:"hidden" }}>
+              <div style={{ background:"var(--card)", borderRadius:20, border:"0.5px solid var(--border)", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", overflow:"hidden" }}>
                 <div style={{ padding:"10px 16px", borderBottom:"0.5px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <p style={{ margin:0, fontSize:10, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>📊 Analyse du marché</p>
                   <span style={{ fontSize:12, color:EMERALD, fontWeight:700 }}>{stats.count} annonces</span>
@@ -1704,10 +1765,10 @@
                     { icon:"🎯", label:"MARCHÉ", sub:"Max de contacts", val:stats.p25, color:EMERALD, border:"1px solid "+EMERALD, recommended:true },
                     { icon:"💎", label:"HAUT", sub:"Marge de négo", val:stats.p50, color:"#6366F1", border:"1px solid #c7d2fe" },
                   ].map((c, i) => (
-                    <div key={i} style={{ padding: isMobile ? "10px 10px" : "16px 18px", background:"var(--card)", borderRight: i < 2 ? `0.5px solid var(--border)` : "none", position:"relative", borderTop: c.recommended ? `2px solid ${EMERALD}` : "none" }}>
+                    <div key={i} style={{ padding: isMobile ? "12px 10px" : "18px 20px", background:"var(--card)", borderRight: i < 2 ? `0.5px solid var(--border)` : "none", position:"relative", borderTop: c.recommended ? `2px solid ${EMERALD}` : "none" }}>
                       {c.recommended && <div style={{ position:"absolute", top:-9, left:"50%", transform:"translateX(-50%)", background:EMERALD, color:"white", fontSize:8, padding:"2px 10px", borderRadius:999, whiteSpace:"nowrap", fontWeight:700 }}>Recommandé</div>}
                       <p style={{ margin:0, fontSize:9, fontWeight:700, color:c.color, textTransform:"uppercase", letterSpacing:"0.08em" }}>{c.icon} {c.label}</p>
-                      <p style={{ margin: isMobile ? "4px 0 2px" : "8px 0 3px", fontSize: isMobile ? 18 : 26, fontWeight:700, color:"var(--text)", filter: isConnected ? "none" : "blur(6px)", userSelect: isConnected ? "auto" : "none", letterSpacing:"-0.5px" }}>{fmt(c.val)}</p>
+                      <p style={{ margin: isMobile ? "4px 0 2px" : "8px 0 3px", fontSize: isMobile ? 20 : 28, fontWeight:800, color:"var(--text)", filter: isConnected ? "none" : "blur(6px)", userSelect: isConnected ? "auto" : "none", letterSpacing:"-0.5px" }}>{fmt(c.val)}</p>
                       <p style={{ margin:0, fontSize:10, color:"var(--text2)" }}>{c.sub}</p>
                     </div>
                   ))}
@@ -1717,7 +1778,7 @@
                 <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:16, background:"rgba(255,255,255,0.7)" }}>
                   <p style={{ fontWeight:800, fontSize:15, color:"#111", margin:"0 0 8px", textAlign:"center" }}>🔒 Connectez-vous pour voir les prix</p>
                   <button onClick={() => auth.signInWithPopup(googleProvider).then(() => { if(window.posthog) posthog.capture('connexion_google'); })}
-                    style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 20px", background:"white", border:"2px solid #e5e7eb", borderRadius:12, cursor:"pointer", fontSize:14, fontWeight:700, color:"#111", boxShadow:"0 2px 8px rgba(0,0,0,0.08)" }}>
+                    style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 20px", background:"white", border:"2px solid #e5e7eb", borderRadius:50, cursor:"pointer", fontSize:14, fontWeight:700, color:"#111", boxShadow:"0 2px 8px rgba(0,0,0,0.08)" }}>
                     <img src="https://www.google.com/favicon.ico" width={16} height={16} alt="" />
                     Continuer avec Google
                   </button>
@@ -1731,7 +1792,7 @@
             )}
             {cleanAds.length > 0 && (
               <div style={{ position:"relative", marginBottom:16 }}>
-                <div style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", boxShadow:"0 1px 3px rgba(0,0,0,0.04)", overflow:"hidden", filter: isConnected ? "none" : "blur(4px)", pointerEvents: isConnected ? "auto" : "none" }}>
+                <div style={{ background:"var(--card)", borderRadius:20, border:"0.5px solid var(--border)", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", overflow:"hidden", filter: isConnected ? "none" : "blur(4px)", pointerEvents: isConnected ? "auto" : "none" }}>
                   <div style={{ padding:"10px 16px", borderBottom:"0.5px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                     <p style={{ margin:0, fontSize:10, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>🔍 Annonces similaires</p>
                   </div>
@@ -1769,14 +1830,14 @@
             )}
             {result.peuResultats && <FinitionSimilaireBlock result={result} onElargi={onElargi} />}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-              <button onClick={onPrepareLbc} style={{ background:"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:700, fontSize:14, borderRadius:12, padding:"13px 0", border:"none", cursor:"pointer" }}>
+              <button onClick={onPrepareLbc} style={{ background:"#F97316", color:"white", fontWeight:700, fontSize:14, borderRadius:50, padding:"13px 0", border:"none", cursor:"pointer" }}>
                 🔗 Publier sur Leboncoin
               </button>
-              <button onClick={onReset} style={{ background:`linear-gradient(135deg,${EMERALD},${EMERALD_DARK})`, color:"white", fontWeight:700, fontSize:14, borderRadius:12, padding:"13px 0", border:"none", cursor:"pointer" }}>
+              <button onClick={onReset} style={{ background:EMERALD, color:"white", fontWeight:700, fontSize:14, borderRadius:50, padding:"13px 0", border:"none", cursor:"pointer" }}>
                 🔄 Nouvelle recherche
               </button>
             </div>
-            <button onClick={handleCopy} style={{ width:"100%", background: copied ? "var(--badge-bg)" : "var(--card)", color: copied ? EMERALD : "var(--text2)", fontWeight:700, fontSize:14, borderRadius:12, padding:"12px 0", border:`1.5px solid ${copied ? EMERALD : "var(--border)"}`, cursor:"pointer", transition:"all 0.2s", marginTop:2 }}>
+            <button onClick={handleCopy} style={{ width:"100%", background: copied ? "var(--badge-bg)" : "var(--card)", color: copied ? EMERALD : "var(--text2)", fontWeight:700, fontSize:14, borderRadius:50, padding:"12px 0", border:`1.5px solid ${copied ? EMERALD : "var(--border)"}`, cursor:"pointer", transition:"all 0.2s", marginTop:2 }}>
               {copied ? "✅ Rapport copié !" : "📋 Copier le rapport"}
             </button>
           </div>
@@ -2684,8 +2745,8 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))", gap:16 }}>
                 {filtered.map(a => (
                   <button key={a.id} onClick={()=>setSelected(a)}
-                    style={{ background:"var(--card)", borderRadius:12, border:"0.5px solid var(--border)", overflow:"hidden", textAlign:"left", cursor:"pointer", padding:0, transition:"transform 0.15s, box-shadow 0.15s" }}
-                    onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 8px 24px rgba(0,0,0,0.1)"; }}
+                    style={{ background:"var(--card)", borderRadius:20, border:"0.5px solid var(--border)", overflow:"hidden", textAlign:"left", cursor:"pointer", padding:0, transition:"transform 0.15s, box-shadow 0.15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 12px 32px rgba(0,0,0,0.12)"; }}
                     onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="none"; }}>
                     {a.photos?.[0]
                       ? <img src={a.photos[0]} alt="" style={{ width:"100%", height:170, objectFit:"cover" }} />
@@ -2741,7 +2802,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           `}</style>
 
           {/* ── Navbar commune ── */}
-          <div style={{ background:"var(--nav-bg)", padding:"0 16px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)" }}>
+          <div style={{ background:"var(--nav-bg)", padding:"0 20px", height:56, display:"flex", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, borderBottom:"0.5px solid var(--border)", boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <button onClick={onBack} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text2)", padding:0 }}>←</button>
               <span style={{ fontWeight:800, fontSize:22, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
@@ -3451,11 +3512,12 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                     </div>
                   </button>
                   <a href="/partner.html" style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", textDecoration:"none", borderBottom:"0.5px solid var(--border)" }}>
-                    <span style={{ fontSize:20 }}>⚡</span>
-                    <div>
-                      <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#8dc63f" }}>Espace Partenaire</p>
-                      <p style={{ margin:0, fontSize:11, color:"var(--text3)" }}>Accès professionnel</p>
-                    </div>
+                    <div style={{ width:32, height:32, borderRadius:"50%", flexShrink:0, backgroundImage:'url("https://cotecars-test.vercel.app/vignette-AE.png")', backgroundSize:"150%", backgroundPosition:"center" }} />
+                    <div><p style={{ margin:0, fontSize:14, fontWeight:700, color:"#8dc63f" }}>AutoEasy</p></div>
+                  </a>
+                  <a href="/partner-esdfx.html" style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", textDecoration:"none", borderBottom:"0.5px solid var(--border)" }}>
+                    <div style={{ width:32, height:32, borderRadius:"50%", flexShrink:0, backgroundImage:'url("https://cotecars-test.vercel.app/favicon.png")', backgroundSize:"cover", backgroundPosition:"center" }} />
+                    <div><p style={{ margin:0, fontSize:14, fontWeight:700, color:"#60a5fa" }}>CoteCars</p></div>
                   </a>
                   {user ? (
                     <button onClick={() => { auth.signOut(); setShowMobileMenu(false); }}
@@ -3534,7 +3596,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                 </div>
               )}
               {err && <p style={{ color:"#ef4444", fontSize:13, textAlign:"center", margin:"0 0 10px" }}>{err}</p>}
-              <button onClick={handleAnalyze} style={{ width:"100%", background:"linear-gradient(135deg,#1a3fdb,#0f28a8)", color:"white", fontWeight:800, fontSize:16, borderRadius:14, padding:"15px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 16px rgba(26,63,219,0.35)" }}>
+              <button onClick={handleAnalyze} style={{ width:"100%", background:"#1B3FDB", color:"white", fontWeight:800, fontSize:16, borderRadius:50, padding:"15px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 20px rgba(27,63,219,0.28)" }}>
                 Analyser le marché 🚀
               </button>
               <p style={{ textAlign:"center", fontSize:11, color:"var(--text3)", margin:"8px 0 0" }}>Résultat instantané · Aucune inscription</p>
@@ -3557,7 +3619,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <span style={{ fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em" }}>🕐 Recherches récentes</span>
                   <button onClick={clearHistorique} style={{ fontSize:11, color:"var(--text3)", background:"none", border:"none", cursor:"pointer", padding:0 }}>Effacer</button>
                 </div>
-                <div style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", overflow:"hidden" }}>
+                <div style={{ background:"var(--card)", borderRadius:16, border:"0.5px solid var(--border)", boxShadow:"0 1px 3px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.04)", overflow:"hidden" }}>
                   {historique.map((h, i) => (
                     <button key={i} onClick={() => { setPlate(h.plate); setKm(h.km ? String(h.km) : ""); }}
                       style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"11px 14px", borderBottom: i < historique.length-1 ? "1px solid var(--hist-border)" : "none", background:"var(--card)", border:"none", cursor:"pointer", textAlign:"left" }}>
@@ -3611,15 +3673,15 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <div style={{ display:"flex", gap:20, alignItems:"center" }}>
                 <button onClick={() => setShowAnnonces(true)} style={{ fontSize:13, color:"#8fa0b8", fontWeight:500, background:"none", border:"none", cursor:"pointer" }}>🏷️ Nos annonces</button>
                 <span style={{ fontSize:13, color:"#8fa0b8", fontWeight:500 }}>Comment ça marche</span>
-                <a href="/partner.html" style={{ fontSize:12, fontWeight:700, color:"#8dc63f", background:"#1a1a2e", padding:"5px 12px", borderRadius:6, textDecoration:"none", letterSpacing:"0.04em" }}>⚡ Partenaire</a>
+                <PartenaireMenu />
                 <DarkToggle />
                 {user ? (
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                     {user?.photoURL && <img src={user.photoURL} width={28} height={28} style={{ borderRadius:"50%", border:"2px solid #e2e8f5" }} alt="" />}
-                    <button onClick={() => auth.signOut()} style={{ fontSize:12, color:"#8fa0b8", background:"#f8faff", padding:"5px 12px", borderRadius:999, border:"0.5px solid #e2e8f5", cursor:"pointer" }}>Déconnexion</button>
+                    <button onClick={() => auth.signOut()} style={{ fontSize:12, color:"#6b7280", background:"var(--bg)", padding:"5px 14px", borderRadius:50, border:"1px solid var(--border)", cursor:"pointer" }}>Déconnexion</button>
                   </div>
                 ) : (
-                  <button onClick={() => setShowLoginModal(true)} style={{ background:"#1a3fdb", color:"white", borderRadius:8, padding:"7px 16px", fontSize:13, fontWeight:600, border:"none", cursor:"pointer" }}>Se connecter</button>
+                  <button onClick={() => setShowLoginModal(true)} style={{ background:"#1B3FDB", color:"white", borderRadius:50, padding:"7px 18px", fontSize:13, fontWeight:600, border:"none", cursor:"pointer" }}>Se connecter</button>
                 )}
               </div>
             </div>
@@ -3665,7 +3727,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                       </div>
                     )}
                     {err && <p style={{ color:"#fca5a5", fontSize:12, margin:"0 0 10px" }}>{err}</p>}
-                    <button onClick={handleAnalyze} style={{ width:"100%", background:"white", color:"#1a3fdb", fontWeight:700, fontSize:14, borderRadius:12, padding:"13px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 20px rgba(0,0,0,0.18)" }}>
+                    <button onClick={handleAnalyze} style={{ width:"100%", background:"white", color:"#1B3FDB", fontWeight:700, fontSize:14, borderRadius:50, padding:"13px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 20px rgba(0,0,0,0.15)" }}>
                       Analyser le marché →
                     </button>
                   </div>
@@ -3714,7 +3776,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                       { num:"2", title:"On analyse Leboncoin", desc:"Annonces de pros filtrées en temps réel pour votre modèle." },
                       { num:"3", title:"3 prix précis", desc:"Agressif, marché ou haut — choisissez votre stratégie." },
                     ].map((s,i) => (
-                      <div key={i} style={{ background:"var(--card)", borderRadius:14, padding:16, border:"0.5px solid var(--border)" }}>
+                      <div key={i} style={{ background:"var(--card)", borderRadius:16, padding:16, border:"0.5px solid var(--border)", boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}>
                         <div style={{ width:28, height:28, borderRadius:8, background:"var(--badge-bg)", color:"#1a3fdb", fontSize:13, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:8 }}>{s.num}</div>
                         <div style={{ fontSize:13, fontWeight:700, color:"var(--text)", marginBottom:4 }}>{s.title}</div>
                         <div style={{ fontSize:12, color:"var(--text3)", lineHeight:1.5 }}>{s.desc}</div>
