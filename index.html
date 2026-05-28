@@ -89,21 +89,21 @@
     --bg3: #f9fafb;
     --card: #ffffff;
     --border: #e5e7eb;
-    --text: #111111;
+    --text: #111827;
     --text2: #6b7280;
     --text3: #9ca3af;
     --hist-bg: #ffffff;
     --hist-border: #f3f4f6;
     --input-bg: #ffffff;
-    --input-border: #e2e8f5;
-    --step-bg: #f0f4f8;
+    --input-border: #e5e7eb;
+    --step-bg: #F5F5F7;
     --badge-bg: #EFF3FF;
     --badge-border: #bfdbfe;
-    --badge-text: #1e3a8a;
-    --price-badge-bg: #eff4ff;
+    --badge-text: #1e40af;
+    --price-badge-bg: #EFF3FF;
   }
   body.dark {
-    --nav-bg: #1a1a2e;
+    --nav-bg: #1e2330;
     --bg: #161b27;
     --bg2: #1e2330;
     --bg3: #252d40;
@@ -1166,7 +1166,7 @@
 
     function LicensePlate({ value, onChange }) {
       return (
-        <div style={{ display:"flex", alignItems:"stretch", borderRadius:14, overflow:"hidden", border:"2px solid #111", background:"white", height:52 }}>
+        <div style={{ display:"flex", alignItems:"stretch", borderRadius:12, overflow:"hidden", border:"2.5px solid #111", background:"white", height:56 }}>
           <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", background:"#1d4ed8", width:32, minWidth:32, paddingBottom:4 }}>
             <span style={{ color:"white", fontWeight:800, fontSize:11 }}>F</span>
           </div>
@@ -1257,7 +1257,7 @@
           {/* ── DESKTOP ── */}
           <div className="desktop-spinner">
             <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
-              <span style={{ fontWeight:800, fontSize:32, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
+              <span style={{ fontWeight:800, fontSize:28, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1B3FDB"}}>Cars</span></span>
               <div style={{ display:"flex", gap:20, alignItems:"center" }}>
                 <span style={{ fontSize:13, color:"var(--text3)" }}>🏷️ Nos annonces</span>
                 <span style={{ fontSize:13, color:"var(--text3)" }}>Comment ça marche</span>
@@ -1702,7 +1702,7 @@
           <div style={{ padding: isMobile ? "12px 12px 80px" : "24px 28px 80px", maxWidth:1200, margin:"0 auto" }}>
 
             {/* ── CARTE VÉHICULE ── */}
-            <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:20, padding: isMobile ? "14px 16px" : "20px 24px", marginBottom:16, boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:20, padding: isMobile ? "14px 16px" : "22px 26px", marginBottom:16, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
               {isMobile ? (
                 <div>
                   <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
@@ -1723,7 +1723,7 @@
                   )}
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ margin:0, color:"var(--badge-text)", fontWeight:600, fontSize:15 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
-                    {nom && <p style={{ margin:"6px 0 0", color:"#1B3FDB", fontWeight:800, fontSize:22 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
+                    {nom && <p style={{ margin:"6px 0 0", color:"#1a3fdb", fontWeight:800, fontSize:20 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
                     <p style={{ margin:"6px 0 0", color:"var(--badge-text)", fontSize:15 }}>
                       {veh.AWN_energie} · {veh.AWN_puissance_CH} ch
                       {veh.AWN_boite ? ` · ${veh.AWN_boite}` : ""}
@@ -1754,8 +1754,8 @@
             </div>
             {stats ? (
               <div style={{ position:"relative", marginBottom:16 }}>
-              <div style={{ background:"var(--card)", borderRadius:20, border:"0.5px solid var(--border)", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", overflow:"hidden" }}>
-                <div style={{ padding:"10px 16px", borderBottom:"0.5px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <div style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", boxShadow:"0 1px 3px rgba(0,0,0,0.04)", overflow:"hidden" }}>
+                <div style={{ padding:"14px 20px", borderBottom:"0.5px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <p style={{ margin:0, fontSize:10, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>📊 Analyse du marché</p>
                   <span style={{ fontSize:12, color:EMERALD, fontWeight:700 }}>{stats.count} annonces</span>
                 </div>
@@ -1765,10 +1765,10 @@
                     { icon:"🎯", label:"MARCHÉ", sub:"Max de contacts", val:stats.p25, color:EMERALD, border:"1px solid "+EMERALD, recommended:true },
                     { icon:"💎", label:"HAUT", sub:"Marge de négo", val:stats.p50, color:"#6366F1", border:"1px solid #c7d2fe" },
                   ].map((c, i) => (
-                    <div key={i} style={{ padding: isMobile ? "12px 10px" : "18px 20px", background:"var(--card)", borderRight: i < 2 ? `0.5px solid var(--border)` : "none", position:"relative", borderTop: c.recommended ? `2px solid ${EMERALD}` : "none" }}>
+                    <div key={i} style={{ padding: isMobile ? "12px 12px" : "20px 22px", background:"var(--card)", borderRight: i < 2 ? `0.5px solid var(--border)` : "none", position:"relative", borderTop: c.recommended ? `2px solid ${EMERALD}` : "none" }}>
                       {c.recommended && <div style={{ position:"absolute", top:-9, left:"50%", transform:"translateX(-50%)", background:EMERALD, color:"white", fontSize:8, padding:"2px 10px", borderRadius:999, whiteSpace:"nowrap", fontWeight:700 }}>Recommandé</div>}
                       <p style={{ margin:0, fontSize:9, fontWeight:700, color:c.color, textTransform:"uppercase", letterSpacing:"0.08em" }}>{c.icon} {c.label}</p>
-                      <p style={{ margin: isMobile ? "4px 0 2px" : "8px 0 3px", fontSize: isMobile ? 20 : 28, fontWeight:800, color:"var(--text)", filter: isConnected ? "none" : "blur(6px)", userSelect: isConnected ? "auto" : "none", letterSpacing:"-0.5px" }}>{fmt(c.val)}</p>
+                      <p style={{ margin: isMobile ? "4px 0 2px" : "8px 0 3px", fontSize: isMobile ? 18 : 26, fontWeight:700, color:"var(--text)", filter: isConnected ? "none" : "blur(6px)", userSelect: isConnected ? "auto" : "none", letterSpacing:"-0.5px" }}>{fmt(c.val)}</p>
                       <p style={{ margin:0, fontSize:10, color:"var(--text2)" }}>{c.sub}</p>
                     </div>
                   ))}
@@ -1778,7 +1778,7 @@
                 <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:16, background:"rgba(255,255,255,0.7)" }}>
                   <p style={{ fontWeight:800, fontSize:15, color:"#111", margin:"0 0 8px", textAlign:"center" }}>🔒 Connectez-vous pour voir les prix</p>
                   <button onClick={() => auth.signInWithPopup(googleProvider).then(() => { if(window.posthog) posthog.capture('connexion_google'); })}
-                    style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 20px", background:"white", border:"2px solid #e5e7eb", borderRadius:50, cursor:"pointer", fontSize:14, fontWeight:700, color:"#111", boxShadow:"0 2px 8px rgba(0,0,0,0.08)" }}>
+                    style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 20px", background:"white", border:"2px solid #e5e7eb", borderRadius:12, cursor:"pointer", fontSize:14, fontWeight:700, color:"#111", boxShadow:"0 2px 8px rgba(0,0,0,0.08)" }}>
                     <img src="https://www.google.com/favicon.ico" width={16} height={16} alt="" />
                     Continuer avec Google
                   </button>
@@ -1792,7 +1792,7 @@
             )}
             {cleanAds.length > 0 && (
               <div style={{ position:"relative", marginBottom:16 }}>
-                <div style={{ background:"var(--card)", borderRadius:20, border:"0.5px solid var(--border)", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", overflow:"hidden", filter: isConnected ? "none" : "blur(4px)", pointerEvents: isConnected ? "auto" : "none" }}>
+                <div style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", boxShadow:"0 1px 3px rgba(0,0,0,0.04)", overflow:"hidden", filter: isConnected ? "none" : "blur(4px)", pointerEvents: isConnected ? "auto" : "none" }}>
                   <div style={{ padding:"10px 16px", borderBottom:"0.5px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                     <p style={{ margin:0, fontSize:10, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>🔍 Annonces similaires</p>
                   </div>
@@ -1837,7 +1837,7 @@
                 🔄 Nouvelle recherche
               </button>
             </div>
-            <button onClick={handleCopy} style={{ width:"100%", background: copied ? "var(--badge-bg)" : "var(--card)", color: copied ? EMERALD : "var(--text2)", fontWeight:700, fontSize:14, borderRadius:50, padding:"12px 0", border:`1.5px solid ${copied ? EMERALD : "var(--border)"}`, cursor:"pointer", transition:"all 0.2s", marginTop:2 }}>
+            <button onClick={handleCopy} style={{ width:"100%", background: copied ? "var(--badge-bg)" : "var(--card)", color: copied ? EMERALD : "var(--text2)", fontWeight:700, fontSize:14, borderRadius:50, padding:"12px 0", border:`1.5px solid ${copied ? EMERALD : "var(--border)"}`, cursor:"pointer", transition:"all 0.2s", marginTop:6 }}>
               {copied ? "✅ Rapport copié !" : "📋 Copier le rapport"}
             </button>
           </div>
@@ -2631,7 +2631,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                 </button>
               ) : (
                 <button onClick={()=>setShowFilters(!showFilters)}
-                  style={{ background: hasFilters ? "#1a3fdb" : "var(--bg)", border:"1px solid var(--border)", borderRadius:8, padding:"6px 14px", fontSize:12, fontWeight:600, color: hasFilters ? "white" : "var(--text2)", cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
+                  style={{ background: hasFilters ? "#1B3FDB" : "var(--bg)", border:"1px solid var(--border)", borderRadius:50, padding:"7px 18px", fontSize:12, fontWeight:600, color: hasFilters ? "white" : "var(--text2)", cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
                   ⚙️ {hasFilters ? "Filtres actifs" : "Filtres"}
                 </button>
               )}
@@ -2746,7 +2746,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                 {filtered.map(a => (
                   <button key={a.id} onClick={()=>setSelected(a)}
                     style={{ background:"var(--card)", borderRadius:20, border:"0.5px solid var(--border)", overflow:"hidden", textAlign:"left", cursor:"pointer", padding:0, transition:"transform 0.15s, box-shadow 0.15s" }}
-                    onMouseEnter={e => { e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow="0 12px 32px rgba(0,0,0,0.12)"; }}
+                    onMouseEnter={e => { e.currentTarget.style.transform="translateY(-4px)"; e.currentTarget.style.boxShadow="0 16px 40px rgba(0,0,0,0.12)"; }}
                     onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="none"; }}>
                     {a.photos?.[0]
                       ? <img src={a.photos[0]} alt="" style={{ width:"100%", height:170, objectFit:"cover" }} />
@@ -3545,7 +3545,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             )}
 
             {/* ── HERO BLEU ── */}
-            <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"16px 20px 40px", position:"relative", overflow:"hidden", textAlign:"center" }}>
+            <div style={{ background:"linear-gradient(160deg,#1B3FDB,#0f28a8)", padding:"20px 24px 42px", position:"relative", overflow:"hidden", textAlign:"center" }}>
               <div style={{ position:"absolute", top:-30, right:-30, width:100, height:100, borderRadius:"50%", background:"rgba(255,255,255,0.06)" }} />
               <div style={{ position:"absolute", bottom:-15, left:-10, width:70, height:70, borderRadius:"50%", background:"rgba(255,255,255,0.04)" }} />
               <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(255,255,255,0.12)", borderRadius:999, padding:"3px 10px", marginBottom:8, position:"relative", zIndex:1 }}>
@@ -3557,7 +3557,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             </div>
 
             {/* ── FORMULAIRE ── */}
-            <div style={{ margin:"-10px 12px 0", background:"var(--card)", borderRadius:20, padding:"16px 14px", boxShadow:"0 4px 24px rgba(26,63,219,0.12)", border:"0.5px solid var(--border)" }}>
+            <div style={{ margin:"-16px 14px 0", background:"var(--card)", borderRadius:24, padding:"22px 18px", boxShadow:"0 4px 24px rgba(27,63,219,0.15),0 1px 4px rgba(0,0,0,0.04)", border:"0.5px solid var(--border)" }}>
               <div style={{ marginBottom:12 }}>
                 <label style={{ display:"block", fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Plaque d&apos;immatriculation</label>
                 <LicensePlate value={plate} onChange={handlePlateChange} />
@@ -3596,7 +3596,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                 </div>
               )}
               {err && <p style={{ color:"#ef4444", fontSize:13, textAlign:"center", margin:"0 0 10px" }}>{err}</p>}
-              <button onClick={handleAnalyze} style={{ width:"100%", background:"#1B3FDB", color:"white", fontWeight:800, fontSize:16, borderRadius:50, padding:"15px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 20px rgba(27,63,219,0.28)" }}>
+              <button onClick={handleAnalyze} style={{ width:"100%", background:"#1B3FDB", color:"white", fontWeight:800, fontSize:16, borderRadius:50, padding:"15px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 20px rgba(27,63,219,0.28)", letterSpacing:"-0.01em" }}>
                 Analyser le marché 🚀
               </button>
               <p style={{ textAlign:"center", fontSize:11, color:"var(--text3)", margin:"8px 0 0" }}>Résultat instantané · Aucune inscription</p>
@@ -3616,16 +3616,16 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             {historique.length > 0 && (
               <div style={{ margin:"16px 12px 0" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                  <span style={{ fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em" }}>🕐 Recherches récentes</span>
+                  <span style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>🕐 Recherches récentes</span>
                   <button onClick={clearHistorique} style={{ fontSize:11, color:"var(--text3)", background:"none", border:"none", cursor:"pointer", padding:0 }}>Effacer</button>
                 </div>
-                <div style={{ background:"var(--card)", borderRadius:16, border:"0.5px solid var(--border)", boxShadow:"0 1px 3px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.04)", overflow:"hidden" }}>
+                <div style={{ background:"var(--card)", borderRadius:20, border:"0.5px solid var(--border)", boxShadow:"0 1px 4px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.06)", overflow:"hidden" }}>
                   {historique.map((h, i) => (
                     <button key={i} onClick={() => { setPlate(h.plate); setKm(h.km ? String(h.km) : ""); }}
-                      style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"11px 14px", borderBottom: i < historique.length-1 ? "1px solid var(--hist-border)" : "none", background:"var(--card)", border:"none", cursor:"pointer", textAlign:"left" }}>
+                      style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 16px", borderBottom: i < historique.length-1 ? "1px solid var(--hist-border)" : "none", background:"var(--card)", border:"none", cursor:"pointer", textAlign:"left" }}>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <p style={{ margin:0, fontSize:13, fontWeight:700, color:"var(--text)" }}>{h.plate}</p>
-                        <p style={{ margin:"2px 0 0", fontSize:11, color:"var(--text3)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nom}{h.finition ? " · " + h.finition : ""}</p>
+                        <p style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--text)" }}>{h.plate}</p>
+                        <p style={{ margin:"3px 0 0", fontSize:12, color:"var(--text2)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nom}{h.finition ? " · " + h.finition : ""}</p>
                         {h.stats && (
                           <div style={{ display:"flex", gap:4, marginTop:4, flexWrap:"wrap" }}>
                             <span style={{ fontSize:10, fontWeight:700, color:"#f59e0b", background:"#fffbeb", padding:"2px 6px", borderRadius:999 }}>⚡️ {h.stats.pMin?.toLocaleString("fr-FR")}€</span>
@@ -3649,7 +3649,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   { num:"2", icon:"📊", title:"Leboncoin", desc:"Annonces en temps réel", color:"#6366f1" },
                   { num:"3", icon:"💰", title:"3 prix", desc:"Agressif, marché, haut", color:"#f59e0b" },
                 ].map((step, i) => (
-                  <div key={i} style={{ background:"var(--card)", borderRadius:14, padding:"12px 10px", textAlign:"center", border:"0.5px solid var(--border)" }}>
+                  <div key={i} style={{ background:"var(--card)", borderRadius:18, padding:"16px 12px", textAlign:"center", border:"0.5px solid var(--border)", boxShadow:"0 1px 4px rgba(0,0,0,0.04)" }}>
                     <div style={{ width:32, height:32, borderRadius:"50%", background:step.color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, margin:"0 auto 8px" }}>{step.icon}</div>
                     <p style={{ margin:"0 0 2px", fontSize:11, fontWeight:700, color:"var(--text)" }}>{step.title}</p>
                     <p style={{ margin:0, fontSize:10, color:"var(--text3)", lineHeight:1.4 }}>{step.desc}</p>
@@ -3671,17 +3671,17 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
               <span style={{ fontWeight:800, fontSize:32, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
               <div style={{ display:"flex", gap:20, alignItems:"center" }}>
-                <button onClick={() => setShowAnnonces(true)} style={{ fontSize:13, color:"#8fa0b8", fontWeight:500, background:"none", border:"none", cursor:"pointer" }}>🏷️ Nos annonces</button>
-                <span style={{ fontSize:13, color:"#8fa0b8", fontWeight:500 }}>Comment ça marche</span>
+                <button onClick={() => setShowAnnonces(true)} style={{ fontSize:13, color:"var(--text2)", fontWeight:500, background:"none", border:"none", cursor:"pointer" }}>🏷️ Nos annonces</button>
+                <span style={{ fontSize:13, color:"var(--text2)", fontWeight:500 }}>Comment ça marche</span>
                 <PartenaireMenu />
                 <DarkToggle />
                 {user ? (
                   <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                     {user?.photoURL && <img src={user.photoURL} width={28} height={28} style={{ borderRadius:"50%", border:"2px solid #e2e8f5" }} alt="" />}
-                    <button onClick={() => auth.signOut()} style={{ fontSize:12, color:"#6b7280", background:"var(--bg)", padding:"5px 14px", borderRadius:50, border:"1px solid var(--border)", cursor:"pointer" }}>Déconnexion</button>
+                    <button onClick={() => auth.signOut()} style={{ fontSize:12, color:"var(--text2)", background:"var(--bg)", padding:"6px 16px", borderRadius:50, border:"1px solid var(--border)", cursor:"pointer", fontWeight:500 }}>Déconnexion</button>
                   </div>
                 ) : (
-                  <button onClick={() => setShowLoginModal(true)} style={{ background:"#1B3FDB", color:"white", borderRadius:50, padding:"7px 18px", fontSize:13, fontWeight:600, border:"none", cursor:"pointer" }}>Se connecter</button>
+                  <button onClick={() => setShowLoginModal(true)} style={{ background:"#1B3FDB", color:"white", borderRadius:50, padding:"8px 20px", fontSize:13, fontWeight:600, border:"none", cursor:"pointer" }}>Se connecter</button>
                 )}
               </div>
             </div>
@@ -3727,7 +3727,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                       </div>
                     )}
                     {err && <p style={{ color:"#fca5a5", fontSize:12, margin:"0 0 10px" }}>{err}</p>}
-                    <button onClick={handleAnalyze} style={{ width:"100%", background:"white", color:"#1B3FDB", fontWeight:700, fontSize:14, borderRadius:50, padding:"13px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 20px rgba(0,0,0,0.15)" }}>
+                    <button onClick={handleAnalyze} style={{ width:"100%", background:"white", color:"#1B3FDB", fontWeight:800, fontSize:15, borderRadius:50, padding:"14px 0", border:"none", cursor:"pointer", boxShadow:"0 4px 20px rgba(0,0,0,0.15)", letterSpacing:"-0.01em" }}>
                       Analyser le marché →
                     </button>
                   </div>
@@ -3740,26 +3740,26 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   ))}
                 </div>
               </div>
-              <div style={{ padding:"32px 40px", overflowY:"auto", overflowX:"hidden", display:"flex", flexDirection:"column", gap:20, minWidth:0, background:"var(--bg)" }}>
+              <div style={{ padding:"32px 40px", overflowY:"auto", overflowX:"hidden", display:"flex", flexDirection:"column", gap:28, minWidth:0, background:"var(--bg)" }}>
                 {historique.length > 0 && (
                   <div>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-                      <span style={{ fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.1em" }}>🕐 Recherches récentes</span>
-                      <button onClick={clearHistorique} style={{ fontSize:11, color:"var(--text3)", background:"none", border:"none", cursor:"pointer" }}>Effacer</button>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+                      <span style={{ fontSize:15, fontWeight:700, color:"var(--text)" }}>🕐 Recherches récentes</span>
+                      <button onClick={clearHistorique} style={{ fontSize:12, fontWeight:600, color:"var(--text3)", background:"var(--bg)", border:"1px solid var(--border)", borderRadius:50, padding:"4px 14px", cursor:"pointer" }}>Effacer</button>
                     </div>
-                    <div style={{ background:"var(--card)", borderRadius:14, border:"0.5px solid var(--border)", overflow:"hidden" }}>
+                    <div style={{ background:"var(--card)", borderRadius:20, border:"0.5px solid var(--border)", boxShadow:"0 1px 4px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.06)", overflow:"hidden" }}>
                       {historique.slice(0,5).map((h, i) => (
                         <button key={i} onClick={() => { setPlate(h.plate); setKm(h.km ? String(h.km) : ""); }}
-                          style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 16px", borderBottom: i < Math.min(historique.length,5)-1 ? "1px solid #f8faff" : "none", background:"var(--card)", border:"none", cursor:"pointer", textAlign:"left" }}>
+                          style={{ width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 20px", borderBottom: i < Math.min(historique.length,5)-1 ? "1px solid var(--hist-border)" : "none", background:"var(--card)", border:"none", cursor:"pointer", textAlign:"left" }}>
                           <div style={{ flex:1, minWidth:0 }}>
                             <p style={{ margin:0, fontSize:13, fontWeight:700, color:"var(--text)" }}>{h.plate}</p>
                             <p style={{ margin:"2px 0 0", fontSize:11, color:"var(--text3)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nom}{h.finition ? " · " + h.finition : ""}</p>
                           </div>
                           {h.stats && (
                             <div style={{ display:"flex", gap:6, flexShrink:0, marginLeft:12 }}>
-                              <span style={{ fontSize:11, fontWeight:700, color:"#f59e0b", background:"#fffbeb", padding:"2px 8px", borderRadius:999 }}>⚡️ {h.stats.pMin?.toLocaleString("fr-FR")}€</span>
-                              <span style={{ fontSize:11, fontWeight:700, color:"#1a3fdb", background:"#eff4ff", padding:"2px 8px", borderRadius:999 }}>🎯 {h.stats.p25?.toLocaleString("fr-FR")}€</span>
-                              <span style={{ fontSize:11, fontWeight:700, color:"#6366f1", background:"#eef2ff", padding:"2px 8px", borderRadius:999 }}>💎 {h.stats.p50?.toLocaleString("fr-FR")}€</span>
+                              <span style={{ fontSize:11, fontWeight:700, color:"#f59e0b", background:"#fffbeb", padding:"3px 10px", borderRadius:50 }}>⚡️ {h.stats.pMin?.toLocaleString("fr-FR")}€</span>
+                              <span style={{ fontSize:11, fontWeight:700, color:"#1B3FDB", background:"#EFF3FF", padding:"3px 10px", borderRadius:50 }}>🎯 {h.stats.p25?.toLocaleString("fr-FR")}€</span>
+                              <span style={{ fontSize:11, fontWeight:700, color:"#6366f1", background:"#eef2ff", padding:"3px 10px", borderRadius:50 }}>💎 {h.stats.p50?.toLocaleString("fr-FR")}€</span>
                             </div>
                           )}
                           <span style={{ fontSize:10, color:"#8fa0b8", marginLeft:12, flexShrink:0 }}>{h.date}</span>
@@ -3769,24 +3769,24 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   </div>
                 )}
                 <div>
-                  <div style={{ fontSize:10, fontWeight:700, color:"#8fa0b8", textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:12 }}>Comment ça marche</div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12 }}>
+                  <div style={{ fontSize:15, fontWeight:700, color:"var(--text)", marginBottom:16 }}>💡 Comment ça marche</div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16 }}>
                     {[
                       { num:"1", title:"Entrez votre plaque", desc:"Identification automatique via la base SIV officielle." },
                       { num:"2", title:"On analyse Leboncoin", desc:"Annonces de pros filtrées en temps réel pour votre modèle." },
                       { num:"3", title:"3 prix précis", desc:"Agressif, marché ou haut — choisissez votre stratégie." },
                     ].map((s,i) => (
-                      <div key={i} style={{ background:"var(--card)", borderRadius:16, padding:16, border:"0.5px solid var(--border)", boxShadow:"0 1px 3px rgba(0,0,0,0.04)" }}>
-                        <div style={{ width:28, height:28, borderRadius:8, background:"var(--badge-bg)", color:"#1a3fdb", fontSize:13, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:8 }}>{s.num}</div>
-                        <div style={{ fontSize:13, fontWeight:700, color:"var(--text)", marginBottom:4 }}>{s.title}</div>
-                        <div style={{ fontSize:12, color:"var(--text3)", lineHeight:1.5 }}>{s.desc}</div>
+                      <div key={i} style={{ background:"var(--card)", borderRadius:20, padding:22, border:"0.5px solid var(--border)", boxShadow:"0 1px 4px rgba(0,0,0,0.04),0 8px 24px rgba(0,0,0,0.05)" }}>
+                        <div style={{ width:36, height:36, borderRadius:10, background:"var(--badge-bg)", color:"#1B3FDB", fontSize:16, fontWeight:800, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12 }}>{s.num}</div>
+                        <div style={{ fontSize:15, fontWeight:700, color:"var(--text)", marginBottom:6 }}>{s.title}</div>
+                        <div style={{ fontSize:13, color:"var(--text2)", lineHeight:1.5 }}>{s.desc}</div>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:14, padding:"14px 16px" }}>
-                  <p style={{ margin:"0 0 3px", fontSize:13, color:"#1a3fdb", fontWeight:700 }}>🔒 Vos données restent privées</p>
-                  <p style={{ margin:0, fontSize:12, color:"#3b5bdb", lineHeight:1.5 }}>On ne stocke ni votre plaque, ni vos informations personnelles.</p>
+                <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:20, padding:"18px 22px" }}>
+                  <p style={{ margin:"0 0 5px", fontSize:14, color:"#1B3FDB", fontWeight:700 }}>🔒 Vos données restent privées</p>
+                  <p style={{ margin:0, fontSize:13, color:"#3b5bdb", lineHeight:1.6 }}>On ne stocke ni votre plaque, ni vos informations personnelles.</p>
                 </div>
                 <div style={{ textAlign:"center", paddingTop:8, borderTop:"1px solid #e8edf5" }}>
                   <p style={{ fontSize:11, color:"#c0cce0", margin:0 }}>© 2025 CoteCars · <a href="/mentions-legales.html" style={{color:"#c0cce0"}}>Mentions légales</a> · <a href="/cgu.html" style={{color:"#c0cce0"}}>CGU</a></p>
