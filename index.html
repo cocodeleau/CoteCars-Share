@@ -3804,6 +3804,45 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               </div>
             </aside>
 
+            {/* Modal partenaires */}
+            {showPartenaireModal && (
+              <div onClick={() => setShowPartenaireModal(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+                <div onClick={e => e.stopPropagation()} style={{ background:"var(--card)", borderRadius:24, padding:"36px 32px", width:"100%", maxWidth:520, boxShadow:"0 24px 64px rgba(0,0,0,0.2)" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
+                    <div style={{ width:42, height:42, borderRadius:11, background:"#1B3FDB", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <svg width="19" height="19" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:19, fontWeight:800, color:"var(--text)" }}>Espace Partenaires</div>
+                      <div style={{ fontSize:12, color:"var(--text3)" }}>Accès professionnel</div>
+                    </div>
+                    <button onClick={() => setShowPartenaireModal(false)} style={{ width:32, height:32, borderRadius:"50%", background:"var(--bg)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, color:"var(--text2)", flexShrink:0 }}>✕</button>
+                  </div>
+                  <p style={{ fontSize:14, color:"var(--text2)", lineHeight:1.7, margin:"0 0 22px", paddingBottom:20, borderBottom:"1px solid var(--border)" }}>Cet espace est dédié à nos partenaires professionnels de l&apos;automobile. Sélectionnez votre espace de travail.</p>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+                    <a href="/partner.html" style={{ display:"flex", flexDirection:"column", gap:10, padding:"20px 18px", borderRadius:18, border:"1.5px solid var(--border)", textDecoration:"none", background:"var(--card)", transition:"all .15s" }} onMouseOver={e=>{e.currentTarget.style.borderColor="#8dc63f";e.currentTarget.style.background="#f0fdf4"}} onMouseOut={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.background="var(--card)"}}>
+                      <div style={{ width:44, height:44, borderRadius:12, background:"#1a1a2e", display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, fontWeight:900, color:"#8dc63f" }}>AE</div>
+                      <div>
+                        <div style={{ fontSize:15, fontWeight:700, color:"var(--text)", marginBottom:4 }}>AutoEasy Studio</div>
+                        <div style={{ fontSize:12, color:"var(--text2)", lineHeight:1.5 }}>Traitement photo pro, fond studio IA, bandeau AUTOEASY.</div>
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:12, fontWeight:600, color:"#8dc63f" }}>Accéder →</div>
+                    </a>
+                    <a href="/partner-esdfx.html" style={{ display:"flex", flexDirection:"column", gap:10, padding:"20px 18px", borderRadius:18, border:"1.5px solid var(--border)", textDecoration:"none", background:"var(--card)", transition:"all .15s" }} onMouseOver={e=>{e.currentTarget.style.borderColor="#1B3FDB";e.currentTarget.style.background="#EFF3FF"}} onMouseOut={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.background="var(--card)"}}>
+                      <div style={{ width:44, height:44, borderRadius:12, background:"#1B3FDB", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <svg width="20" height="20" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:15, fontWeight:700, color:"var(--text)", marginBottom:4 }}>CoteCars Pro</div>
+                        <div style={{ fontSize:12, color:"var(--text2)", lineHeight:1.5 }}>Espace dédié aux professionnels CoteCars.</div>
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:12, fontWeight:600, color:"#1B3FDB" }}>Accéder →</div>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ── MAIN AREA ── */}
             <div style={{ marginLeft:220, flex:1, display:"flex", flexDirection:"column", minHeight:"100vh", minWidth:0 }}>
 
