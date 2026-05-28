@@ -1255,35 +1255,8 @@
           </div>
 
           {/* ── DESKTOP ── */}
-          <div className="desktop-spinner">
-            <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 32px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"fixed", top:0, left:0, right:0, zIndex:10, minWidth:900 }}>
-              <span style={{ fontWeight:800, fontSize:28, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1B3FDB"}}>Cars</span></span>
-              <div style={{ display:"flex", gap:20, alignItems:"center" }}>
-                <span style={{ fontSize:13, color:"var(--text3)" }}>🏷️ Nos annonces</span>
-                <span style={{ fontSize:13, color:"var(--text3)" }}>Comment ça marche</span>
-                  <PartenaireMenu />
-              </div>
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"360px 1fr", minHeight:"calc(100vh - 56px)", marginTop:56, minWidth:900 }}>
-              {/* Colonne gauche skeleton */}
-              <div style={{ background:"linear-gradient(160deg,#1a3fdb,#0f28a8)", padding:"32px 28px", display:"flex", flexDirection:"column", gap:14, opacity:0.5 }}>
-                <div className="sk" style={{ height:10, width:"60%", background:"rgba(255,255,255,0.2)" }} />
-                <div className="sk" style={{ height:18, width:"85%", background:"rgba(255,255,255,0.2)" }} />
-                <div className="sk" style={{ height:18, width:"70%", background:"rgba(255,255,255,0.2)" }} />
-                <div style={{ height:16 }} />
-                <div className="sk" style={{ height:52, borderRadius:12, background:"rgba(255,255,255,0.2)" }} />
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                  <div className="sk" style={{ height:42, borderRadius:10, background:"rgba(255,255,255,0.2)" }} />
-                  <div className="sk" style={{ height:42, borderRadius:10, background:"rgba(255,255,255,0.2)" }} />
-                </div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                  <div className="sk" style={{ height:42, borderRadius:10, background:"rgba(255,255,255,0.2)" }} />
-                  <div className="sk" style={{ height:42, borderRadius:10, background:"rgba(255,255,255,0.2)" }} />
-                </div>
-                <div className="sk" style={{ height:48, borderRadius:12, background:"rgba(255,255,255,0.25)" }} />
-              </div>
-              {/* Colonne droite - spinner centré */}
-              <div style={{ background:"var(--bg)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div className="desktop-spinner" style={{ marginLeft:220, background:"var(--bg)", minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <div style={{ background:"var(--bg)", display:"flex", alignItems:"center", justifyContent:"center", width:"100%" }}>
                 <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:20, animation:"fadeInUp 0.4s ease" }}>
                   <div style={{ position:"relative", width:80, height:80, display:"flex", alignItems:"center", justifyContent:"center" }}>
                     <svg style={{ animation:"spinSvg 1.2s linear infinite", position:"absolute" }} width="80" height="80" viewBox="0 0 80 80">
@@ -1319,7 +1292,6 @@
                   </div>
                 </div>
               </div>
-            </div>
           </div>
         </div>
       );
@@ -1706,7 +1678,7 @@
               {isMobile ? (
                 <div>
                   <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
-                    {veh.AWN_logo_marque && <img src={veh.AWN_logo_marque} alt={veh.AWN_marque} style={{ width:40, height:40, objectFit:"contain", flexShrink:0 }} />}
+                    {veh.AWN_logo_marque && <img src={veh.AWN_logo_marque} alt={veh.AWN_marque} style={{ width:40, height:40, objectFit:"contain", mixBlendMode:"multiply", flexShrink:0, mixBlendMode:"multiply" }} />}
                     <div style={{ flex:1, minWidth:0 }}>
                       <p style={{ margin:0, color:"var(--badge-text)", fontWeight:600, fontSize:12 }}>✅ <strong>{plate}</strong></p>
                       {nom && <p style={{ margin:"3px 0 0", color:"#1a3fdb", fontWeight:800, fontSize:16, lineHeight:1.2 }}>🚗 {nom}{finition ? ` · ${finition}` : ""}</p>}
@@ -1719,7 +1691,7 @@
               ) : (
                 <div style={{ display:"flex", alignItems:"center", gap:16 }}>
                   {veh.AWN_logo_marque && (
-                    <img src={veh.AWN_logo_marque} alt={veh.AWN_marque} style={{ width:64, height:64, objectFit:"contain", flexShrink:0 }} />
+                    <img src={veh.AWN_logo_marque} alt={veh.AWN_marque} style={{ width:64, height:64, objectFit:"contain", mixBlendMode:"multiply", flexShrink:0 }} />
                   )}
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ margin:0, color:"var(--badge-text)", fontWeight:600, fontSize:15 }}>✅ Véhicule identifié — <strong>{plate}</strong></p>
@@ -1777,6 +1749,7 @@
               {!isConnected && (
                 <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:16, background:"rgba(255,255,255,0.7)" }}>
                   <p style={{ fontWeight:800, fontSize:15, color:"#111", margin:"0 0 8px", textAlign:"center" }}>🔒 Connectez-vous pour voir les prix</p>
+                  <p style={{ fontSize:12, color:"rgba(255,255,255,0.75)", margin:"0 0 10px", textAlign:"center" }}>✨ C&apos;est gratuit · Aucune carte requise</p>
                   <button onClick={() => auth.signInWithPopup(googleProvider).then(() => { if(window.posthog) posthog.capture('connexion_google'); })}
                     style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 20px", background:"white", border:"2px solid #e5e7eb", borderRadius:12, cursor:"pointer", fontSize:14, fontWeight:700, color:"#111", boxShadow:"0 2px 8px rgba(0,0,0,0.08)" }}>
                     <img src="https://www.google.com/favicon.ico" width={16} height={16} alt="" />
@@ -1796,7 +1769,7 @@
                   <div style={{ padding:"10px 16px", borderBottom:"0.5px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                     <p style={{ margin:0, fontSize:10, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>🔍 Annonces similaires</p>
                   </div>
-                  <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)" }}>
+                  <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(260px, 1fr))", overflowX:"auto" }}>
                   {cleanAds.map((ad, i) => (
                     <a key={i} href={ad.url} target="_blank" rel="noopener noreferrer"
                       style={{ display:"flex", flexDirection:"column", padding:"12px 14px", borderRight: !isMobile && i % 3 < 2 ? "0.5px solid var(--border)" : "none", borderBottom: i < cleanAds.length - 1 ? "0.5px solid var(--border)" : "none", textDecoration:"none" }}>
@@ -1819,6 +1792,7 @@
                 {!isConnected && (
                   <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:16, background:"rgba(255,255,255,0.7)" }}>
                     <p style={{ fontWeight:800, fontSize:15, color:"#111", margin:"0 0 8px", textAlign:"center" }}>🔒 Connectez-vous pour voir les annonces</p>
+                  <p style={{ fontSize:12, color:"rgba(255,255,255,0.75)", margin:"0 0 10px", textAlign:"center" }}>✨ C&apos;est gratuit · Aucune carte requise</p>
                     <button onClick={() => auth.signInWithPopup(googleProvider).then(() => { if(window.posthog) posthog.capture('connexion_google'); })}
                       style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 20px", background:"white", border:"2px solid #e5e7eb", borderRadius:12, cursor:"pointer", fontSize:14, fontWeight:700, color:"#111", boxShadow:"0 2px 8px rgba(0,0,0,0.08)" }}>
                       <img src="https://www.google.com/favicon.ico" width={16} height={16} alt="" />
@@ -3927,11 +3901,17 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                       </div>
                     )}
                     {err && <p style={{ color:"#ef4444", fontSize:13, margin:"12px 0 0" }}>{err}</p>}
+                    <div style={{ marginTop:14, paddingTop:14, borderTop:"1px solid var(--border)", display:"flex", gap:6, flexWrap:"wrap" }}>
+                      {[["⚡","Instantané"],["🎯","Prix précis"],["🔒","Privé"],["✅","Gratuit"]].map(([icon,label])=>(
+                        <span key={label} style={{ background:"var(--badge-bg)", color:"#1B3FDB", borderRadius:50, padding:"4px 12px", fontSize:11, fontWeight:600 }}>{icon} {label}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 {/* CONTENU : historique + comment ça marche */}
-                <div style={{ padding:"0 36px 40px", display:"flex", flexDirection:"column", gap:28 }}>
+                <div style={{ padding:"0 36px 40px" }}>
+                  <div style={{ display:"grid", gridTemplateColumns: historique.length > 0 ? "1fr 1fr" : "1fr", gap:24, marginBottom:24 }}>
                   {historique.length > 0 && (
                     <div>
                       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
@@ -3975,6 +3955,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                       ))}
                     </div>
                   </div>
+                  </div>{/* fin grid 2col */}
                   <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:20, padding:"18px 22px" }}>
                     <p style={{ margin:"0 0 5px", fontSize:14, color:"#1B3FDB", fontWeight:700 }}>🔒 Vos données restent privées</p>
                     <p style={{ margin:0, fontSize:13, color:"#3b5bdb", lineHeight:1.6 }}>On ne stocke ni votre plaque, ni vos informations personnelles.</p>
