@@ -3069,6 +3069,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       }
 
       return (
+        <>
         <div className="detail-root" style={{ minHeight:"100vh", background:"var(--bg)", fontFamily:"'DM Sans',-apple-system,sans-serif" }}>
           <style>{`
             .detail-root { margin-left: 0; }
@@ -3336,6 +3337,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           </div>
         </div>
         {showLbcModal && <LbcPublishModal annonce={a} onClose={() => setShowLbcModal(false)} />}
+        </>
       );
     }
 
