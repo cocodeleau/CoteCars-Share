@@ -2768,6 +2768,60 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       );
     }
 
+    // ─── MODAL PUBLIER SUR LEBONCOIN (owner only) ─────────────────
+    function LbcPublishModal({ annonce: a, onClose }) {
+      const [copied, setCopied] = React.useState(null);
+      function copy(key, val) {
+        navigator.clipboard.writeText(String(val));
+        setCopied(key);
+        setTimeout(() => setCopied(null), 2000);
+      }
+      const fields = [
+        { key:"titre",   label:"📌 Titre",          val: `${a.nom}${a.finition?" "+a.finition:""} ${a.annee||""}`.trim() },
+        { key:"prix",    label:"💰 Prix (€)",        val: a.prix },
+        { key:"km",      label:"🚗 Kilométrage (km)", val: a.km || "" },
+        { key:"energie", label:"⛽ Énergie",          val: a.energie || "" },
+        { key:"boite",   label:"⚙️ Boîte",            val: a.boite || (a.gearbox==="1"?"Manuelle":a.gearbox==="2"?"Automatique":"") },
+        { key:"ch",      label:"💪 Puissance (ch)",   val: a.ch || "" },
+        { key:"annee",   label:"📅 Année",            val: a.annee || "" },
+        { key:"loc",     label:"📍 Localisation",     val: a.localisation || "" },
+        { key:"tel",     label:"📞 Téléphone",        val: a.tel || "" },
+        { key:"desc",    label:"✨ Description",      val: a.descriptionIA || a.description || "" },
+      ].filter(f => f.val);
+      return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:3000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
+          onClick={e => { if(e.target===e.currentTarget) onClose(); }}>
+          <div style={{ background:"white", borderRadius:20, width:"100%", maxWidth:480, maxHeight:"88vh", overflowY:"auto", padding:"24px 20px 32px" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+              <div style={{ fontWeight:900, fontSize:17, color:"#111" }}>🔗 Publier sur Leboncoin</div>
+              <button onClick={onClose} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#9ca3af" }}>✕</button>
+            </div>
+            <p style={{ fontSize:13, color:"#6b7280", marginBottom:20 }}>Copiez chaque champ et collez-le sur Leboncoin.</p>
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {fields.map(f => (
+                <div key={f.key} style={{ border:"1px solid #e5e7eb", borderRadius:12, overflow:"hidden" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 14px", background:"#f9fafb", borderBottom:"1px solid #e5e7eb" }}>
+                    <span style={{ fontSize:11, fontWeight:800, color:"#6b7280", textTransform:"uppercase", letterSpacing:"0.08em" }}>{f.label}</span>
+                    <button onClick={() => copy(f.key, f.val)}
+                      style={{ fontSize:11, fontWeight:700, color: copied===f.key?"#059669":"#6b7280", background: copied===f.key?"#f0fdf4":"#f3f4f6", border:"none", borderRadius:6, padding:"4px 10px", cursor:"pointer" }}>
+                      {copied===f.key ? "✅ Copié" : "📋 Copier"}
+                    </button>
+                  </div>
+                  <div style={{ padding:"10px 14px", fontSize:13, color:"#111", whiteSpace:"pre-wrap", lineHeight:1.5, maxHeight: f.key==="desc"?160:undefined, overflowY: f.key==="desc"?"auto":undefined }}>
+                    {String(f.val)}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <a href="https://www.leboncoin.fr/deposer-une-annonce" target="_blank" rel="noopener noreferrer"
+              style={{ display:"block", width:"100%", background:"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:800, fontSize:15, borderRadius:14, padding:"15px 0", textAlign:"center", textDecoration:"none", marginTop:20, boxSizing:"border-box" }}>
+              🔗 Ouvrir Leboncoin →
+            </a>
+          </div>
+        </div>
+      );
+    }
+
     // ─── PAGE ANNONCES ────────────────────────────────────────────
     function AnnoncesPage({ onBack, user, initialSelectedId }) {
       const [annonces, setAnnonces] = React.useState([]);
@@ -3004,6 +3058,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
     function AnnonceDetail({ annonce: a, onBack, user }) {
       const [photoPlein, setPhotoPlein] = React.useState(null);
       const [photoActive, setPhotoActive] = React.useState(0);
+      const [showLbcModal, setShowLbcModal] = React.useState(false);
       const isOwner = user?.uid === a.uid;
       const photos = a.photos || [];
 
@@ -3137,6 +3192,12 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                 <a href={`tel:${a.tel}`} style={{ display:"block", width:"100%", background:`linear-gradient(135deg,${EMERALD},#0f28a8)`, color:"white", fontWeight:800, fontSize:16, borderRadius:14, padding:"14px 0", textAlign:"center", textDecoration:"none", boxSizing:"border-box" }}>
                   Appeler {a.tel}
                 </a>
+                {isOwner && (
+                  <button onClick={() => setShowLbcModal(true)}
+                    style={{ display:"block", width:"100%", background:"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:800, fontSize:15, borderRadius:14, padding:"14px 0", textAlign:"center", border:"none", cursor:"pointer", marginTop:10, boxSizing:"border-box", fontFamily:"inherit" }}>
+                    🔗 Publier sur Leboncoin
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -3262,12 +3323,19 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                     style={{ display:"block", width:"100%", background:`linear-gradient(135deg,${EMERALD},#0f28a8)`, color:"white", fontWeight:800, fontSize:15, borderRadius:12, padding:"14px 0", textAlign:"center", textDecoration:"none", boxSizing:"border-box" }}>
                     Appeler {a.tel}
                   </a>
+                  {isOwner && (
+                    <button onClick={() => setShowLbcModal(true)}
+                      style={{ display:"block", width:"100%", background:"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:800, fontSize:15, borderRadius:12, padding:"14px 0", textAlign:"center", border:"none", cursor:"pointer", marginTop:10, boxSizing:"border-box", fontFamily:"inherit" }}>
+                      🔗 Publier sur Leboncoin
+                    </button>
+                  )}
                 </div>
 
               </div>
             </div>
           </div>
         </div>
+        {showLbcModal && <LbcPublishModal annonce={a} onClose={() => setShowLbcModal(false)} />}
       );
     }
 
