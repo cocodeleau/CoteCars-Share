@@ -184,6 +184,7 @@
       const [email, setEmail] = React.useState("");
       const [password, setPassword] = React.useState("");
       const [confirmPassword, setConfirmPassword] = React.useState("");
+      const [showPassword, setShowPassword] = React.useState(false);
       const [error, setError] = React.useState("");
       const [success, setSuccess] = React.useState("");
       const [loading, setLoading] = React.useState(false);
@@ -257,12 +258,24 @@
               <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required
                 style={{ width:"100%", padding:"12px 14px", border:"2px solid var(--border)", borderRadius:12, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box", background:"var(--input-bg)", color:"var(--text)" }} />
               {mode !== "forgot" && (
-                <input type="password" placeholder="Mot de passe" value={password} onChange={e => setPassword(e.target.value)} required
-                  style={{ width:"100%", padding:"12px 14px", border:"2px solid var(--border)", borderRadius:12, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box", background:"var(--input-bg)", color:"var(--text)" }} />
+                <div style={{ position:"relative", marginBottom:10 }}>
+                  <input type={showPassword ? "text" : "password"} placeholder="Mot de passe" value={password} onChange={e => setPassword(e.target.value)} required
+                    style={{ width:"100%", padding:"12px 44px 12px 14px", border:"2px solid var(--border)", borderRadius:12, fontSize:14, outline:"none", boxSizing:"border-box", background:"var(--input-bg)", color:"var(--text)" }} />
+                  <button type="button" onClick={() => setShowPassword(v => !v)}
+                    style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", fontSize:16, color:"#9ca3af", padding:0 }}>
+                    {showPassword ? "🙈" : "👁️"}
+                  </button>
+                </div>
               )}
               {mode === "register" && (
-                <input type="password" placeholder="Confirmer le mot de passe" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required
-                  style={{ width:"100%", padding:"12px 14px", border:"2px solid var(--border)", borderRadius:12, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box", background:"var(--input-bg)", color:"var(--text)" }} />
+                <div style={{ position:"relative", marginBottom:10 }}>
+                  <input type={showPassword ? "text" : "password"} placeholder="Confirmer le mot de passe" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required
+                    style={{ width:"100%", padding:"12px 44px 12px 14px", border:"2px solid var(--border)", borderRadius:12, fontSize:14, outline:"none", boxSizing:"border-box", background:"var(--input-bg)", color:"var(--text)" }} />
+                  <button type="button" onClick={() => setShowPassword(v => !v)}
+                    style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", fontSize:16, color:"#9ca3af", padding:0 }}>
+                    {showPassword ? "🙈" : "👁️"}
+                  </button>
+                </div>
               )}
               {error && <p style={{ color:"#ef4444", fontSize:12, margin:"0 0 10px", textAlign:"center" }}>{error}</p>}
               {success && <p style={{ color:EMERALD, fontSize:12, margin:"0 0 10px", textAlign:"center" }}>{success}</p>}
