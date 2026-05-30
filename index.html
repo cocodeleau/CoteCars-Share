@@ -2358,6 +2358,7 @@
       const [ville, setVille] = React.useState("");
       const [tel, setTel] = React.useState("");
       const [publishing, setPublishing] = React.useState(false);
+      const [publishedAnnonceId, setPublishedAnnonceId] = React.useState(null);
       const [copiedKey, setCopiedKey] = React.useState(null);
       const [titreIA, setTitreIA] = React.useState("");
       const [descriptionIA, setDescriptionIA] = React.useState("");
@@ -2405,7 +2406,7 @@
             await ref.put(p.file);
             return ref.getDownloadURL();
           }));
-          await db.collection("annonces").add({
+          const annonceRef = await db.collection("annonces").add({
             uid:user.uid, userEmail:user.email, userPhoto:user.photoURL||"",
             plate:plaqueInput, nom:(marque+" "+modele).trim(), finition, annee, energie,
             ch:parseInt(puissance)||0, km:parseInt(km)||null, gearbox:boite==="Manuelle"?"1":"2",
@@ -2414,6 +2415,7 @@
             nbPlaces, nbPortes, critair, vin3, typeVehicule,
             stats:result.stats, createdAt:new Date().toISOString(), active:true, source:"lbc_flow",
           });
+          setPublishedAnnonceId(annonceRef.id);
           const t = [marque, modele, puissance?puissance+" ch":"", finition].filter(Boolean).join(" ").trim();
           setTitreIA(t);
           setStep(3);
@@ -2755,10 +2757,12 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                     )}
                   </div>
 
-                  <a href="https://www.leboncoin.fr/deposer-une-annonce" target="_blank" rel="noopener noreferrer"
-                    style={{display:"block",width:"100%",background:"linear-gradient(135deg,#F97316,#EA580C)",color:"white",fontWeight:800,fontSize:16,borderRadius:16,padding:"16px 0",textAlign:"center",textDecoration:"none",marginTop:6,boxSizing:"border-box"}}>
-                    🔗 Publier sur Leboncoin & CoteCars →
-                  </a>
+                  {publishedAnnonceId && (
+                    <button onClick={() => { onClose && onClose(publishedAnnonceId); }}
+                      style={{display:"block",width:"100%",background:"#1B3FDB",color:"white",fontWeight:800,fontSize:16,borderRadius:16,padding:"16px 0",textAlign:"center",border:"none",cursor:"pointer",marginTop:6,boxSizing:"border-box",fontFamily:"inherit"}}>
+                      Voir mon annonce CoteCars
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -3772,7 +3776,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
       if (showAnnonces) return <>{renderDesktopSidebar()}<AnnoncesPage onBack={() => { setShowAnnonces(false); setAnnonceInitialId(null); }} user={user} initialSelectedId={annonceInitialId} /></>;
       if (state === "loading") return <>{renderDesktopSidebar()}{showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}<Spinner /></>;
-      if (state === "results") return <>{renderDesktopSidebar()}{showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}{showCreateAnnonce && <CreateAnnonce result={result} plate={plate} user={user} onClose={() => setShowCreateAnnonce(false)} onPublished={() => {}} />}{showPrepareLbc && <PrepareAnnonceLbc result={result} plate={plate} user={user} km={km} onClose={() => setShowPrepareLbc(false)} />}<Results result={result} plate={plate} onReset={handleReset} user={user} onElargi={handleElargi} setShowLoginModal={setShowLoginModal} onCreateAnnonce={() => setShowCreateAnnonce(true)} onPrepareLbc={() => setShowPrepareLbc(true)} /></>;
+      if (state === "results") return <>{renderDesktopSidebar()}{showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}{showCreateAnnonce && <CreateAnnonce result={result} plate={plate} user={user} onClose={() => setShowCreateAnnonce(false)} onPublished={() => {}} />}{showPrepareLbc && <PrepareAnnonceLbc result={result} plate={plate} user={user} km={km} onClose={(id) => { setShowPrepareLbc(false); if(id){ setAnnonceInitialId(id); setShowAnnonces(true); setState("home"); } }} />}<Results result={result} plate={plate} onReset={handleReset} user={user} onElargi={handleElargi} setShowLoginModal={setShowLoginModal} onCreateAnnonce={() => setShowCreateAnnonce(true)} onPrepareLbc={() => setShowPrepareLbc(true)} /></>;
       if (state === "error") return (<>{renderDesktopSidebar()}<ErrorPage apiErr={apiErr} plaque={plate} onReset={handleReset} /></>);
 
       const BLUE = "#1a3fdb";
