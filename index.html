@@ -1792,10 +1792,279 @@
     }
 
 
+    // ─── FLOW CRÉATION ANNONCE ───────────────────────────────────
+    function CreateAnnonceFlow({ user, onClose }) {
+      const isMobile = useIsMobile();
+      const [flowStep, setFlowStep] = React.useState(1); // 1=saisie, 2=prix, 3=annonce
+      const [plate, setPlate] = React.useState("");
+      const [km, setKm] = React.useState("");
+      const [gearbox, setGearbox] = React.useState("");
+      const [loading, setLoading] = React.useState(false);
+      const [err, setErr] = React.useState("");
+      const [result, setResult] = React.useState(null);
+      const [chosenPrice, setChosenPrice] = React.useState(null);
+      const [showCount, setShowCount] = React.useState(4);
+      const [finitionsList, setFinitionsList] = React.useState([]);
+      const [finition, setFinition] = React.useState("");
+      const [vehicleInfo, setVehicleInfo] = React.useState(null);
+      const [loadingFin, setLoadingFin] = React.useState(false);
+
+      function handlePlateChange(val) {
+        setPlate(val);
+        setFinition(""); setFinitionsList([]); setVehicleInfo(null);
+        const clean = val.replace(/-/g,"");
+        if (clean.length >= 7) setTimeout(() => loadFins(val), 100);
+      }
+
+      async function loadFins(p) {
+        if (!p || p.replace(/-/g,"").length < 7) return;
+        setLoadingFin(true);
+        try {
+          const r = await fetch(`/api/rapid-api-requests?plaque=${p.replace(/-/g,"")}`);
+          if (!r.ok) return;
+          const d = await r.json();
+          const veh = d.data || d.données || {};
+          const marque = veh.AWN_marque || "";
+          const modele = (veh.AWN_nom_commercial || veh.AWN_modele || "").replace(/_/g," ");
+          setFinitionsList(getFinitions(marque, modele));
+          setVehicleInfo({ marque, modele });
+        } catch(e) {}
+        setLoadingFin(false);
+      }
+
+      async function handleAnalyze() {
+        const plateClean = plate.replace(/-/g,"");
+        if (plateClean.length < 7) { setErr("Plaque invalide (ex: AB-123-CD)"); return; }
+        if (!gearbox) { setErr("Sélectionnez le type de boîte de vitesse"); return; }
+        setErr(""); setLoading(true);
+        try {
+          const sivRes = await fetch(`/api/rapid-api-requests?plaque=${plateClean}`);
+          if (!sivRes.ok) throw new Error(`Plaque introuvable`);
+          const sivData = await sivRes.json();
+          const veh = sivData.data || sivData.données || {};
+          const marque = veh.AWN_marque || "";
+          const modele = (veh.AWN_nom_commercial || veh.AWN_modele || "").replace(/_/g," ");
+          const nom = [marque, veh.AWN_modele, veh.AWN_date_mise_en_circulation?.slice(6)].filter(Boolean).join(" ");
+          if (!marque) throw new Error("Véhicule non identifié");
+          const kmUser = km ? parseInt(km) : null;
+          const anneeUser = veh.AWN_date_mise_en_circulation ? parseInt(veh.AWN_date_mise_en_circulation.slice(-4)) : null;
+          const chUser = veh.AWN_puissance_CH || null;
+          const energieRaw = veh.AWN_energie || "";
+          const FUEL_CODES = {"ESSENCE":"1","GAZOLE":"2","GPL":"3","ELECTRIQUE":"4","HYBRIDE":"6","HYBRIDE ESSENCE ELECTRIQUE":"6","HYBRIDE RECHARGEABLE":"6","HYBRIDE DIESEL ELECTRIQUE":"6"};
+          const fuelCode = FUEL_CODES[energieRaw.toUpperCase()] || (energieRaw.includes("HYBRIDE")?"6":energieRaw.includes("ELECTR")?"4":"");
+          const lbcParams = new URLSearchParams({ marque, modele });
+          if (kmUser) lbcParams.set("km", kmUser);
+          if (anneeUser) lbcParams.set("annee", anneeUser);
+          if (chUser) lbcParams.set("ch", chUser);
+          if (fuelCode) lbcParams.set("fuel", fuelCode);
+          lbcParams.set("gearbox", gearbox);
+          if (finition) lbcParams.set("finition", finition);
+          const lbcRes = await fetch(`/api/leboncoin?${lbcParams.toString()}`);
+          if (!lbcRes.ok) throw new Error(`Erreur marché`);
+          const lbcData = await lbcRes.json();
+          const rawAds = lbcData.ads || [];
+          const ads = filterAds(rawAds, kmUser, anneeUser, chUser, marque, modele, finition);
+          const stats = computeStats(ads);
+          setResult({ veh, nom, ads, stats, finition, marque, modele, kmUser, anneeUser, chUser, fuelCode, gearbox });
+          setChosenPrice(stats?.p25 ? String(Math.round(stats.p25)) : "");
+          setFlowStep(2);
+        } catch(e) { setErr(e.message || "Erreur inattendue"); }
+        setLoading(false);
+      }
+
+      if (flowStep === 3 && result) {
+        const resultWithPrice = { ...result, stats: { ...result.stats, p25: parseFloat(chosenPrice) || result.stats?.p25 } };
+        return <CreateAnnonce result={resultWithPrice} plate={plate} user={user} onClose={onClose} onPublished={onClose} initialPrix={chosenPrice} />;
+      }
+
+      const { stats, ads, nom, veh } = result || {};
+      const allAds = result ? [...(ads||[])].filter(a=>a.price?.[0]>500).sort((a,b)=>a.price?.[0]-b.price[0]) : [];
+      const medianAds = allAds.map(a=>a.price?.[0]).sort((a,b)=>a-b)[Math.floor(allAds.length*0.5)] || 0;
+      const cleanAds = allAds.filter(a=>a.price?.[0]>=medianAds*0.6).slice(0, showCount);
+      const prices = result ? [
+        { label:"⚡️ Agressif", sub:"Vendre vite", val: stats?.pMin, color:"#f59e0b", bg:"#fffbeb", border:"#fde68a" },
+        { label:"🎯 Prix marché", sub:"Meilleur équilibre", val: stats?.p25, color:"#1B3FDB", bg:"#eff4ff", border:"#bfdbfe" },
+        { label:"💎 Prix haut", sub:"Prendre son temps", val: stats?.p50, color:"#7c3aed", bg:"#f5f3ff", border:"#ddd6fe" },
+      ] : [];
+
+      return (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:2000, display:"flex", alignItems: isMobile?"flex-end":"center", justifyContent:"center", padding: isMobile?0:"20px" }}
+          onClick={e => { if(e.target===e.currentTarget) onClose(); }}>
+          <div style={{ background:"white", borderRadius: isMobile?"24px 24px 0 0":"24px", width:"100%", maxWidth:520, maxHeight: isMobile?"92vh":"88vh", overflowY:"auto", padding:"28px 24px 40px", display:"flex", flexDirection:"column", gap:0 }}>
+
+            {/* Header */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+              <div>
+                <div style={{ fontWeight:900, fontSize:18, color:"#111", letterSpacing:"-0.3px" }}>
+                  {flowStep===1 ? "📋 Créer une annonce" : "💰 Choisissez votre prix"}
+                </div>
+                <div style={{ fontSize:12, color:"#9ca3af", marginTop:2 }}>
+                  Étape {flowStep} sur 3
+                </div>
+              </div>
+              <button onClick={onClose} style={{ width:32, height:32, borderRadius:"50%", background:"#f3f4f6", border:"none", cursor:"pointer", fontSize:16, color:"#6b7280", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+            </div>
+
+            {/* Étape 1 — Saisie */}
+            {flowStep===1 && (
+              <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+
+                <div style={{ background:"#eff4ff", border:"1px solid #bfdbfe", borderRadius:14, padding:"14px 16px" }}>
+                  <div style={{ fontWeight:800, fontSize:13, color:"#1e3a8a", marginBottom:4 }}>Comment ça marche ?</div>
+                  <div style={{ fontSize:13, color:"#1e40af", lineHeight:1.6 }}>
+                    On analyse les vraies annonces Leboncoin pour votre véhicule et on vous propose <strong>3 prix de vente</strong> basés sur le marché actuel. Vous choisissez votre prix, puis on crée votre annonce.
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>
+                    🔢 Plaque d'immatriculation
+                  </label>
+                  <div style={{ fontSize:12, color:"#6b7280", marginBottom:8 }}>Entrez la plaque de votre véhicule — on récupère automatiquement toutes les infos (marque, modèle, année, motorisation).</div>
+                  <div style={{ display:"flex", alignItems:"center", background:"#111827", borderRadius:12, padding:"4px 4px 4px 16px", gap:8 }}>
+                    <span style={{ color:"#60a5fa", fontWeight:900, fontSize:13, letterSpacing:"0.1em" }}>F</span>
+                    <input value={plate} onChange={e=>handlePlateChange(e.target.value.toUpperCase())} placeholder="AB-123-CD" maxLength={9}
+                      style={{ flex:1, background:"white", border:"none", borderRadius:8, padding:"12px 14px", fontSize:17, fontWeight:800, letterSpacing:"0.15em", textAlign:"center", outline:"none", color:"#111" }} />
+                  </div>
+                  {vehicleInfo && (
+                    <div style={{ marginTop:8, fontSize:12, color:"#059669", fontWeight:700 }}>✅ {vehicleInfo.marque} {vehicleInfo.modele} identifié</div>
+                  )}
+                </div>
+
+                {finitionsList.length > 0 && (
+                  <div>
+                    <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>Finition (optionnel)</label>
+                    <div style={{ fontSize:12, color:"#6b7280", marginBottom:8 }}>Préciser la finition améliore la précision des prix.</div>
+                    <select value={finition} onChange={e=>setFinition(e.target.value)}
+                      style={{ width:"100%", padding:"12px 14px", border:"2px solid #e5e7eb", borderRadius:12, fontSize:14, background:"white", outline:"none" }}>
+                      <option value="">Toutes finitions</option>
+                      {finitionsList.map(f=><option key={f} value={f}>{f}</option>)}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>
+                    🔢 Kilométrage
+                  </label>
+                  <div style={{ fontSize:12, color:"#6b7280", marginBottom:8 }}>Le kilométrage influence directement le prix de marché. Entrez le kilométrage actuel affiché sur le compteur.</div>
+                  <div style={{ display:"flex", alignItems:"center", border:"2px solid #e5e7eb", borderRadius:12, overflow:"hidden" }}>
+                    <input type="number" value={km} onChange={e=>setKm(e.target.value)} placeholder="Ex: 85 000"
+                      style={{ flex:1, padding:"13px 16px", border:"none", fontSize:15, fontWeight:600, outline:"none", color:"#111" }} />
+                    <span style={{ padding:"0 16px", fontSize:13, fontWeight:700, color:"#9ca3af", background:"#f9fafb", height:"100%", display:"flex", alignItems:"center", borderLeft:"2px solid #e5e7eb" }}>km</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display:"block", fontSize:11, fontWeight:800, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:8 }}>
+                    ⚙️ Boîte de vitesse
+                  </label>
+                  <div style={{ fontSize:12, color:"#6b7280", marginBottom:10 }}>Précisez si votre voiture est manuelle ou automatique pour des comparaisons précises.</div>
+                  <div style={{ display:"flex", gap:10 }}>
+                    {[{val:"Manuelle",icon:"🕹️"},{val:"Automatique",icon:"🤖"}].map(g=>(
+                      <button key={g.val} onClick={()=>setGearbox(g.val)}
+                        style={{ flex:1, padding:"13px", borderRadius:12, border:`2px solid ${gearbox===g.val?"#1B3FDB":"#e5e7eb"}`, background:gearbox===g.val?"#eff4ff":"white", fontWeight:700, fontSize:14, color:gearbox===g.val?"#1B3FDB":"#374151", cursor:"pointer" }}>
+                        {g.icon} {g.val}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {err && <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:10, padding:"10px 14px", fontSize:13, color:"#dc2626", fontWeight:600 }}>⚠️ {err}</div>}
+
+                <button onClick={handleAnalyze} disabled={loading}
+                  style={{ background: loading?"#93c5fd":"#1B3FDB", color:"white", border:"none", borderRadius:14, padding:"16px", fontSize:15, fontWeight:800, cursor:loading?"not-allowed":"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+                  {loading ? (<><div className="spinner" style={{ width:18, height:18, border:"2px solid rgba(255,255,255,0.3)", borderTopColor:"white", borderRadius:"50%" }} />Analyse en cours...</>) : "Analyser le marché →"}
+                </button>
+              </div>
+            )}
+
+            {/* Étape 2 — Choix du prix */}
+            {flowStep===2 && result && (
+              <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+
+                <div style={{ background:"#f9fafb", borderRadius:14, padding:"12px 16px", display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ width:40, height:40, borderRadius:10, background:"#eff4ff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>🚗</div>
+                  <div>
+                    <div style={{ fontWeight:800, fontSize:14, color:"#111" }}>{nom}</div>
+                    <div style={{ fontSize:12, color:"#6b7280" }}>{veh?.AWN_energie} · {veh?.AWN_puissance_CH} ch · {km ? parseInt(km).toLocaleString("fr-FR")+" km" : "km non renseigné"}</div>
+                  </div>
+                </div>
+
+                {/* Message psychologique */}
+                <div style={{ background:"linear-gradient(135deg, #1B3FDB 0%, #3b5bf0 100%)", borderRadius:16, padding:"18px 20px", color:"white" }}>
+                  <div style={{ fontWeight:900, fontSize:15, marginBottom:6 }}>📍 Positionnez-vous stratégiquement</div>
+                  <div style={{ fontSize:13, lineHeight:1.7, opacity:0.92 }}>
+                    Chaque prix correspond à une position dans le marché. <strong>En dessous d'une annonce = vous vendez avant elle.</strong> Choisissez où vous voulez apparaître parmi les {stats?.count || 0} annonces similaires en ce moment.
+                  </div>
+                </div>
+
+                {/* 3 prix */}
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  {prices.map((p,i) => (
+                    <button key={i} onClick={()=>setChosenPrice(String(Math.round(p.val)))}
+                      style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 18px", borderRadius:14, border:`2px solid ${String(Math.round(p.val))===chosenPrice ? p.border : "#e5e7eb"}`, background:String(Math.round(p.val))===chosenPrice ? p.bg : "white", cursor:"pointer", transition:"all .15s" }}>
+                      <div style={{ textAlign:"left" }}>
+                        <div style={{ fontWeight:800, fontSize:14, color: String(Math.round(p.val))===chosenPrice ? p.color : "#111" }}>{p.label}</div>
+                        <div style={{ fontSize:12, color:"#6b7280", marginTop:2 }}>{p.sub}</div>
+                      </div>
+                      <div style={{ fontWeight:900, fontSize:20, color: String(Math.round(p.val))===chosenPrice ? p.color : "#111" }}>
+                        {Math.round(p.val).toLocaleString("fr-FR")} €
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Annonces exemples */}
+                {cleanAds.length > 0 && (
+                  <div>
+                    <div style={{ fontSize:12, fontWeight:700, color:"#9ca3af", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Annonces actuelles sur Leboncoin</div>
+                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                      {cleanAds.map((ad,i) => {
+                        const adKm = (ad.attributes||[]).find(x=>x.key==="mileage")?.value_label || "";
+                        const adYear = (ad.attributes||[]).find(x=>x.key==="regdate")?.value_label || "";
+                        const adPrice = ad.price?.[0];
+                        const isBelow = chosenPrice && adPrice > parseFloat(chosenPrice);
+                        return (
+                          <a key={i} href={ad.url} target="_blank" rel="noopener noreferrer"
+                            style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 14px", borderRadius:12, border:"1px solid #e5e7eb", background: isBelow?"#f0fdf4":"white", textDecoration:"none", gap:10 }}>
+                            <div style={{ flex:1, minWidth:0 }}>
+                              <div style={{ fontSize:13, fontWeight:700, color:"#111", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ad.subject}</div>
+                              <div style={{ fontSize:11, color:"#9ca3af", marginTop:2 }}>{adYear}{adYear&&adKm?" · ":""}{adKm ? parseInt(adKm).toLocaleString("fr-FR")+" km" : ""}</div>
+                            </div>
+                            <div style={{ textAlign:"right", flexShrink:0 }}>
+                              <div style={{ fontWeight:800, fontSize:14, color: isBelow?"#059669":"#111" }}>{adPrice?.toLocaleString("fr-FR")} €</div>
+                              {isBelow && <div style={{ fontSize:10, color:"#059669", fontWeight:700 }}>Vous passez devant</div>}
+                            </div>
+                          </a>
+                        );
+                      })}
+                    </div>
+                    {allAds.filter(a=>a.price?.[0]>=medianAds*0.6).length > showCount && (
+                      <button onClick={()=>setShowCount(c=>c+4)} style={{ width:"100%", marginTop:8, padding:"10px", borderRadius:10, border:"1px solid #e5e7eb", background:"white", fontSize:13, color:"#6b7280", cursor:"pointer", fontWeight:600 }}>
+                        Voir plus d'annonces
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                <button onClick={()=>setFlowStep(3)} disabled={!chosenPrice}
+                  style={{ background:chosenPrice?"#1B3FDB":"#e5e7eb", color:chosenPrice?"white":"#9ca3af", border:"none", borderRadius:14, padding:"16px", fontSize:15, fontWeight:800, cursor:chosenPrice?"pointer":"not-allowed" }}>
+                  Créer mon annonce à {chosenPrice ? parseInt(chosenPrice).toLocaleString("fr-FR")+"€" : "—"} →
+                </button>
+
+                <button onClick={()=>setFlowStep(1)} style={{ background:"none", border:"none", fontSize:13, color:"#9ca3af", cursor:"pointer", fontWeight:600 }}>← Modifier le véhicule</button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     // ─── CRÉER UNE ANNONCE ───────────────────────────────────────
-    function CreateAnnonce({ result, plate, user, onClose, onPublished }) {
+    function CreateAnnonce({ result, plate, user, onClose, onPublished, initialPrix }) {
       const [step, setStep] = React.useState(1);
-      const [prix, setPrix] = React.useState(result.stats?.p25 ? String(Math.round(result.stats.p25)) : "");
+      const [prix, setPrix] = React.useState(initialPrix || (result.stats?.p25 ? String(Math.round(result.stats.p25)) : ""));
       const [localisation, setLocalisation] = React.useState("");
       const [ville, setVille] = React.useState("");
       const [defauts, setDefauts] = React.useState("");
@@ -3144,6 +3413,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       const [showAnnonces, setShowAnnonces] = React.useState(false);
       const [showPartenaireModal, setShowPartenaireModal] = React.useState(false);
       const [showCreateAnnonce, setShowCreateAnnonce] = React.useState(false);
+      const [showCreateAnnonceFlow, setShowCreateAnnonceFlow] = React.useState(false);
       const [showPrepareLbc, setShowPrepareLbc] = React.useState(false);
       const [showMobileMenu, setShowMobileMenu] = React.useState(false);
       const [gearbox, setGearbox] = useState("");
@@ -3437,6 +3707,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             .errorpage-root{margin-left:220px;}body{overflow-x:auto;}}
           `}</style>
           {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
+          {showCreateAnnonceFlow && <CreateAnnonceFlow user={user} onClose={() => setShowCreateAnnonceFlow(false)} />}
           {showPuissanceConfirm && pendingResult && (
             <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
               <div style={{background:"white",borderRadius:20,padding:"28px 24px",width:"100%",maxWidth:360,boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
@@ -3548,7 +3819,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 16px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:20 }}>
               <span style={{ fontWeight:800, fontSize:24, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <button onClick={() => setShowCreateAnnonce(true)} style={{ fontSize:12, fontWeight:700, color:"white", background:"#1B3FDB", padding:"7px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>+ Créer</button>
+                <button onClick={() => setShowCreateAnnonceFlow(true)} style={{ fontSize:12, fontWeight:700, color:"white", background:"#1B3FDB", padding:"7px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>+ Créer</button>
                 <button onClick={() => setShowMobileMenu(m => !m)}
                   style={{ display:"flex", flexDirection:"column", justifyContent:"center", gap:5, width:36, height:36, background:"var(--bg)", border:"1px solid var(--border)", borderRadius:8, cursor:"pointer", padding:"0 8px" }}>
                   <div style={{ height:2, background:"var(--text)", borderRadius:2 }} />
@@ -3879,7 +4150,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <header style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 28px", height:58, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10, flexShrink:0 }}>
                 <span style={{ fontSize:18, fontWeight:800, color:"var(--text)", letterSpacing:"-0.3px" }}>Cote<span style={{color:"#1B3FDB"}}>Cars</span></span>
                 <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                  <button onClick={() => setShowCreateAnnonce(true)} style={{ fontSize:13, fontWeight:700, color:"white", background:"#1B3FDB", padding:"8px 18px", borderRadius:10, border:"none", cursor:"pointer", fontFamily:"inherit" }}>+ Créer une annonce</button>
+                  <button onClick={() => setShowCreateAnnonceFlow(true)} style={{ fontSize:13, fontWeight:700, color:"white", background:"#1B3FDB", padding:"8px 18px", borderRadius:10, border:"none", cursor:"pointer", fontFamily:"inherit" }}>+ Créer une annonce</button>
                 </div>
               </header>
 
