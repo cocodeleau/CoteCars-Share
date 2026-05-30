@@ -293,7 +293,7 @@
               </>}
               {mode !== "login" && (
                 <button onClick={() => { setMode("login"); setError(""); }} style={{ background:"none", border:"none", color:EMERALD, fontSize:13, cursor:"pointer", fontWeight:600 }}>← Retour à la connexion</button>
-              )}
+              
             </div>
           </div>
         </div>
@@ -1268,7 +1268,7 @@
           </div>
 
           {/* ── DESKTOP ── */}
-          <div className="desktop-spinner" style={{ marginLeft:220, background:"var(--bg)", height:"100vh", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div className="desktop-spinner" style={{ marginLeft:220, background:"var(--bg)", height:"100vh", alignItems:"center", justifyContent:"center" }}>
               <div style={{ background:"var(--bg)", display:"flex", alignItems:"center", justifyContent:"center", width:"100%" }}>
                 <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:20, animation:"fadeInUp 0.4s ease" }}>
                   <div style={{ position:"relative", width:80, height:80, display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -1745,13 +1745,13 @@
                   <p style={{ margin:0, fontSize:10, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>📊 Analyse du marché</p>
                   <span style={{ fontSize:12, color:EMERALD, fontWeight:700 }}>{stats.count} annonces</span>
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:12 }}>
+                <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap: isMobile ? 12 : 0 }}>
                   {[
                     { icon:"⚡️", label:"AGRESSIF", sub:"Vente rapide", val:stats.pMin, color:"#F59E0B", border:"1px solid #fde68a" },
                     { icon:"🎯", label:"MARCHÉ", sub:"Max de contacts", val:stats.p25, color:EMERALD, border:"1px solid "+EMERALD, recommended:true },
                     { icon:"💎", label:"HAUT", sub:"Marge de négo", val:stats.p50, color:"#6366F1", border:"1px solid #c7d2fe" },
                   ].map((c, i) => (
-                    <div key={i} style={{ padding: isMobile ? "12px 12px" : "20px 22px", background:"var(--card)", borderRight: i < 2 ? `0.5px solid var(--border)` : "none", position:"relative", borderTop: c.recommended ? `2px solid ${EMERALD}` : "none" }}>
+                    <div key={i} style={{ padding: isMobile ? "14px 16px" : "20px 22px", background:"var(--card)", border: isMobile ? "0.5px solid var(--border)" : "none", borderRadius: isMobile ? 14 : 0, borderRight: !isMobile && i < 2 ? `0.5px solid var(--border)` : "none", borderTop: c.recommended ? `2px solid ${EMERALD}` : "none", position:"relative" }}>
                       {c.recommended && <div style={{ position:"absolute", top:-9, left:"50%", transform:"translateX(-50%)", background:EMERALD, color:"white", fontSize:8, padding:"2px 10px", borderRadius:999, whiteSpace:"nowrap", fontWeight:700 }}>Recommandé</div>}
                       <p style={{ margin:0, fontSize:9, fontWeight:700, color:c.color, textTransform:"uppercase", letterSpacing:"0.08em" }}>{c.icon} {c.label}</p>
                       <p style={{ margin: isMobile ? "4px 0 2px" : "8px 0 3px", fontSize: isMobile ? 18 : 26, fontWeight:700, color:"var(--text)", filter: isConnected ? "none" : "blur(6px)", userSelect: isConnected ? "auto" : "none", letterSpacing:"-0.5px" }}>{fmt(c.val)}</p>
@@ -2628,8 +2628,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           </div>
 
           {/* Filters panel */}
-          {showFilters && (
-            <div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding: isMobile ? "12px 16px" : "14px 32px" }}>
+          {<div style={{ background:"var(--card)", borderBottom:"0.5px solid var(--border)", padding: isMobile ? "12px 16px" : "14px 32px" }}>
               <div style={{ display:"grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(6,1fr)", gap:10, maxWidth:1200, margin:"0 auto" }}>
                 <div>
                   <div style={{ fontSize:9, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:4 }}>Marque</div>
@@ -2809,10 +2808,21 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           </div>
 
           {/* ── Lightbox ── */}
-          {photoPlein && (
-            <div onClick={()=>setPhotoPlein(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.95)", zIndex:3000, display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <img src={photoPlein} alt="" style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain" }} />
+          {photoPlein !== null && (
+            <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.95)", zIndex:3000, display:"flex", alignItems:"center", justifyContent:"center" }}
+              onTouchStart={e => { window._touchX = e.touches[0].clientX; }}
+              onTouchEnd={e => {
+                const dx = e.changedTouches[0].clientX - window._touchX;
+                if(dx < -50 && photoPlein < photos.length-1) setPhotoPlein(photoPlein+1);
+                if(dx > 50 && photoPlein > 0) setPhotoPlein(photoPlein-1);
+              }}>
+              <img src={photos[photoPlein]} alt="" style={{ maxWidth:"100%", maxHeight:"85vh", objectFit:"contain" }} />
               <button onClick={()=>setPhotoPlein(null)} style={{ position:"absolute", top:20, right:20, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:40, height:40, fontSize:20, color:"white", cursor:"pointer" }}>✕</button>
+              {photoPlein > 0 && <button onClick={e=>{e.stopPropagation();setPhotoPlein(photoPlein-1)}} style={{ position:"absolute", left:16, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:44, height:44, fontSize:22, color:"white", cursor:"pointer" }}>‹</button>}
+              {photoPlein < photos.length-1 && <button onClick={e=>{e.stopPropagation();setPhotoPlein(photoPlein+1)}} style={{ position:"absolute", right:16, background:"rgba(255,255,255,0.2)", border:"none", borderRadius:"50%", width:44, height:44, fontSize:22, color:"white", cursor:"pointer" }}>›</button>}
+              <div style={{ position:"absolute", bottom:20, left:"50%", transform:"translateX(-50%)", display:"flex", gap:6 }}>
+                {photos.map((_,i)=><div key={i} style={{ width:i===photoPlein?20:6, height:6, borderRadius:3, background:i===photoPlein?"white":"rgba(255,255,255,0.4)", transition:"width .2s" }}/>)}
+              </div>
             </div>
           )}
 
@@ -2821,7 +2831,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             {photos.length > 0 && (
               <div style={{ overflowX:"auto", display:"flex", gap:8, padding:"12px 16px" }}>
                 {photos.map((p,i) => (
-                  <img key={i} src={p} alt="" onClick={()=>setPhotoPlein(p)}
+                  <img key={i} src={p} alt="" onClick={()=>setPhotoPlein(i)}
                     style={{ height:220, width:"auto", borderRadius:12, flexShrink:0, cursor:"pointer" }} />
                 ))}
               </div>
@@ -2832,7 +2842,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <h1 style={{ fontWeight:800, fontSize:20, color:"var(--text)", margin:"0 0 4px" }}>{a.nom}{a.finition ? ` · ${a.finition}` : ""}</h1>
                   <p style={{ margin:0, fontSize:13, color:"var(--text2)" }}>{a.annee} · {a.energie} · {a.ch} ch{a.km ? ` · ${a.km?.toLocaleString("fr-FR")} km` : ""} · {a.gearbox==="1"?"Manuelle":"Automatique"}</p>
                 </div>
-                <span style={{ fontWeight:800, fontSize:26, color:EMERALD }}>{a.prix?.toLocaleString("fr-FR")} €</span>
+                <span style={{ fontWeight:800, fontSize:26, color:EMERALD, whiteSpace:"nowrap" }}>{a.prix?.toLocaleString("fr-FR")} €</span>
               </div>
               <p style={{ fontSize:13, color:"var(--text2)", margin:"0 0 16px" }}>📍 {a.localisation}</p>
               {a.stats && (
@@ -3594,53 +3604,87 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
             {/* ── MENU HAMBURGER ── */}
             {showMobileMenu && (
-              <div style={{ position:"fixed", inset:0, zIndex:100 }} onClick={() => setShowMobileMenu(false)}>
-                <div style={{ position:"absolute", top:56, left:0, right:0, background:"var(--card)", borderBottom:"1px solid var(--border)", boxShadow:"0 8px 24px rgba(0,0,0,0.12)", padding:"8px 0" }}
+              <div style={{ position:"fixed", inset:0, zIndex:100, background:"rgba(0,0,0,0.4)" }} onClick={() => setShowMobileMenu(false)}>
+                <div style={{ position:"absolute", top:0, left:0, bottom:0, width:280, background:"var(--card)", boxShadow:"4px 0 32px rgba(0,0,0,0.18)", display:"flex", flexDirection:"column" }}
                   onClick={e => e.stopPropagation()}>
-                  <button onClick={() => { setShowAnnonces(true); setShowMobileMenu(false); }}
-                    style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", background:"none", border:"none", cursor:"pointer", textAlign:"left", borderBottom:"0.5px solid var(--border)" }}>
-                    <span style={{ fontSize:20 }}>🏷️</span>
-                    <div>
-                      <p style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--text)" }}>Nos annonces</p>
-                      <p style={{ margin:0, fontSize:11, color:"var(--text3)" }}>Voir les voitures disponibles</p>
+                  {/* Logo */}
+                  <div style={{ padding:"20px 16px 16px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
+                    <div style={{ width:32, height:32, borderRadius:9, background:"#1B3FDB", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                      <svg width="16" height="16" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg>
                     </div>
-                  </button>
-                  <a href="/partner.html" style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", textDecoration:"none", borderBottom:"0.5px solid var(--border)" }}>
-                    <div style={{ width:32, height:32, borderRadius:"50%", flexShrink:0, backgroundImage:'url("https://cotecars-test.vercel.app/vignette-AE.png")', backgroundSize:"150%", backgroundPosition:"center" }} />
-                    <div><p style={{ margin:0, fontSize:14, fontWeight:700, color:"#8dc63f" }}>AutoEasy</p></div>
-                  </a>
-                  <a href="/partner-esdfx.html" style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", textDecoration:"none", borderBottom:"0.5px solid var(--border)" }}>
-                    <div style={{ width:32, height:32, borderRadius:"50%", flexShrink:0, backgroundImage:'url("https://cotecars-test.vercel.app/favicon.png")', backgroundSize:"cover", backgroundPosition:"center" }} />
-                    <div><p style={{ margin:0, fontSize:14, fontWeight:700, color:"#60a5fa" }}>CoteCars</p></div>
-                  </a>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:16, fontWeight:800, color:"var(--text)", lineHeight:1.1 }}>Cote<span style={{color:"#1B3FDB"}}>Cars</span></div>
+                      <div style={{ fontSize:10, color:"var(--text3)" }}>Estimation auto</div>
+                    </div>
+                    <button onClick={() => setShowMobileMenu(false)} style={{ background:"none", border:"none", fontSize:18, color:"var(--text3)", cursor:"pointer", padding:4 }}>✕</button>
+                  </div>
+                  {/* Nav */}
+                  <nav style={{ flex:1, padding:"8px", overflowY:"auto" }}>
+                    <div style={{ fontSize:9, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:".1em", padding:"8px 10px 4px" }}>Menu</div>
+                    <button onClick={() => setShowMobileMenu(false)}
+                      style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"11px 12px", borderRadius:12, border:"none", background:"#EFF3FF", cursor:"pointer", textAlign:"left", marginBottom:2, fontFamily:"inherit" }}>
+                      <svg width="15" height="15" fill="none" stroke="#1B3FDB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                      <span style={{ fontSize:13, fontWeight:600, color:"#1B3FDB" }}>Accueil</span>
+                    </button>
+                    <button onClick={() => { setShowAnnonces(true); setShowMobileMenu(false); }}
+                      style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"11px 12px", borderRadius:12, border:"none", background:"none", cursor:"pointer", textAlign:"left", marginBottom:2, fontFamily:"inherit" }}>
+                      <svg width="15" height="15" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M7 17m-2 0a2 2 0 1 0 4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg>
+                      <span style={{ fontSize:13, fontWeight:500, color:"var(--text2)" }}>Nos annonces</span>
+                    </button>
+                    <button onClick={() => { setShowPartenaireModal(true); setShowMobileMenu(false); }}
+                      style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"11px 12px", borderRadius:12, border:"none", background:"none", cursor:"pointer", textAlign:"left", fontFamily:"inherit" }}>
+                      <svg width="15" height="15" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                      <span style={{ fontSize:13, fontWeight:500, color:"#f59e0b" }}>Espace Partenaire</span>
+                    </button>
+                  </nav>
                   {isAdmin && (
-                    <a href="/admin.html" style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", textDecoration:"none", borderBottom:"0.5px solid var(--border)" }}>
-                      <div style={{ width:32, height:32, borderRadius:"50%", background:"#fff0f0", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                        <svg width="16" height="16" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <a href="/admin.html" style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 12px", borderRadius:12, textDecoration:"none", marginTop:2 }}>
+                      <div style={{ width:28, height:28, borderRadius:8, background:"#fff0f0", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <svg width="14" height="14" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                       </div>
-                      <div><p style={{ margin:0, fontSize:14, fontWeight:700, color:"#ef4444" }}>Espace Admin</p></div>
+                      <span style={{ fontSize:13, fontWeight:500, color:"#ef4444" }}>Espace Admin</span>
                     </a>
                   )}
+                  {/* Footer user */}
+                  <div style={{ borderTop:"1px solid var(--border)", padding:"12px 8px", flexShrink:0 }}>
                   {user ? (
-                    <button onClick={() => { auth.signOut(); setShowMobileMenu(false); }}
-                      style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", background:"none", border:"none", cursor:"pointer", textAlign:"left" }}>
-                      <div style={{ width:36, height:36, borderRadius:"50%", overflow:"hidden", flexShrink:0 }}>
-                        {user.photoURL ? <img src={user.photoURL} width={36} height={36} alt="" style={{ borderRadius:"50%" }} /> : <div style={{ width:36, height:36, borderRadius:"50%", background:"#1a3fdb", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:700, fontSize:14 }}>{user.email?.[0]?.toUpperCase()}</div>}
+                    <div style={{ display:"flex", alignItems:"center", gap:9, padding:"9px 12px", borderRadius:12 }}>
+                      {user.photoURL ? <img src={user.photoURL} width={28} height={28} style={{ borderRadius:"50%", flexShrink:0 }} alt="" /> : <div style={{ width:28, height:28, borderRadius:"50%", background:"#1B3FDB", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:700, fontSize:12, flexShrink:0 }}>{user.email?.[0]?.toUpperCase()}</div>}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:12, fontWeight:600, color:"var(--text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.displayName || user.email?.split("@")[0]}</div>
+                        <button onClick={() => { auth.signOut(); setShowMobileMenu(false); }} style={{ fontSize:10, color:"#ef4444", background:"none", border:"none", cursor:"pointer", padding:0, fontFamily:"inherit" }}>Se déconnecter</button>
                       </div>
-                      <div>
-                        <p style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--text)" }}>{user.displayName || user.email}</p>
-                        <p style={{ margin:0, fontSize:11, color:"#ef4444" }}>Se déconnecter</p>
-                      </div>
-                    </button>
+                    </div>
                   ) : (
                     <button onClick={() => { setShowLoginModal(true); setShowMobileMenu(false); }}
-                      style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", background:"none", border:"none", cursor:"pointer", textAlign:"left" }}>
+                      style={{ width:"100%", display:"flex", alignItems:"center", gap:12, padding:"11px 12px", background:"#1B3FDB", color:"white", border:"none", borderRadius:12, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
                       <span style={{ fontSize:20 }}>👤</span>
-                      <div>
-                        <p style={{ margin:0, fontSize:14, fontWeight:700, color:"#1a3fdb" }}>Se connecter</p>
-                        <p style={{ margin:0, fontSize:11, color:"var(--text3)" }}>Accéder à votre historique</p>
+                      <div style={{ textAlign:"left" }}>
+                        <p style={{ margin:0, fontSize:13, fontWeight:700, color:"white" }}>Se connecter</p>
+                        <p style={{ margin:0, fontSize:10, color:"rgba(255,255,255,0.75)" }}>Accéder à votre historique</p>
                       </div>
                     </button>
+                  )}
+                  </div>{/* fin footer user */}
+                  {/* Modal partenaire in menu */}
+                  {showPartenaireModal && (
+                    <div onClick={() => setShowPartenaireModal(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+                      <div onClick={e => e.stopPropagation()} style={{ background:"var(--card)", borderRadius:20, padding:"28px 24px", width:"100%", maxWidth:400 }}>
+                        <div style={{ fontWeight:800, fontSize:17, color:"var(--text)", marginBottom:16 }}>⚡ Espace Partenaires</div>
+                        <p style={{ fontSize:13, color:"var(--text2)", marginBottom:18 }}>Accès professionnel à nos outils.</p>
+                        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                          <a href="/partner.html" style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderRadius:14, border:"1.5px solid var(--border)", textDecoration:"none" }}>
+                            <div style={{ width:36, height:36, borderRadius:9, background:"#1a1a2e", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:900, color:"#8dc63f" }}>AE</div>
+                            <div><div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>AutoEasy Studio</div><div style={{ fontSize:11, color:"var(--text2)" }}>Traitement photo pro, fond studio IA</div></div>
+                          </a>
+                          <a href="/partner-esdfx.html" style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderRadius:14, border:"1.5px solid var(--border)", textDecoration:"none" }}>
+                            <div style={{ width:36, height:36, borderRadius:9, background:"#1B3FDB", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="17" height="17" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M7 17m-2 0a2 2 0 1 0 4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg></div>
+                            <div><div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>CoteCars Pro</div><div style={{ fontSize:11, color:"var(--text2)" }}>Espace dédié aux professionnels</div></div>
+                          </a>
+                        </div>
+                        <button onClick={() => setShowPartenaireModal(false)} style={{ marginTop:16, width:"100%", padding:"11px 0", background:"var(--bg)", border:"none", borderRadius:12, fontSize:13, color:"var(--text2)", cursor:"pointer", fontFamily:"inherit" }}>Fermer</button>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
@@ -3877,7 +3921,15 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
               {/* Header sticky */}
               <header style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 28px", height:58, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10, flexShrink:0 }}>
-                <div style={{ fontSize:15, fontWeight:700, color:"var(--text)" }}>Cote<span style={{color:"#1B3FDB"}}>Cars</span></div>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <div style={{ width:28, height:28, borderRadius:8, background:"#1B3FDB", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    <svg width="14" height="14" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15m-6 0v-5"/></svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:14, fontWeight:800, color:"var(--text)", lineHeight:1.1 }}>Cote<span style={{color:"#1B3FDB"}}>Cars</span></div>
+                    <div style={{ fontSize:9, color:"var(--text3)", fontWeight:500 }}>Estimation auto</div>
+                  </div>
+                </div>
                 <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                   <DarkToggle />
                 </div>
