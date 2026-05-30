@@ -2103,34 +2103,28 @@
         });
       }
 
-      async function generateLbcText() {
-        setStep(3);
-        setLbcText("✨ Génération de la description par IA...");
+      async function generateIAText() {
+        const boite = result.veh?.AWN_boite || result.gearbox || "";
+        const prompt = `Génère une annonce de vente automobile professionnelle et structurée pour le véhicule suivant :\nModèle : ${nom}${finition ? " "+finition : ""}\nVersion : ${veh.AWN_version || "non renseignée"}\nAnnée : ${annee}\nÉnergie : ${energie}\nBoîte : ${boite}\nKilométrage : ${km ? Number(km).toLocaleString("fr-FR")+" km" : "non renseigné"}\nPuissance : ${ch} ch\nCylindres : ${veh.AWN_cylindres || "non renseigné"}\nNombre de portes : ${veh.AWN_nb_portes || "non renseigné"}\nNombre de places : ${veh.AWN_passagers || "non renseigné"}\nPrix : ${prix ? Number(prix).toLocaleString("fr-FR")+" €" : "non renseigné"}\nLocalisation : ${localisation}${ville ? " "+ville : ""}\nÉquipements : ${options || "non renseignés"}\nÉtat / Défauts et qualités : ${defauts || "non renseigné"}\n\nRÈGLES STRICTES DE RÉDACTION :\n1. Style "Expert Automobile" : professionnel, factuel et rassurant.\n2. Structure avec SAUTS DE LIGNE :\n   - Une accroche directe avec le modèle et le prix.\n   - Un paragraphe "Caractéristiques principales" sous forme de liste avec des tirets (-) incluant TOUTES les données techniques ci-dessus.\n   - Un paragraphe sur l'état du véhicule et l'entretien.\n   - Un appel à l'action court à la fin.\n3. Ne pas faire de phrases trop longues ou de storytelling inutile.\n4. Maximum 3 emojis.\n5. Langue : Français.\nIMPORTANT : Utilise des doubles retours à la ligne pour séparer chaque section.\n\nRéponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après :\n{"description":"..."}`;
         try {
-          const boite = result.veh?.AWN_boite || result.gearbox || "";
-          const prompt = `Génère une annonce de vente automobile professionnelle et structurée pour le véhicule suivant :\nModèle : ${nom}${finition ? " "+finition : ""}\nAnnée : ${annee}\nÉnergie : ${energie}\nBoîte : ${boite}\nKilométrage : ${km ? Number(km).toLocaleString("fr-FR")+" km" : "non renseigné"}\nPuissance : ${ch} ch\nPrix : ${prix ? Number(prix).toLocaleString("fr-FR")+" €" : "non renseigné"}\nLocalisation : ${localisation}${ville ? " "+ville : ""}\nÉquipements : ${options || "non renseignés"}\nÉtat / Défauts et qualités : ${defauts || "non renseigné"}\n\nRÈGLES STRICTES DE RÉDACTION :\n1. Style "Expert Automobile" : professionnel, factuel et rassurant.\n2. Structure avec SAUTS DE LIGNE :\n   - Une accroche directe avec le modèle et le prix.\n   - Un paragraphe "Caractéristiques principales" sous forme de liste avec des tirets (-).\n   - Un paragraphe sur l'état du véhicule et l'entretien.\n   - Un appel à l'action court à la fin.\n3. Ne pas faire de phrases trop longues ou de storytelling inutile.\n4. Maximum 3 emojis.\n5. Langue : Français.\nIMPORTANT : Utilise des doubles retours à la ligne pour séparer chaque section.\n\nRéponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après :\n{"description":"..."}`;
-
-          const res = await fetch(`/api/gemini`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt })
-          });
+          const res = await fetch(`/api/gemini`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ prompt }) });
           const data = await res.json();
           const raw = (data.text || "").trim();
-          const start = raw.indexOf("{");
-          const end = raw.lastIndexOf("}");
+          const start = raw.indexOf("{"); const end = raw.lastIndexOf("}");
           let text = raw;
-          if (start !== -1 && end !== -1) {
-            try { text = JSON.parse(raw.slice(start, end+1)).description || raw; } catch(e) {}
-          }
-          if (!text) throw new Error("Réponse vide");
-          const finalText = `${text}\n\n📞 Contact : ${tel}\n💡 Prix estimé via CoteCars.fr — basé sur le marché Leboncoin en temps réel.`;
+          if (start !== -1 && end !== -1) { try { text = JSON.parse(raw.slice(start, end+1)).description || raw; } catch(e) {} }
+          return text || null;
+        } catch(e) { return null; }
+      }
+
+      async function generateLbcText(iaText) {
+        setStep(3);
+        if (iaText) {
+          const finalText = `${iaText}\n\n📞 Contact : ${tel}\n💡 Prix estimé via CoteCars.fr — basé sur le marché Leboncoin en temps réel.`;
           setLbcText(finalText);
-          if (window._annonceId) {
-            db.collection("annonces").doc(window._annonceId).update({ descriptionIA: text }).catch(()=>{});
-          }
-        } catch(e) {
-          const title = `${nom}${finition ? " " + finition : ""} ${km ? km.toLocaleString("fr-FR") + " km" : ""}`.trim();
+        } else {
+          const boite = result.veh?.AWN_boite || result.gearbox || "";
+          const title = `${nom}${finition ? " " + finition : ""} ${km ? parseInt(km).toLocaleString("fr-FR") + " km" : ""}`.trim();
           const lines = [
             `🚗 ${title}`, ``,
             `📍 Localisation : ${localisation}`,
@@ -2139,11 +2133,10 @@
             `• Énergie : ${energie}`,
             `• Puissance : ${ch} ch`,
             `• Année : ${annee}`,
-            km ? `• Kilométrage : ${km.toLocaleString("fr-FR")} km` : null,
-            `• Boîte : ${result.veh?.AWN_boite || ""}`,
+            km ? `• Kilométrage : ${parseInt(km).toLocaleString("fr-FR")} km` : null,
+            `• Boîte : ${boite}`,
             finition ? `• Finition : ${finition}` : null, ``,
             options ? `✅ Équipements :\n${options}` : null, ``,
-            description ? `📝 Description :\n${description}` : null, ``,
             defauts ? `⚠️ À noter :\n${defauts}` : null, ``,
             `📞 Contact : ${tel}`, ``,
             `Prix estimé via CoteCars.fr — basé sur le marché Leboncoin en temps réel.`,
@@ -2155,13 +2148,17 @@
       async function handlePublish() {
         if (!user) return;
         setLoading(true);
+        setStep(3);
+        setLbcText("✨ Génération de la description par IA...");
         try {
-          // Upload photos sur Cloudinary
-          const photoUrls = await Promise.all(photos.map(async p => {
-            const ref = storage.ref(`annonces/${Date.now()}_${Math.random().toString(36).slice(2)}_${p.name}`);
-            await ref.put(p.file);
-            return ref.getDownloadURL();
-          }));
+          const [photoUrls, iaText] = await Promise.all([
+            Promise.all(photos.map(async p => {
+              const ref = storage.ref(`annonces/${Date.now()}_${Math.random().toString(36).slice(2)}_${p.name}`);
+              await ref.put(p.file);
+              return ref.getDownloadURL();
+            })),
+            generateIAText()
+          ]);
           const annonce = {
             uid: user.uid,
             userEmail: user.email,
@@ -2181,6 +2178,7 @@
             tel,
             photos: photoUrls,
             description,
+            descriptionIA: iaText || "",
             stats: result.stats,
             createdAt: new Date().toISOString(),
             active: true,
@@ -2188,7 +2186,7 @@
           const ref = await db.collection("annonces").add(annonce);
           window._annonceId = ref.id;
           setPublishedId(ref.id);
-          await generateLbcText();
+          await generateLbcText(iaText);
           onPublished && onPublished(ref.id);
         } catch(e) {
           console.error(e);
