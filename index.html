@@ -1898,7 +1898,7 @@
 
       if (flowStep === 3 && result) {
         const resultWithPrice = { ...result, stats: { ...result.stats, p25: parseFloat(chosenPrice) || result.stats?.p25 } };
-        return <CreateAnnonce result={resultWithPrice} plate={plate} user={user} onClose={onClose} onPublished={onClose} initialPrix={chosenPrice} />;
+        return <CreateAnnonce result={resultWithPrice} plate={plate} user={user} onClose={(id) => { if(id) onPublished && onPublished(id); else onClose(); }} onPublished={() => {}} initialPrix={chosenPrice} />;
       }
 
       const { stats, ads, nom, veh } = result || {};
@@ -2077,6 +2077,7 @@
     function CreateAnnonce({ result, plate, user, onClose, onPublished, initialPrix }) {
       const [step, setStep] = React.useState(1);
       const [prix, setPrix] = React.useState(initialPrix || (result.stats?.p25 ? String(Math.round(result.stats.p25)) : ""));
+      const [publishedId, setPublishedId] = React.useState(null);
       const [localisation, setLocalisation] = React.useState("");
       const [ville, setVille] = React.useState("");
       const [defauts, setDefauts] = React.useState("");
@@ -2199,8 +2200,9 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
           };
           const ref = await db.collection("annonces").add(annonce);
           window._annonceId = ref.id;
+          setPublishedId(ref.id);
           await generateLbcText();
-          onPublished && onPublished();
+          onPublished && onPublished(ref.id);
         } catch(e) {
           console.error(e);
           alert("Erreur : " + e.message);
@@ -2320,6 +2322,12 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
                   style={{ display:"block", width:"100%", background:"#FF6E14", color:"white", fontWeight:800, fontSize:15, borderRadius:16, padding:"14px 0", border:"none", cursor:"pointer", marginTop:10, textAlign:"center", textDecoration:"none", boxSizing:"border-box" }}>
                   🔗 Ouvrir Leboncoin pour publier
                 </a>
+                {publishedId && (
+                  <button onClick={() => onClose && onClose(publishedId)}
+                    style={{ width:"100%", background:"#1B3FDB", color:"white", fontWeight:800, fontSize:15, borderRadius:16, padding:"14px 0", border:"none", cursor:"pointer", marginTop:10 }}>
+                    👁️ Voir mon annonce →
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -2776,7 +2784,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
     }
 
     // ─── PAGE ANNONCES ────────────────────────────────────────────
-    function AnnoncesPage({ onBack, user }) {
+    function AnnoncesPage({ onBack, user, initialSelectedId }) {
       const [annonces, setAnnonces] = React.useState([]);
       const [loading, setLoading] = React.useState(true);
       const [selected, setSelected] = React.useState(null);
@@ -2800,6 +2808,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             const all = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.active !== false);
             setAnnonces(all);
             setLoading(false);
+            if (initialSelectedId) {
+              const found = all.find(a => a.id === initialSelectedId);
+              if (found) setSelected(found);
+            }
           }).catch(() => setLoading(false));
       }, []);
 
@@ -3426,6 +3438,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       const [showPartenaireModal, setShowPartenaireModal] = React.useState(false);
       const [showCreateAnnonce, setShowCreateAnnonce] = React.useState(false);
       const [showCreateAnnonceFlow, setShowCreateAnnonceFlow] = React.useState(false);
+      const [annonceInitialId, setAnnonceInitialId] = React.useState(null);
       const [showPrepareLbc, setShowPrepareLbc] = React.useState(false);
       const [showMobileMenu, setShowMobileMenu] = React.useState(false);
       const [gearbox, setGearbox] = useState("");
@@ -3698,7 +3711,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
         );
       }
 
-      if (showAnnonces) return <>{renderDesktopSidebar()}<AnnoncesPage onBack={() => setShowAnnonces(false)} user={user} /></>;
+      if (showAnnonces) return <>{renderDesktopSidebar()}<AnnoncesPage onBack={() => { setShowAnnonces(false); setAnnonceInitialId(null); }} user={user} initialSelectedId={annonceInitialId} /></>;
       if (state === "loading") return <>{renderDesktopSidebar()}{showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}<Spinner /></>;
       if (state === "results") return <>{renderDesktopSidebar()}{showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}{showCreateAnnonce && <CreateAnnonce result={result} plate={plate} user={user} onClose={() => setShowCreateAnnonce(false)} onPublished={() => {}} />}{showPrepareLbc && <PrepareAnnonceLbc result={result} plate={plate} user={user} km={km} onClose={() => setShowPrepareLbc(false)} />}<Results result={result} plate={plate} onReset={handleReset} user={user} onElargi={handleElargi} setShowLoginModal={setShowLoginModal} onCreateAnnonce={() => setShowCreateAnnonce(true)} onPrepareLbc={() => setShowPrepareLbc(true)} /></>;
       if (state === "error") return (<>{renderDesktopSidebar()}<ErrorPage apiErr={apiErr} plaque={plate} onReset={handleReset} /></>);
@@ -3719,7 +3732,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             .errorpage-root{margin-left:220px;}body{overflow-x:auto;}}
           `}</style>
           {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} />}
-          {showCreateAnnonceFlow && <CreateAnnonceFlow user={user} onClose={() => setShowCreateAnnonceFlow(false)} />}
+          {showCreateAnnonceFlow && <CreateAnnonceFlow user={user} onClose={() => setShowCreateAnnonceFlow(false)} onPublished={(id) => { setAnnonceInitialId(id); setShowCreateAnnonceFlow(false); setShowAnnonces(true); }} />}
           {showPuissanceConfirm && pendingResult && (
             <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
               <div style={{background:"white",borderRadius:20,padding:"28px 24px",width:"100%",maxWidth:360,boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
