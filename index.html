@@ -1817,7 +1817,7 @@
     }
 
     // ─── FLOW CRÉATION ANNONCE ───────────────────────────────────
-    function CreateAnnonceFlow({ user, onClose }) {
+    function CreateAnnonceFlow({ user, onClose, onPublished }) {
       const isMobile = useIsMobile();
       const [flowStep, setFlowStep] = React.useState(1); // 1=saisie, 2=prix, 3=annonce
       const [plate, setPlate] = React.useState("");
