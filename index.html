@@ -102,26 +102,7 @@
     --badge-text: #1e40af;
     --price-badge-bg: #EFF3FF;
   }
-  body.dark {
-    --nav-bg: #1e2330;
-    --bg: #161b27;
-    --bg2: #1e2330;
-    --bg3: #252d40;
-    --card: #1e2330;
-    --border: #2d3448;
-    --text: #f1f5f9;
-    --text2: #94a3b8;
-    --text3: #64748b;
-    --hist-bg: #1e2330;
-    --hist-border: #252d40;
-    --input-bg: #252d40;
-    --input-border: #2d3448;
-    --step-bg: #252d40;
-    --badge-bg: #1a2540;
-    --badge-border: #2d4a7a;
-    --badge-text: #93c5fd;
-    --price-badge-bg: #1a2540;
-  }
+
 </style>
 
   <div id="root"></div>
@@ -153,16 +134,7 @@
     // Les variables auth/db/storage sont extraites après le chargement
     let auth, db, storage, googleProvider;
 
-    // Dark mode
-    function initTheme() {
-      const saved = localStorage.getItem('cotecars-theme');
-      if (saved === 'dark') document.body.classList.add('dark');
-    }
-    function toggleTheme() {
-      const isDark = document.body.classList.toggle('dark');
-      localStorage.setItem('cotecars-theme', isDark ? 'dark' : 'light');
-    }
-    initTheme();
+
 
 
     const EMERALD = "#1a3fdb";
@@ -1115,20 +1087,7 @@
     }
 
 
-    function DarkToggle() {
-      const [dark, setDark] = React.useState(document.body.classList.contains('dark'));
-      function handle() {
-        toggleTheme();
-        setDark(d => !d);
-      }
-      return (
-        <button onClick={handle} title={dark ? "Mode clair" : "Mode sombre"}
-          style={{ display:"flex", alignItems:"center", justifyContent:"center", width:36, height:20, borderRadius:999, background: dark ? "#3b5bf0" : "#e2e8f0", border:"none", cursor:"pointer", position:"relative", transition:"background 0.2s", padding:0, flexShrink:0 }}>
-          <div style={{ width:14, height:14, borderRadius:"50%", background:"white", position:"absolute", left: dark ? "calc(100% - 16px)" : 2, transition:"left 0.2s" }} />
-          <span style={{ fontSize:10, position:"absolute", left: dark ? 4 : "auto", right: dark ? "auto" : 3 }}>{dark ? "🌙" : "☀️"}</span>
-        </button>
-      );
-    }
+
 
 
     function PartenaireMenu() {
@@ -1218,9 +1177,7 @@
             @keyframes shimmer { from{transform:translateX(-100%)} to{transform:translateX(100%)} }
             @keyframes fadeInUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
             .sk { position:relative;overflow:hidden;background:#e2e8f0;border-radius:8px; }
-            body.dark .sk { background:#252d40; }
             .sk::after { content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.65),transparent);animation:shimmer 1.5s infinite; }
-            body.dark .sk::after { background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent); }
             .pr { width:6px;height:6px;border-radius:50%;background:#1a3fdb;animation:bounceDot 1.2s ease-in-out infinite; }
             .pr:nth-child(2){animation-delay:0.15s} .pr:nth-child(3){animation-delay:0.3s}
             .mobile-spinner { display:block } @media(min-width:900px){.mobile-spinner{display:none!important}}
@@ -1664,7 +1621,7 @@
           <div style={{ background:"var(--nav-bg)", padding: isMobile ? "0 16px" : "0 24px", height:56, display: isMobile ? "flex" : "none", justifyContent:"space-between", alignItems:"center", position:"sticky", top:0, zIndex:10, boxShadow:"0 1px 3px rgba(0,0,0,0.06)", borderBottom:"0.5px solid var(--border)" }}>
             <span onClick={onReset} style={{ fontWeight:800, fontSize: isMobile ? 22 : 32, color:"var(--text)", letterSpacing:"-0.5px", cursor:"pointer" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
             <div style={{ display:"flex", alignItems:"center", gap: isMobile ? 8 : 10 }}>
-              <DarkToggle />
+              {!isMobile && <button onClick={onCreateAnnonce} style={{ fontSize:13, fontWeight:700, color:"white", background:"#1B3FDB", padding:"8px 16px", borderRadius:10, border:"none", cursor:"pointer", fontFamily:"inherit" }}>+ Créer une annonce</button>}
               {isMobile ? (
                 <button onClick={() => setShowResultMenu(m=>!m)}
                   style={{ display:"flex", flexDirection:"column", justifyContent:"center", gap:5, width:36, height:36, background:"var(--bg)", border:"1px solid var(--border)", borderRadius:8, cursor:"pointer", padding:"0 8px" }}>
@@ -2611,7 +2568,6 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               {!isMobile && <span style={{ fontSize:13, color:"var(--text3)", fontWeight:500 }}>Annonces</span>}
             </div>
             <div style={{ display:"flex", alignItems:"center", gap: isMobile ? 8 : 12 }}>
-              <DarkToggle />
               {isMobile ? (
                 <button onClick={() => setShowAnnonceMenu(m=>!m)}
                   style={{ display:"flex", flexDirection:"column", justifyContent:"center", gap:5, width:36, height:36, background:"var(--bg)", border:"1px solid var(--border)", borderRadius:8, cursor:"pointer", padding:"0 8px" }}>
@@ -2801,7 +2757,6 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <span style={{ fontWeight:800, fontSize:22, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <DarkToggle />
               {isOwner && (
                 <button onClick={handleDelete} style={{ fontSize:11, color:"#ef4444", background:"#fef2f2", padding:"5px 10px", borderRadius:8, border:"1px solid #fecaca", cursor:"pointer" }}>🗑️ Supprimer</button>
               )}
@@ -3593,7 +3548,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             <div style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 16px", height:56, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:20 }}>
               <span style={{ fontWeight:800, fontSize:24, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1a3fdb"}}>Cars</span></span>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <DarkToggle />
+                <button onClick={() => setShowCreateAnnonce(true)} style={{ fontSize:12, fontWeight:700, color:"white", background:"#1B3FDB", padding:"7px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>+ Créer</button>
                 <button onClick={() => setShowMobileMenu(m => !m)}
                   style={{ display:"flex", flexDirection:"column", justifyContent:"center", gap:5, width:36, height:36, background:"var(--bg)", border:"1px solid var(--border)", borderRadius:8, cursor:"pointer", padding:"0 8px" }}>
                   <div style={{ height:2, background:"var(--text)", borderRadius:2 }} />
@@ -3924,7 +3879,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <header style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 28px", height:58, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10, flexShrink:0 }}>
                 <span style={{ fontSize:18, fontWeight:800, color:"var(--text)", letterSpacing:"-0.3px" }}>Cote<span style={{color:"#1B3FDB"}}>Cars</span></span>
                 <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                  <DarkToggle />
+                  <button onClick={() => setShowCreateAnnonce(true)} style={{ fontSize:13, fontWeight:700, color:"white", background:"#1B3FDB", padding:"8px 18px", borderRadius:10, border:"none", cursor:"pointer", fontFamily:"inherit" }}>+ Créer une annonce</button>
                 </div>
               </header>
 
