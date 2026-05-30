@@ -1995,7 +1995,7 @@
                 <div style={{ background:"linear-gradient(135deg, #1B3FDB 0%, #3b5bf0 100%)", borderRadius:16, padding:"18px 20px", color:"white" }}>
                   <div style={{ fontWeight:900, fontSize:15, marginBottom:6 }}>📍 Positionnez-vous stratégiquement</div>
                   <div style={{ fontSize:13, lineHeight:1.7, opacity:0.92 }}>
-                    Chaque prix correspond à une position dans le marché. <strong>En dessous d'une annonce = vous vendez avant elle.</strong> Choisissez où vous voulez apparaître parmi les {stats?.count || 0} annonces similaires en ce moment.
+                    Plus votre prix est <strong>bas dans la liste = plus vous apparaissez en premier</strong> face aux acheteurs. Choisissez où vous voulez vous placer parmi les <strong>{stats?.count || 0} annonces similaires</strong> en ce moment — et vendez avant eux.
                   </div>
                 </div>
 
@@ -2025,9 +2025,11 @@
                         const adYear = (ad.attributes||[]).find(x=>x.key==="regdate")?.value_label || "";
                         const adPrice = ad.price?.[0];
                         const isBelow = chosenPrice && adPrice > parseFloat(chosenPrice);
+                        const [hovered, setHovered] = React.useState(false);
                         return (
                           <a key={i} href={ad.url} target="_blank" rel="noopener noreferrer"
-                            style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 14px", borderRadius:12, border:"1px solid #e5e7eb", background: isBelow?"#f0fdf4":"white", textDecoration:"none", gap:10 }}>
+                            onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)}
+                            style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 14px", borderRadius:12, border:`1px solid ${hovered?"#1B3FDB":"#e5e7eb"}`, background: hovered?"#f5f7ff": isBelow?"#f0fdf4":"white", textDecoration:"none", gap:10, transition:"all .15s", position:"relative" }}>
                             <div style={{ flex:1, minWidth:0 }}>
                               <div style={{ fontSize:13, fontWeight:700, color:"#111", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ad.subject}</div>
                               <div style={{ fontSize:11, color:"#9ca3af", marginTop:2 }}>{adYear}{adYear&&adKm?" · ":""}{adKm ? parseInt(adKm).toLocaleString("fr-FR")+" km" : ""}</div>
@@ -2036,6 +2038,12 @@
                               <div style={{ fontWeight:800, fontSize:14, color: isBelow?"#059669":"#111" }}>{adPrice?.toLocaleString("fr-FR")} €</div>
                               {isBelow && <div style={{ fontSize:10, color:"#059669", fontWeight:700 }}>Vous passez devant</div>}
                             </div>
+                            {hovered && (
+                              <div style={{ position:"absolute", bottom:"calc(100% + 6px)", left:"50%", transform:"translateX(-50%)", background:"#111827", color:"white", fontSize:12, fontWeight:700, padding:"6px 12px", borderRadius:8, whiteSpace:"nowrap", zIndex:10, pointerEvents:"none" }}>
+                                🏁 Je veux vendre avant lui !
+                                <div style={{ position:"absolute", top:"100%", left:"50%", transform:"translateX(-50%)", borderWidth:5, borderStyle:"solid", borderColor:"#111827 transparent transparent transparent" }} />
+                              </div>
+                            )}
                           </a>
                         );
                       })}
