@@ -3063,12 +3063,19 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       const [photoPlein, setPhotoPlein] = React.useState(null);
       const [photoActive, setPhotoActive] = React.useState(0);
       const [showLbcModal, setShowLbcModal] = React.useState(false);
+      const [showOwnerActions, setShowOwnerActions] = React.useState(false);
       const isOwner = user?.uid === a.uid;
       const photos = a.photos || [];
 
       async function handleDelete() {
-        if (!confirm("Supprimer cette annonce ?")) return;
+        if (!confirm("Supprimer définitivement cette annonce ?")) return;
         await db.collection("annonces").doc(a.id).update({ active: false });
+        onBack();
+      }
+
+      async function handleMarkSold() {
+        if (!confirm("Marquer cette annonce comme vendue ?")) return;
+        await db.collection("annonces").doc(a.id).update({ active: false, vendu: true });
         onBack();
       }
 
@@ -3096,7 +3103,15 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:8 }}>
               {isOwner && (
-                <button onClick={handleDelete} style={{ fontSize:11, color:"#ef4444", background:"#fef2f2", padding:"5px 10px", borderRadius:8, border:"1px solid #fecaca", cursor:"pointer" }}>🗑️ Supprimer</button>
+                <div style={{ position:"relative" }}>
+                  <button onClick={() => setShowOwnerActions(o=>!o)} style={{ fontSize:11, color:"#6b7280", background:"#f3f4f6", padding:"5px 10px", borderRadius:8, border:"1px solid #e5e7eb", cursor:"pointer" }}>⚙️ Gérer</button>
+                  {showOwnerActions && (
+                    <div style={{ position:"absolute", top:"calc(100% + 6px)", right:0, background:"white", border:"1px solid #e5e7eb", borderRadius:12, boxShadow:"0 8px 24px rgba(0,0,0,0.12)", zIndex:50, minWidth:160, overflow:"hidden" }}>
+                      <button onClick={() => { setShowOwnerActions(false); handleMarkSold(); }} style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"12px 16px", background:"none", border:"none", cursor:"pointer", fontSize:13, fontWeight:600, color:"#059669", textAlign:"left" }}>✅ Marquer vendu</button>
+                      <button onClick={() => { setShowOwnerActions(false); handleDelete(); }} style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"12px 16px", background:"none", border:"none", borderTop:"1px solid #f3f4f6", cursor:"pointer", fontSize:13, fontWeight:600, color:"#ef4444", textAlign:"left" }}>🗑️ Supprimer</button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -3333,6 +3348,18 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                       style={{ display:"block", width:"100%", background:"linear-gradient(135deg,#F97316,#EA580C)", color:"white", fontWeight:800, fontSize:15, borderRadius:12, padding:"14px 0", textAlign:"center", border:"none", cursor:"pointer", marginTop:10, boxSizing:"border-box", fontFamily:"inherit" }}>
                       Publier sur Leboncoin
                     </button>
+                  )}
+                  {isOwner && (
+                    <div style={{ display:"flex", gap:8, marginTop:10 }}>
+                      <button onClick={handleMarkSold}
+                        style={{ flex:1, background:"#f0fdf4", color:"#059669", fontWeight:700, fontSize:13, borderRadius:10, padding:"10px 0", border:"1px solid #bbf7d0", cursor:"pointer", fontFamily:"inherit" }}>
+                        ✅ Vendu
+                      </button>
+                      <button onClick={handleDelete}
+                        style={{ flex:1, background:"#fef2f2", color:"#ef4444", fontWeight:700, fontSize:13, borderRadius:10, padding:"10px 0", border:"1px solid #fecaca", cursor:"pointer", fontFamily:"inherit" }}>
+                        🗑️ Supprimer
+                      </button>
+                    </div>
                   )}
                 </div>
 
