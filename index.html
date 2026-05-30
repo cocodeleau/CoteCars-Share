@@ -2107,27 +2107,8 @@
         setStep(3);
         setLbcText("✨ Génération de la description par IA...");
         try {
-          const prompt = `Rôle : Agis en tant qu'expert en rédaction SEO automobile et vendeur spécialisé. Ta mission est de rédiger une description de vente percutante, concise et personnalisée pour le véhicule suivant : ${nom}${finition ? " " + finition : ""}.
-
-Données du véhicule :
-* Année : ${annee}
-* Kilométrage : ${km ? km.toLocaleString("fr-FR") + " km" : "Non renseigné"}
-* Énergie : ${energie}
-* Boîte : ${result.veh?.AWN_boite || ""}
-* Prix : ${parseInt(prix).toLocaleString("fr-FR")} €
-* Localisation : ${localisation}${ville ? " " + ville : ""}
-* État/Options spécifiques : ${[options, defauts].filter(Boolean).join(" | ") || "Non renseigné"}
-
-Consignes de rédaction :
-1. Recherche Intelligente : Utilise tes connaissances internes pour identifier les 2 ou 3 points forts spécifiques à ce modèle exact (ex: fiabilité du moteur, volume de coffre record, confort de suspension, faible consommation).
-2. Style : Ton direct, professionnel mais engageant. Évite le jargon trop technique inutile, privilégie le bénéfice pour l'acheteur.
-3. Structure (Maximum 150-200 mots) :
-   * Accroche : Une phrase forte qui donne envie.
-   * Présentation : Résumé de l'état général et de l'entretien.
-   * Points forts du modèle : 3 points à puces mettant en avant le confort/performance/équipement spécifique à ce modèle.
-   * Appel à l'action : Invitation courte à venir voir le véhicule.
-4. Format : Utilise des emojis pertinents pour la lisibilité (🚗, ✅, 🛡️). Pas de gras inutile sur tout le texte, juste sur les infos clés.
-Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne pas faire de texte trop long.`;
+          const boite = result.veh?.AWN_boite || result.gearbox || "";
+          const prompt = `Génère une annonce de vente automobile professionnelle et structurée pour le véhicule suivant :\nModèle : ${nom}${finition ? " "+finition : ""}\nAnnée : ${annee}\nÉnergie : ${energie}\nBoîte : ${boite}\nKilométrage : ${km ? Number(km).toLocaleString("fr-FR")+" km" : "non renseigné"}\nPuissance : ${ch} ch\nPrix : ${prix ? Number(prix).toLocaleString("fr-FR")+" €" : "non renseigné"}\nLocalisation : ${localisation}${ville ? " "+ville : ""}\nÉquipements : ${options || "non renseignés"}\nÉtat / Défauts et qualités : ${defauts || "non renseigné"}\n\nRÈGLES STRICTES DE RÉDACTION :\n1. Style "Expert Automobile" : professionnel, factuel et rassurant.\n2. Structure avec SAUTS DE LIGNE :\n   - Une accroche directe avec le modèle et le prix.\n   - Un paragraphe "Caractéristiques principales" sous forme de liste avec des tirets (-).\n   - Un paragraphe sur l'état du véhicule et l'entretien.\n   - Un appel à l'action court à la fin.\n3. Ne pas faire de phrases trop longues ou de storytelling inutile.\n4. Maximum 3 emojis.\n5. Langue : Français.\nIMPORTANT : Utilise des doubles retours à la ligne pour séparer chaque section.\n\nRéponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant ou après :\n{"description":"..."}`;
 
           const res = await fetch(`/api/gemini`, {
             method: "POST",
@@ -2135,7 +2116,13 @@ Interdiction : Ne pas inventer d'historique de révision si non mentionné, ne p
             body: JSON.stringify({ prompt })
           });
           const data = await res.json();
-          const text = (data.text || "").trim();
+          const raw = (data.text || "").trim();
+          const start = raw.indexOf("{");
+          const end = raw.lastIndexOf("}");
+          let text = raw;
+          if (start !== -1 && end !== -1) {
+            try { text = JSON.parse(raw.slice(start, end+1)).description || raw; } catch(e) {}
+          }
           if (!text) throw new Error("Réponse vide");
           const finalText = `${text}\n\n📞 Contact : ${tel}\n💡 Prix estimé via CoteCars.fr — basé sur le marché Leboncoin en temps réel.`;
           setLbcText(finalText);
