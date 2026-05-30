@@ -1089,24 +1089,37 @@
       useEffect(() => {
         const unsub = auth.onAuthStateChanged(async u => {
           if (u) {
-            // User connecté : charger les emails autorisés depuis Firestore
             await loadAllowedEmails();
-          }
-          if (u && ALLOWED_EMAILS.includes(u.email?.toLowerCase())) {
-            setUser(u);
-            const cid = COMPANY_MAP[u.email?.toLowerCase()];
-            setCompanyId(cid);
-            if (cid) {
-              try {
-                const doc = await db.collection("companies").doc(cid).get();
-                if (doc.exists) {
-                  setTokens(doc.data().tokens ?? 0);
-                  setCommercials(doc.data().commercials || []);
-                }
-              } catch(e) { console.error("[company]", e); }
-            }
-          } else if (u) { auth.signOut(); setUser(null); }
-          else { setUser(null); }
+            const token = await u.getIdTokenResult();
+            const isAdmin = !!token.claims.admin;
+            if (isAdmin) {
+              setUser(u);
+              // Admin : accès à toutes les companies, jetons illimités
+              setTokens(Infinity);
+              const snap = await db.collection("companies").get();
+              const allCommercials = [];
+              snap.docs.forEach(doc => {
+                (doc.data().commercials || []).forEach(c => {
+                  if (!allCommercials.includes(c)) allCommercials.push(c);
+                });
+              });
+              setCommercials(allCommercials);
+              setCompanyId("autoeasy");
+            } else if (ALLOWED_EMAILS.includes(u.email?.toLowerCase())) {
+              setUser(u);
+              const cid = COMPANY_MAP[u.email?.toLowerCase()];
+              setCompanyId(cid);
+              if (cid) {
+                try {
+                  const doc = await db.collection("companies").doc(cid).get();
+                  if (doc.exists) {
+                    setTokens(doc.data().tokens ?? 0);
+                    setCommercials(doc.data().commercials || []);
+                  }
+                } catch(e) { console.error("[company]", e); }
+              }
+            } else { auth.signOut(); setUser(null); }
+          } else { setUser(null); }
           setLoading(false);
         });
         return unsub;
@@ -1118,7 +1131,7 @@
       }
 
       async function deductToken() {
-        if (!companyId) return;
+        if (!companyId || tokens === Infinity) return;
         try {
           await db.runTransaction(async (t) => {
             const ref = db.collection("companies").doc(companyId);

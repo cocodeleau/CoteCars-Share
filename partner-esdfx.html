@@ -997,11 +997,15 @@
 
       useEffect(() => {
         const unsub = auth.onAuthStateChanged(async u => {
-          if (u) await loadAllowedEmails();
-          if (u && ALLOWED_EMAILS.includes(u.email?.toLowerCase())) {
-            setUser(u);
-          } else if (u) {
-            await auth.signOut(); setUser(null);
+          if (u) {
+            await loadAllowedEmails();
+            const token = await u.getIdTokenResult();
+            const isAdmin = !!token.claims.admin;
+            if (isAdmin || ALLOWED_EMAILS.includes(u.email?.toLowerCase())) {
+              setUser(u);
+            } else {
+              await auth.signOut(); setUser(null);
+            }
           } else {
             setUser(null);
           }
