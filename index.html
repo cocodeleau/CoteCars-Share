@@ -3362,6 +3362,11 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       // ── Sidebar desktop globale (réutilisée dans tous les états) ──
       function renderDesktopSidebar() {
         return (
+          <>
+          <style>{`
+            @media(max-width:899px){.cc-desktop{display:none!important;}}
+            @media(min-width:900px){.cc-desktop{display:flex!important;}}
+          `}</style>
           <div className="cc-desktop">
             <aside style={{ width:220, background:"var(--nav-bg)", borderRight:"1px solid var(--border)", position:"fixed", top:0, left:0, height:"100vh", display:"flex", flexDirection:"column", zIndex:20 }}>
               <div style={{ height:58, minHeight:58, padding:"0 16px", borderBottom:"1px solid var(--border)", display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
@@ -3440,6 +3445,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               </div>
             )}
           </div>
+          </>
         );
       }
 
