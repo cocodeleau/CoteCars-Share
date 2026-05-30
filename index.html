@@ -3143,6 +3143,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
           {/* ══ DESKTOP ══ */}
           <div className="detail-desktop" style={{ maxWidth:1200, margin:"0 auto", padding:"32px 40px 60px" }}>
+            <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:8, background:"none", border:"none", cursor:"pointer", color:"var(--text2)", fontSize:14, fontWeight:600, marginBottom:24, padding:0, fontFamily:"inherit" }}
+              onMouseOver={e=>e.currentTarget.style.color="#1B3FDB"} onMouseOut={e=>e.currentTarget.style.color="var(--text2)"}>
+              ← Retour aux annonces
+            </button>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 400px", gap:32, alignItems:"start" }}>
 
               {/* ── Colonne gauche : photos + description ── */}
