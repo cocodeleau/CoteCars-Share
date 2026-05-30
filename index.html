@@ -3144,10 +3144,19 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
     function App() {
       const [user, setUser] = useState(null);
+      const [isAdmin, setIsAdmin] = useState(false);
       const [showLoginModal, setShowLoginModal] = useState(false);
 
       React.useEffect(() => {
-        const unsub = auth.onAuthStateChanged(u => setUser(u || null));
+        const unsub = auth.onAuthStateChanged(async u => {
+          setUser(u || null);
+          if (u) {
+            const token = await u.getIdTokenResult();
+            setIsAdmin(!!token.claims.admin);
+          } else {
+            setIsAdmin(false);
+          }
+        });
         return unsub;
       }, []);
 
@@ -3584,6 +3593,14 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                     <div style={{ width:32, height:32, borderRadius:"50%", flexShrink:0, backgroundImage:'url("https://cotecars-test.vercel.app/favicon.png")', backgroundSize:"cover", backgroundPosition:"center" }} />
                     <div><p style={{ margin:0, fontSize:14, fontWeight:700, color:"#60a5fa" }}>CoteCars</p></div>
                   </a>
+                  {isAdmin && (
+                    <a href="/admin.html" style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", textDecoration:"none", borderBottom:"0.5px solid var(--border)" }}>
+                      <div style={{ width:32, height:32, borderRadius:"50%", background:"#fff0f0", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <svg width="16" height="16" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      </div>
+                      <div><p style={{ margin:0, fontSize:14, fontWeight:700, color:"#ef4444" }}>Espace Admin</p></div>
+                    </a>
+                  )}
                   {user ? (
                     <button onClick={() => { auth.signOut(); setShowMobileMenu(false); }}
                       style={{ width:"100%", display:"flex", alignItems:"center", gap:14, padding:"14px 20px", background:"none", border:"none", cursor:"pointer", textAlign:"left" }}>
@@ -3765,8 +3782,12 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <svg width="15" height="15" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                   <span style={{ fontSize:13, fontWeight:500, color:"#f59e0b" }}>Espace Partenaire</span>
                 </button>
-              </nav>
-              {/* Profil bas */}
+                {isAdmin && (
+                  <a href="/admin.html" style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, border:"none", background:"none", cursor:"pointer", textAlign:"left", width:"100%", fontFamily:"inherit", textDecoration:"none" }} onMouseOver={e=>e.currentTarget.style.background="#fff0f0"} onMouseOut={e=>e.currentTarget.style.background="none"}>
+                    <svg width="15" height="15" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span style={{ fontSize:13, fontWeight:600, color:"#ef4444" }}>Espace Admin</span>
+                  </a>
+                )}
               <div style={{ padding:"12px 8px", borderTop:"1px solid var(--border)", flexShrink:0 }}>
                 {user ? (
                   <div style={{ display:"flex", alignItems:"center", gap:9, padding:"9px 12px", borderRadius:12, cursor:"pointer" }} onMouseOver={e=>e.currentTarget.style.background="var(--bg)"} onMouseOut={e=>e.currentTarget.style.background="transparent"}>
