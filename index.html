@@ -2916,7 +2916,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <div>
                 {/* Grande photo principale */}
                 <div style={{ borderRadius:16, overflow:"hidden", background:"var(--bg3)", marginBottom:10, cursor: photos.length > 0 ? "pointer" : "default", position:"relative" }}
-                  onClick={() => photos[photoActive] && setPhotoPlein(photos[photoActive])}>
+                  onClick={() => photos[photoActive] && setPhotoPlein(photoActive)}>
                   {photos.length > 0
                     ? <img src={photos[photoActive]} alt="" style={{ width:"100%", height:460, objectFit:"cover", display:"block" }} />
                     : <div style={{ width:"100%", height:460, display:"flex", alignItems:"center", justifyContent:"center", fontSize:72, color:"var(--text3)" }}>🚗</div>
