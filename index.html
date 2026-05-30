@@ -1344,7 +1344,7 @@
     }
 
     function filterAds(ads, kmUser, anneeUser, chUser, marque, modele, finition) {
-      const BAD = ["accident","accidenté","accidente","export","marchand","épave","epave","panne","cassé","casse","2 places","2places","societe","société","societé","sociéte","utilitaire","business"," ste ","ste ","s.t.e"];
+      const BAD = ["accident","accidenté","accidente","export","marchand","épave","epave","panne","cassé","casse","2 places","2places","societe","société","societé","sociéte","utilitaire","business"," ste ","ste ","s.t.e","retour de vol","retour vol","volé","vole","stolen","sinistre"];
       return ads.filter(ad => {
         if (ad.owner?.type !== "pro") return false;
         const subject = (ad.subject || "").toLowerCase();

@@ -22,25 +22,41 @@ module.exports = async function handler(req, res) {
   const kmMax    = km    ? parseInt(km) + 30000 : undefined;
   const chMin    = ch    ? Math.floor(parseInt(ch) / 10) * 10 : undefined;
 
+  const OFFSET_P2 = 35;
+
   try {
     if (finition) {
-      const urlFinition     = buildLbcFinitionUrl({ marque, modele, finition, anneeMin, fuel, gearbox });
-      const urlSansFinition = buildLbcUrl({ marque, modele, anneeMin, kmMax, chMin, fuel, gearbox, useStrict: true });
-      const [dataFin, dataSans] = await Promise.all([
-        fetchPiloterr(urlFinition).catch(() => ({ ads: [] })),
-        fetchPiloterr(urlSansFinition).catch(() => ({ ads: [] })),
+      const urlFin1  = buildLbcFinitionUrl({ marque, modele, finition, anneeMin, fuel, gearbox });
+      const urlFin2  = buildLbcFinitionUrl({ marque, modele, finition, anneeMin, fuel, gearbox, offset: OFFSET_P2 });
+      const urlSans1 = buildLbcUrl({ marque, modele, anneeMin, kmMax, chMin, fuel, gearbox, useStrict: true });
+      const urlSans2 = buildLbcUrl({ marque, modele, anneeMin, kmMax, chMin, fuel, gearbox, useStrict: true, offset: OFFSET_P2 });
+      const [d1, d2, d3, d4] = await Promise.all([
+        fetchPiloterr(urlFin1).catch(() => ({ ads: [] })),
+        fetchPiloterr(urlFin2).catch(() => ({ ads: [] })),
+        fetchPiloterr(urlSans1).catch(() => ({ ads: [] })),
+        fetchPiloterr(urlSans2).catch(() => ({ ads: [] })),
       ]);
-      return res.status(200).json({ ads: deduplicateAds([dataFin.ads || [], dataSans.ads || []]) });
+      return res.status(200).json({ ads: deduplicateAds([d1.ads || [], d2.ads || [], d3.ads || [], d4.ads || []]) });
     }
 
     try {
-      const strictUrl = buildLbcUrl({ marque, modele, anneeMin, kmMax, chMin, fuel, gearbox, useStrict: true });
-      const data = await fetchPiloterr(strictUrl);
-      if (data.ads && data.ads.length > 0) return res.status(200).json(data);
+      const strictUrl1 = buildLbcUrl({ marque, modele, anneeMin, kmMax, chMin, fuel, gearbox, useStrict: true });
+      const strictUrl2 = buildLbcUrl({ marque, modele, anneeMin, kmMax, chMin, fuel, gearbox, useStrict: true, offset: OFFSET_P2 });
+      const [data1, data2] = await Promise.all([
+        fetchPiloterr(strictUrl1),
+        fetchPiloterr(strictUrl2).catch(() => ({ ads: [] })),
+      ]);
+      const allAds = deduplicateAds([data1.ads || [], data2.ads || []]);
+      if (allAds.length > 0) return res.status(200).json({ ads: allAds });
     } catch (_) {}
 
-    const textUrl = buildLbcUrl({ marque, modele, anneeMin, kmMax, chMin, fuel, gearbox, useStrict: false });
-    return res.status(200).json(await fetchPiloterr(textUrl));
+    const textUrl1 = buildLbcUrl({ marque, modele, anneeMin, kmMax, chMin, fuel, gearbox, useStrict: false });
+    const textUrl2 = buildLbcUrl({ marque, modele, anneeMin, kmMax, chMin, fuel, gearbox, useStrict: false, offset: OFFSET_P2 });
+    const [td1, td2] = await Promise.all([
+      fetchPiloterr(textUrl1),
+      fetchPiloterr(textUrl2).catch(() => ({ ads: [] })),
+    ]);
+    return res.status(200).json({ ads: deduplicateAds([td1.ads || [], td2.ads || []]) });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }

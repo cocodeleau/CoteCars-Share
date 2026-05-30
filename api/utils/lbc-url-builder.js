@@ -11,10 +11,11 @@ function normalizeModele(modele) {
   return MODELE_NORMALIZE[(modele || "").toUpperCase()] || modele;
 }
 
-function buildLbcUrl({ marque, modele, finition, anneeMin, kmMax, chMin, fuel, gearbox, useStrict = true }) {
+function buildLbcUrl({ marque, modele, finition, anneeMin, kmMax, chMin, fuel, gearbox, useStrict = true, offset = 0 }) {
   const modeleText = normalizeModele(modele);
   const lbc = useStrict ? getLbcParams(marque, modele) : null;
   const p = new URLSearchParams({ category: "2", owner_type: "pro", sort: "price", order: "asc" });
+  if (offset) p.set("offset", offset);
   if (lbc) {
     p.set("u_car_brand", lbc.brand);
     p.set("u_car_model", lbc.model);
@@ -30,9 +31,10 @@ function buildLbcUrl({ marque, modele, finition, anneeMin, kmMax, chMin, fuel, g
   return `https://www.leboncoin.fr/recherche?${p.toString()}`;
 }
 
-function buildLbcFinitionUrl({ marque, modele, finition, anneeMin, fuel, gearbox }) {
+function buildLbcFinitionUrl({ marque, modele, finition, anneeMin, fuel, gearbox, offset = 0 }) {
   const lbc = getLbcParams(marque, modele);
   const p = new URLSearchParams({ category: "2", owner_type: "pro", sort: "price", order: "asc" });
+  if (offset) p.set("offset", offset);
   if (lbc) { p.set("u_car_brand", lbc.brand); p.set("u_car_model", lbc.model); p.set("text", finition); }
   else { p.set("text", `${marque} ${modele} ${finition}`); }
   if (anneeMin) p.set("regdate", `${anneeMin}-max`);
