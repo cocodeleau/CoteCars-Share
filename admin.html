@@ -305,6 +305,7 @@
         <thead>
           <tr>
             <th>Date</th>
+            <th>Email</th>
             <th>Plaque</th>
             <th>Modèle</th>
             <th>Finition</th>
@@ -325,6 +326,7 @@
       html += `
         <tr>
           <td style="color:#9ca3af;font-size:12px;">${item.date || "—"}</td>
+          <td style="font-size:12px;color:#374151;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.userEmail || ''}">${item.userEmail || '<span style="color:#d1d5db;font-style:italic">ancien</span>'}</td>
           <td><span class="plate-badge">${item.plate || "—"}</span></td>
           <td style="font-weight:600;">${item.nom || "—"}</td>
           <td style="color:#6b7280;font-size:12px;">${item.finition || "—"}</td>
@@ -355,10 +357,10 @@
   }
 
   function exportCSV(data) {
-    const header = ["Date","Plaque","Modèle","Finition","Km","pMin","p25","p50","Nb annonces"];
+    const header = ["Date","Email","Plaque","Modèle","Finition","Km","pMin","p25","p50","Nb annonces"];
     const rows = data.map(i => {
       const s = i.stats || {};
-      return [i.date||"", i.plate||"", i.nom||"", i.finition||"", i.km||"", s.pMin||"", s.p25||"", s.p50||"", s.count||""].join(";");
+      return [i.date||"", i.userEmail||"", i.plate||"", i.nom||"", i.finition||"", i.km||"", s.pMin||"", s.p25||"", s.p50||"", s.count||""].join(";");
     });
     const csv = [header.join(";"), ...rows].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
