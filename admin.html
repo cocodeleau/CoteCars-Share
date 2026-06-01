@@ -309,6 +309,7 @@
             <th>Plaque</th>
             <th>Modèle</th>
             <th>Finition</th>
+            <th>Boîte</th>
             <th>Km</th>
             <th>⚡ pMin</th>
             <th>🎯 p25</th>
@@ -338,6 +339,7 @@
           <td><span class="plate-badge">${item.plate || "—"}</span></td>
           <td style="font-weight:600;">${item.nom || "—"}</td>
           <td style="color:#6b7280;font-size:12px;">${item.finition || "—"}</td>
+          <td style="font-size:12px;color:#374151;">${item.gearbox === "1" ? "⚙️ Manuelle" : item.gearbox === "2" ? "🤖 Auto" : "—"}</td>
           <td style="color:#6b7280;">${fmtKm(item.km)}</td>
           <td class="price-cell p-min">${fmt(stats.pMin)}</td>
           <td class="price-cell p-25">${fmt(stats.p25)}</td>
