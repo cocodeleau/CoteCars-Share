@@ -3641,7 +3641,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
 
           const finitionsList2 = getFinitions(marque, modele);
           // Sauvegarder dans Firestore
-          const entry = { plate, nom, finition, stats, date: new Date().toLocaleDateString('fr-FR'), km: kmUser, userEmail: user ? user.email : null, gearbox: gearbox || "" };
+          const entry = { plate, nom, finition, stats, date: new Date().toLocaleDateString('fr-FR'), time: new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }), km: kmUser, userEmail: user ? user.email : null, gearbox: gearbox || "" };
           const newHisto = [entry, ...historique.filter(h => h.plate !== plate)].slice(0, 10);
           setHistorique(newHisto);
           if (user) {
