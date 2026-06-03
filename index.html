@@ -3546,6 +3546,14 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       const [apiErr, setApiErr] = useState("");
       const [result, setResult] = useState(null);
       const [historique, setHistorique] = useState([]);
+      const [annonceCarousel, setAnnonceCarousel] = useState([]);
+
+      // Charger annonces carousel
+      React.useEffect(() => {
+        db.collection("annonces").where("statut","==","active").orderBy("createdAt","desc").limit(10).get().then(snap => {
+          setAnnonceCarousel(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        }).catch(() => {});
+      }, []);
 
       // Charger historique depuis Firestore
       React.useEffect(() => {
@@ -4141,6 +4149,34 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                       </div>
                       <p style={{ margin:0, fontSize:10, color:"#8fa0b8", flexShrink:0, marginLeft:8 }}>{h.date}</p>
                     </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── CAROUSEL ANNONCES ── */}
+            {annonceCarousel.length > 0 && (
+              <div style={{ margin:"16px 12px 0" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                  <span style={{ fontSize:13, fontWeight:700, color:"var(--text)" }}>🚗 Annonces disponibles</span>
+                  <button onClick={() => setShowAnnonces(true)} style={{ fontSize:11, color:"#1B3FDB", background:"none", border:"none", cursor:"pointer", padding:0, fontWeight:600 }}>Voir tout →</button>
+                </div>
+                <div style={{ display:"flex", gap:10, overflowX:"auto", paddingBottom:4, scrollbarWidth:"none" }}>
+                  {annonceCarousel.map((ann, i) => (
+                    <div key={ann.id} onClick={() => { setShowAnnonces(true); setAnnonceInitialId(ann.id); }}
+                      style={{ minWidth:140, flexShrink:0, background:"var(--card)", border:"0.5px solid var(--border)", borderRadius:14, padding:"10px 10px 12px", cursor:"pointer", position:"relative" }}>
+                      {i === 0 && (
+                        <div style={{ position:"absolute", top:7, right:7, background:"#4ade80", color:"#064e3b", fontSize:9, fontWeight:700, padding:"2px 6px", borderRadius:10 }}>NOUVEAU</div>
+                      )}
+                      <div style={{ width:"100%", height:64, borderRadius:8, background:"var(--bg)", marginBottom:8, overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        {ann.photos && ann.photos[0]
+                          ? <img src={ann.photos[0]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                          : <span style={{ fontSize:26 }}>🚗</span>}
+                      </div>
+                      <p style={{ margin:0, fontSize:12, fontWeight:700, color:"var(--text)", overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>{ann.nom || "Véhicule"}</p>
+                      <p style={{ margin:"2px 0 0", fontSize:10, color:"var(--text2)" }}>{ann.km ? ann.km.toLocaleString("fr-FR")+" km" : ""}{ann.annee ? " · "+ann.annee : ""}</p>
+                      {ann.prix && <p style={{ margin:"5px 0 0", fontSize:14, fontWeight:800, color:"#1B3FDB" }}>{ann.prix.toLocaleString("fr-FR")} €</p>}
+                    </div>
                   ))}
                 </div>
               </div>
