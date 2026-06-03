@@ -3688,9 +3688,9 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           const kmUser = result.kmUser;
           const anneeUser = result.anneeUser;
           const chUser = result.chUser;
-          const ads = filterAds(rawAds, kmUser, anneeUser, chUser, marque, modele, finition);
+          const ads = filterAds(rawAds, kmUser, anneeUser, chUser, marque, modele, "");
           const stats = computeStats(ads);
-          setResult({ ...result, ads, stats, finition: finitionSimilaire || "", peuResultats: false });
+          setResult({ ...result, ads, stats, finition: "", peuResultats: false });
           setState("results");
         } catch(e) {
           setApiErr(e.message);
