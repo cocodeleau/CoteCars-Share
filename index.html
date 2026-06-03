@@ -1529,17 +1529,16 @@
     }
 
     function FinitionSimilaireBlock({ result, onElargi }) {
-      const finSim = getFinitionSimilaire(result.finition, result.finitionsList || []);
       return (
         <div style={{ background:"#FFF7ED", border:"1px solid #FED7AA", borderRadius:16, padding:"14px 16px", marginBottom:12 }}>
           <p style={{ margin:"0 0 10px", fontSize:13, color:"#92400E", fontWeight:600 }}>
             ⚠️ Seulement {result.stats?.count || 0} annonce(s) pour la finition <strong>{result.finition}</strong>.
           </p>
           <p style={{ margin:"0 0 10px", fontSize:12, color:"#92400E" }}>
-            {finSim ? `Voir les prix pour "${finSim}" (finition la plus proche) ?` : "Voir les prix pour toutes les finitions similaires ?"}
+            Voir les résultats pour toutes les finitions afin d&apos;obtenir plus d&apos;annonces ?
           </p>
-          <button onClick={() => onElargi(finSim)} style={{ width:"100%", background:"#F97316", color:"white", fontWeight:700, fontSize:14, borderRadius:12, padding:"12px 0", border:"none", cursor:"pointer" }}>
-            📊 {finSim ? `Voir prix "${finSim}"` : "Voir prix finitions similaires"}
+          <button onClick={() => onElargi(null)} style={{ width:"100%", background:"#F97316", color:"white", fontWeight:700, fontSize:14, borderRadius:12, padding:"12px 0", border:"none", cursor:"pointer" }}>
+            📊 Voir toutes les finitions
           </button>
         </div>
       );
