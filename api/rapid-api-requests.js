@@ -1,11 +1,6 @@
 // api/rapid-api-requests.js
 //
 // SIV via API SIV Autoways (RapidAPI)
-// Endpoint : GET https://api-siv-systeme-d-immatriculation-des-vehicules.p.rapidapi.com/{plaque}
-// Clés     : RAPIDAPI_KEY et RAPIDAPI_HOST dans les variables d'env Vercel
-//
-// Reçoit : GET ?plaque=AB123CD
-// Renvoie : { data: { AWN_marque, AWN_modele, ... } }
 
 const fetch = require("node-fetch");
 
@@ -64,7 +59,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ error: "Véhicule non trouvé." });
   }
 
-  // ── Extraction — les champs sont déjà au format AWN_ ──
   const marque  = (d.AWN_marque  || "").toUpperCase().trim();
   const modele  = (d.AWN_modele  || "").trim();
   const version = (d.AWN_version || d.AWN_finition || "").trim();
@@ -75,7 +69,6 @@ module.exports = async function handler(req, res) {
     ? d.AWN_date_mise_en_circulation_us.slice(0, 4)
     : "";
 
-  // Énergie
   function toEnergie(raw) {
     if (!raw) return null;
     const r = raw.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -93,17 +86,27 @@ module.exports = async function handler(req, res) {
   const energieSuspect = !!(energieA && energieB && energieA !== energieB);
   const energie  = energieA || energieB || "ESSENCE";
 
-  // Détecter puissance combinée hybride dans le label (ex: "E-TECH PLUG-IN 160" → 160ch)
+  // ── Détection puissance combinée hybride ──
+  // Patterns : "E-TECH PLUG-IN 160", "136H COLLECTION", "HSD 136", "HYBRID 136", "PHEV 225"
   const labelUpper = (d.AWN_label || d.AWN_version || "").toUpperCase();
   let puissanceCombinee = null;
-  const hybridePuissMatch = labelUpper.match(/(?:E-TECH|PLUG-IN|PHEV|HYBRID|HEV|E-HYBRID)\s+(?:PLUG-IN\s+)?(\d{2,3})(?:\s|$)/);
-  if (hybridePuissMatch) {
-    const p = parseInt(hybridePuissMatch[1]);
-    if (p > 50 && p < 500) puissanceCombinee = p;
+
+  // Pattern 1 : mot-clé hybride suivi d'un nombre
+  const m1 = labelUpper.match(/(?:E-TECH|PLUG-IN|PHEV|HYBRID|HEV|E-HYBRID|HSD)\s+(?:PLUG-IN\s+)?(\d{2,3})(?:[H\s]|$)/);
+  if (m1) { const p = parseInt(m1[1]); if (p > 50 && p < 500) puissanceCombinee = p; }
+
+  // Pattern 2 : nombre suivi de H (ex: "136H", "160H") — Toyota HSD
+  if (!puissanceCombinee) {
+    const m2 = labelUpper.match(/\b(\d{2,3})H(?:\s|$)/);
+    if (m2) { const p = parseInt(m2[1]); if (p > 50 && p < 500) puissanceCombinee = p; }
   }
+
+  // Détecter hybride via label même si énergie retournée = ESSENCE
+  const labelIndicateHybrid = /(?:HYBRID|HSD|E-TECH|PLUG-IN|PHEV|HEV|\d{2,3}H\b)/.test(labelUpper);
+  const energieFinale = (labelIndicateHybrid && energie === "ESSENCE") ? "HYBRIDE" : energie;
+
   const puissanceSuspectHybride = !!(puissanceCombinee && puissCH && puissanceCombinee !== puissCH);
 
-  // Boîte
   const boiteRaw = (d.AWN_type_boite_vites || "").toUpperCase();
   const boite = boiteRaw.includes("AUTO") ? "Automatique"
     : boiteRaw.includes("MAN")  ? "Manuelle" : "";
@@ -117,7 +120,7 @@ module.exports = async function handler(req, res) {
     AWN_marque:                   marque,
     AWN_modele:                   modele,
     AWN_date_mise_en_circulation: dateMEC,
-    AWN_energie:                  energie,
+    AWN_energie:                  energieFinale,
     AWN_puissance_CH:             puissCH,
     AWN_puissance_KW:             puissKW,
     AWN_version:                  version,
@@ -130,7 +133,7 @@ module.exports = async function handler(req, res) {
     AWN_puissance_SUSPECT_valeurs: puissanceSuspectHybride ? [puissCH, puissanceCombinee] : [],
     AWN_energie_SUSPECT:          energieSuspect,
     AWN_energie_SUSPECT_valeurs:  energieSuspect ? [energieA, energieB] : [],
-    AWN_energie_DETECTEE:         energie,
+    AWN_energie_DETECTEE:         energieFinale,
 
     AWN_nom_commercial: d.AWN_nom_commercial || "",
     AWN_modele_prf:     d.AWN_modele_prf    || "",
@@ -146,6 +149,6 @@ module.exports = async function handler(req, res) {
     AWN_photo_modele: d.AWN_model_image  || "",
   };
 
-  console.log(`[SIV] ✓ ${marque} ${modele} — ${puissCH}ch ${energie}`);
+  console.log(`[SIV] ✓ ${marque} ${modele} — ${puissCH}ch ${energieFinale} (combinee: ${puissanceCombinee||'-'}ch)`);
   return res.status(200).json({ data: result });
 };
