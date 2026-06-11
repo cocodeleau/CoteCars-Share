@@ -80,8 +80,9 @@ module.exports = async function handler(req, res) {
     if (!raw) return null;
     const r = raw.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     if (r.includes("DIESEL") || r.includes("GAZOLE") || r === "GO") return "GAZOLE";
+    if (r.includes("ELECT") && (r.includes("HYBRID") || r.includes("RECHARG") || r.includes("ELEC"))) return "HYBRIDE";
     if (r.includes("ELECT"))  return "ELECTRIQUE";
-    if (r.includes("HYBRID")) return "HYBRIDE";
+    if (r.includes("HYBRID") || r.includes("ELEC")) return "HYBRIDE";
     if (r.includes("GPL"))    return "GPL";
     if (r.includes("ESSENCE") || r.includes("ESSENC") || r === "SP") return "ESSENCE";
     return null;
@@ -91,6 +92,16 @@ module.exports = async function handler(req, res) {
   const energieB = toEnergie(d.AWN_energie_description);
   const energieSuspect = !!(energieA && energieB && energieA !== energieB);
   const energie  = energieA || energieB || "ESSENCE";
+
+  // Détecter puissance combinée hybride dans le label (ex: "E-TECH PLUG-IN 160" → 160ch)
+  const labelUpper = (d.AWN_label || d.AWN_version || "").toUpperCase();
+  let puissanceCombinee = null;
+  const hybridePuissMatch = labelUpper.match(/(?:E-TECH|PLUG-IN|PHEV|HYBRID|HEV|E-HYBRID)\s+(?:PLUG-IN\s+)?(\d{2,3})(?:\s|$)/);
+  if (hybridePuissMatch) {
+    const p = parseInt(hybridePuissMatch[1]);
+    if (p > 50 && p < 500) puissanceCombinee = p;
+  }
+  const puissanceSuspectHybride = !!(puissanceCombinee && puissCH && puissanceCombinee !== puissCH);
 
   // Boîte
   const boiteRaw = (d.AWN_type_boite_vites || "").toUpperCase();
@@ -115,9 +126,11 @@ module.exports = async function handler(req, res) {
     AWN_nb_portes:                parseInt(d.AWN_nbr_portes)    || null,
     AWN_passagers:                parseInt(d.AWN_nbr_de_places) || null,
     AWN_cylindres:                parseInt(d.AWN_nbr_cylindres) || null,
-    AWN_puissance_SUSPECT:        puissCH ? puissCH > 500 : false,
+    AWN_puissance_SUSPECT:        (puissCH ? puissCH > 500 : false) || puissanceSuspectHybride,
+    AWN_puissance_SUSPECT_valeurs: puissanceSuspectHybride ? [puissCH, puissanceCombinee] : [],
     AWN_energie_SUSPECT:          energieSuspect,
     AWN_energie_SUSPECT_valeurs:  energieSuspect ? [energieA, energieB] : [],
+    AWN_energie_DETECTEE:         energie,
 
     AWN_nom_commercial: d.AWN_nom_commercial || "",
     AWN_modele_prf:     d.AWN_modele_prf    || "",

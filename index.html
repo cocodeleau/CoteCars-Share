@@ -3535,6 +3535,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       const [puissanceConfirmValue, setPuissanceConfirmValue] = React.useState("");
       const [pendingResult, setPendingResult] = React.useState(null);
       const [showEnergieConfirm, setShowEnergieConfirm] = React.useState(false);
+      const [showMotoConfirm, setShowMotoConfirm] = React.useState(false);
+      const [motoConfirmEnergie, setMotoConfirmEnergie] = React.useState("");
+      const [motoConfirmPuissance, setMotoConfirmPuissance] = React.useState("");
+      const [motoConfirmPuissanceLibre, setMotoConfirmPuissanceLibre] = React.useState("");
       const [plate, setPlate] = useState("");
       const [km, setKm] = useState("");
       const [finition, setFinition] = useState("");
@@ -3659,6 +3663,13 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           if (veh.AWN_energie_SUSPECT) {
             setPendingResult(resultData);
             setShowEnergieConfirm(true);
+            setState("home");
+          } else if (veh.AWN_puissance_SUSPECT_valeurs?.length > 0 || (veh.AWN_puissance_SUSPECT && !veh.AWN_puissance_SUSPECT_valeurs?.length)) {
+            setPendingResult(resultData);
+            setMotoConfirmEnergie(veh.AWN_energie || "");
+            setMotoConfirmPuissance(veh.AWN_puissance_SUSPECT_valeurs?.[1] ? String(veh.AWN_puissance_SUSPECT_valeurs[1]) : "");
+            setMotoConfirmPuissanceLibre("");
+            setShowMotoConfirm(true);
             setState("home");
           } else if (veh.AWN_puissance_SUSPECT) {
             setPendingResult(resultData);
@@ -3875,6 +3886,88 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   ✅ Confirmer
                 </button>
                 <button onClick={()=>{ setResult(pendingResult); setShowPuissanceConfirm(false); setPendingResult(null); setState("results"); }}
+                  style={{width:"100%",background:"#f3f4f6",color:"#6b7280",fontWeight:700,fontSize:14,borderRadius:14,padding:"12px 0",border:"none",cursor:"pointer"}}>
+                  Ignorer et continuer
+                </button>
+              </div>
+            </div>
+          )}
+          {showMotoConfirm && pendingResult && (
+            <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+              <div style={{background:"white",borderRadius:20,padding:"28px 24px",width:"100%",maxWidth:380,boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+                <p style={{fontWeight:800,fontSize:17,color:"#111",margin:"0 0 6px"}}>⚙️ Confirmer la motorisation</p>
+                <p style={{fontSize:13,color:"#6b7280",margin:"0 0 20px",lineHeight:1.6}}>
+                  Nous avons détecté plusieurs informations possibles. Aidez-nous à affiner l'estimation.
+                </p>
+
+                <p style={{fontSize:12,fontWeight:700,color:"#374151",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.05em"}}>⛽ Type de motorisation</p>
+                <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+                  {[
+                    {val:"ESSENCE", label:"🔥 Essence"},
+                    {val:"HYBRIDE", label:"🌿 Hybride / Rechargeable"},
+                    {val:"ELECTRIQUE", label:"⚡ Électrique"},
+                    {val:"GAZOLE", label:"⛽ Diesel"},
+                    {val:"GPL", label:"🟡 GPL"},
+                  ].filter(opt => {
+                    const e = pendingResult.veh.AWN_energie || "";
+                    if (e === "HYBRIDE") return ["HYBRIDE","ESSENCE","ELECTRIQUE"].includes(opt.val);
+                    if (e === "ELECTRIQUE") return ["ELECTRIQUE","HYBRIDE"].includes(opt.val);
+                    if (e === "GAZOLE") return ["GAZOLE","HYBRIDE"].includes(opt.val);
+                    return ["ESSENCE","HYBRIDE","GAZOLE","ELECTRIQUE"].includes(opt.val);
+                  }).map(opt => (
+                    <button key={opt.val} onClick={()=>setMotoConfirmEnergie(opt.val)}
+                      style={{padding:"12px 14px",borderRadius:12,border:"2px solid "+(motoConfirmEnergie===opt.val?"#1a3fdb":"#e5e7eb"),background:motoConfirmEnergie===opt.val?"#eff4ff":"white",color:motoConfirmEnergie===opt.val?"#1a3fdb":"#374151",fontWeight:600,fontSize:14,cursor:"pointer",textAlign:"left"}}>
+                      {motoConfirmEnergie===opt.val?"✅ ":"◯ "}{opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                <p style={{fontSize:12,fontWeight:700,color:"#374151",margin:"0 0 8px",textTransform:"uppercase",letterSpacing:"0.05em"}}>⚡ Puissance</p>
+                <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
+                  {[pendingResult.veh.AWN_puissance_SUSPECT_valeurs?.[0], pendingResult.veh.AWN_puissance_SUSPECT_valeurs?.[1]].filter(Boolean).map(ch => (
+                    <button key={ch} onClick={()=>{setMotoConfirmPuissance(String(ch));setMotoConfirmPuissanceLibre("");}}
+                      style={{padding:"12px 14px",borderRadius:12,border:"2px solid "+(motoConfirmPuissance===String(ch)&&!motoConfirmPuissanceLibre?"#1a3fdb":"#e5e7eb"),background:motoConfirmPuissance===String(ch)&&!motoConfirmPuissanceLibre?"#eff4ff":"white",color:motoConfirmPuissance===String(ch)&&!motoConfirmPuissanceLibre?"#1a3fdb":"#374151",fontWeight:600,fontSize:14,cursor:"pointer",textAlign:"left"}}>
+                      {motoConfirmPuissance===String(ch)&&!motoConfirmPuissanceLibre?"✅ ":"◯ "}{ch} ch
+                    </button>
+                  ))}
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <input type="number" value={motoConfirmPuissanceLibre} onChange={e=>{setMotoConfirmPuissanceLibre(e.target.value);setMotoConfirmPuissance("");}}
+                      placeholder="Autre (ex: 130)" style={{flex:1,padding:"11px 14px",border:"2px solid "+(motoConfirmPuissanceLibre?"#1a3fdb":"#e5e7eb"),borderRadius:12,fontSize:15,fontWeight:600,outline:"none"}}/>
+                    <span style={{fontSize:13,color:"#6b7280"}}>ch</span>
+                  </div>
+                </div>
+
+                <button onClick={async ()=>{
+                  const ch = parseInt(motoConfirmPuissanceLibre || motoConfirmPuissance);
+                  if (!ch || ch < 30 || ch > 1000) return;
+                  const FUEL_CODES = {"ESSENCE":"1","GAZOLE":"2","GPL":"3","ELECTRIQUE":"4","HYBRIDE":"6"};
+                  const chosenFuelCode = FUEL_CODES[motoConfirmEnergie] || pendingResult.fuelCode;
+                  setShowMotoConfirm(false); setPendingResult(null); setState("loading");
+                  try {
+                    const r = {...pendingResult, veh: {...pendingResult.veh}};
+                    r.veh.AWN_puissance_CH = ch; r.chUser = ch;
+                    r.veh.AWN_energie = motoConfirmEnergie; r.fuelCode = chosenFuelCode;
+                    const lbcParams = new URLSearchParams({ marque: r.marque, modele: r.modele });
+                    if (r.kmUser) lbcParams.set("km", r.kmUser);
+                    if (r.anneeUser) lbcParams.set("annee", r.anneeUser);
+                    lbcParams.set("ch", ch);
+                    if (chosenFuelCode) lbcParams.set("fuel", chosenFuelCode);
+                    lbcParams.set("gearbox", r.gearbox);
+                    if (r.finition) lbcParams.set("finition", r.finition);
+                    const lbcRes = await fetch(`/api/leboncoin?${lbcParams.toString()}`);
+                    const lbcData = await lbcRes.json();
+                    const rawAds = lbcData.ads || [];
+                    const ads = filterAds(rawAds, r.kmUser, r.anneeUser, ch, r.marque, r.modele, r.finition);
+                    const stats = computeStats(ads);
+                    r.ads = ads; r.stats = stats;
+                    r.peuResultats = r.finition && ads.length < 5;
+                    setResult(r); setState("results");
+                  } catch(e) { setState("results"); }
+                }} disabled={!motoConfirmEnergie || (!motoConfirmPuissance && !motoConfirmPuissanceLibre)}
+                  style={{width:"100%",background:(!motoConfirmEnergie||(!motoConfirmPuissance&&!motoConfirmPuissanceLibre))?"#d1d5db":BLUE,color:"white",fontWeight:800,fontSize:16,borderRadius:14,padding:"14px 0",border:"none",cursor:"pointer",marginBottom:10}}>
+                  ✅ Confirmer et analyser
+                </button>
+                <button onClick={()=>{ setResult(pendingResult); setShowMotoConfirm(false); setPendingResult(null); setState("results"); }}
                   style={{width:"100%",background:"#f3f4f6",color:"#6b7280",fontWeight:700,fontSize:14,borderRadius:14,padding:"12px 0",border:"none",cursor:"pointer"}}>
                   Ignorer et continuer
                 </button>
