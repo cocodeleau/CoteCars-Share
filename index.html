@@ -153,6 +153,8 @@
 
     function LoginModal({ onClose }) {
       const [mode, setMode] = React.useState("login"); // login | register | forgot
+      const [firstName, setFirstName] = React.useState("");
+      const [lastName, setLastName] = React.useState("");
       const [email, setEmail] = React.useState("");
       const [password, setPassword] = React.useState("");
       const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -165,6 +167,7 @@
         e.preventDefault();
         setError(""); setSuccess("");
         if (mode === "register" && password !== confirmPassword) { setError("Les mots de passe ne correspondent pas."); return; }
+        if (mode === "register" && (!firstName.trim() || !lastName.trim())) { setError("Renseignez votre nom et prénom."); return; }
         if (password.length < 6) { setError("Le mot de passe doit contenir au moins 6 caractères."); return; }
         setLoading(true);
         try {
@@ -172,7 +175,8 @@
             await auth.signInWithEmailAndPassword(email, password);
             if(window.posthog) posthog.capture("connexion_email");
           } else {
-            await auth.createUserWithEmailAndPassword(email, password);
+            const cred = await auth.createUserWithEmailAndPassword(email, password);
+            await cred.user.updateProfile({ displayName: `${firstName.trim()} ${lastName.trim()}` });
             if(window.posthog) posthog.capture("inscription_email");
           }
           if (onClose) onClose();
@@ -227,6 +231,14 @@
             </div>
 
             <form onSubmit={mode === "forgot" ? handleForgot : handleEmailAuth}>
+              {mode === "register" && (
+                <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+                  <input type="text" placeholder="Prénom" value={firstName} onChange={e => setFirstName(e.target.value)} required
+                    style={{ width:"100%", padding:"12px 14px", border:"2px solid var(--border)", borderRadius:12, fontSize:14, outline:"none", boxSizing:"border-box", background:"var(--input-bg)", color:"var(--text)" }} />
+                  <input type="text" placeholder="Nom" value={lastName} onChange={e => setLastName(e.target.value)} required
+                    style={{ width:"100%", padding:"12px 14px", border:"2px solid var(--border)", borderRadius:12, fontSize:14, outline:"none", boxSizing:"border-box", background:"var(--input-bg)", color:"var(--text)" }} />
+                </div>
+              )}
               <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required
                 style={{ width:"100%", padding:"12px 14px", border:"2px solid var(--border)", borderRadius:12, fontSize:14, marginBottom:10, outline:"none", boxSizing:"border-box", background:"var(--input-bg)", color:"var(--text)" }} />
               {mode !== "forgot" && (
@@ -3413,7 +3425,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       }
 
       return (
-        <div className="errorpage-root" style={{ minHeight:"100vh", background:"var(--bg)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px", paddingLeft: "calc(220px + 24px)" }}>
+        <div className="errorpage-root" style={{ minHeight:"100vh", background:"var(--bg)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"24px" }}>
           <div style={{ position:"relative", marginBottom:16 }}>
             <div style={{ fontSize:64, animation:"bounce 1.5s infinite", display:"inline-block" }}>🚗</div>
             <div style={{ position:"absolute", top:-8, right:-8, fontSize:26, animation:"spin 2s linear infinite", display:"inline-block" }}>⚠️</div>
@@ -3431,7 +3443,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
           </div>
 
           {!submitted ? (
-            <div style={{ width:"100%", background:"var(--card)", borderRadius:20, padding:"20px", boxShadow:"0 4px 16px rgba(0,0,0,0.08)", animation:"fadeIn 0.4s ease", border:"0.5px solid var(--border)" }}>
+            <div style={{ width:"100%", maxWidth:"560px", background:"var(--card)", borderRadius:20, padding:"20px", boxShadow:"0 4px 16px rgba(0,0,0,0.08)", animation:"fadeIn 0.4s ease", border:"0.5px solid var(--border)" }}>
               <p style={{ fontWeight:800, fontSize:15, color:"#111", margin:"0 0 4px", textAlign:"center" }}>📬 On s&apos;occupe de vous !</p>
               <p style={{ color:"#6b7280", fontSize:12, margin:"0 0 14px", textAlign:"center" }}>Remplissez le formulaire et nous vous fournirons l&apos;estimation gratuitement.</p>
 
@@ -3491,7 +3503,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               <p style={{ fontSize:11, color:"#9ca3af", textAlign:"center", margin:"10px 0 0" }}>* Champs obligatoires</p>
             </div>
           ) : (
-            <div style={{ width:"100%", background:"var(--card)", borderRadius:20, padding:"24px", boxShadow:"0 4px 16px rgba(0,0,0,0.08)", textAlign:"center", animation:"fadeIn 0.4s ease", border:"0.5px solid var(--border)" }}>
+            <div style={{ width:"100%", maxWidth:"560px", background:"var(--card)", borderRadius:20, padding:"24px", boxShadow:"0 4px 16px rgba(0,0,0,0.08)", textAlign:"center", animation:"fadeIn 0.4s ease", border:"0.5px solid var(--border)" }}>
               <div style={{ fontSize:56, marginBottom:12 }}>✅</div>
               <h3 style={{ fontWeight:800, fontSize:18, color:"var(--text)", margin:"0 0 8px" }}>Demande envoyée !</h3>
               <p style={{ color:"#6b7280", fontSize:14, margin:"0 0 20px" }}>Nous reviendrons vers vous rapidement avec votre estimation gratuite.</p>
@@ -3536,6 +3548,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
       const [pendingResult, setPendingResult] = React.useState(null);
       const [showEnergieConfirm, setShowEnergieConfirm] = React.useState(false);
       const [showMotoConfirm, setShowMotoConfirm] = React.useState(false);
+      const [showFuelConfirm, setShowFuelConfirm] = React.useState(false);
       const [motoConfirmEnergie, setMotoConfirmEnergie] = React.useState("");
       const [motoConfirmPuissance, setMotoConfirmPuissance] = React.useState("");
       const [motoConfirmPuissanceLibre, setMotoConfirmPuissanceLibre] = React.useState("");
@@ -3675,6 +3688,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
             setPendingResult(resultData);
             setPuissanceConfirmValue("");
             setShowPuissanceConfirm(true);
+            setState("home");
+          } else if ((veh.AWN_energie || "").toUpperCase() !== "GAZOLE") {
+            setPendingResult(resultData);
+            setShowFuelConfirm(true);
             setState("home");
           } else {
             setResult(resultData);
@@ -4036,6 +4053,62 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               </div>
             </div>
           )}
+          {showFuelConfirm && pendingResult && (
+            <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+              <div style={{background:"white",borderRadius:20,padding:"28px 24px",width:"100%",maxWidth:380,boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+                <p style={{fontWeight:800,fontSize:17,color:"#111",margin:"0 0 6px"}}>⛽ Confirmez la motorisation</p>
+                <p style={{fontSize:13,color:"#6b7280",margin:"0 0 20px",lineHeight:1.6}}>
+                  Carte grise indique « {pendingResult.veh.AWN_energie || "—"} ». Confirmez ou corrigez si besoin.
+                </p>
+                <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
+                  {[
+                    {val:"ESSENCE", label:"🔥 Essence"},
+                    {val:"GAZOLE", label:"⛽ Diesel"},
+                    {val:"HYBRIDE", label:"🌿 Hybride"},
+                    {val:"ELECTRIQUE", label:"⚡ Électrique"},
+                    {val:"GPL", label:"🟡 GPL"},
+                  ].map(({val, label}) => (
+                    <button key={val} onClick={async ()=>{
+                      const FUEL_CODES = {"ESSENCE":"1","GAZOLE":"2","GPL":"3","ELECTRIQUE":"4","HYBRIDE":"6"};
+                      const chosenFuelCode = FUEL_CODES[val] || "";
+                      setShowFuelConfirm(false); setPendingResult(null); setState("loading");
+                      try {
+                        const r = {...pendingResult, veh: {...pendingResult.veh}};
+                        r.veh.AWN_energie = val;
+                        r.fuelCode = chosenFuelCode;
+                        const chFinal = r.chUser || r.veh.AWN_puissance_CH;
+                        const anneeFinal = r.anneeUser || (r.veh.AWN_date_mise_en_circulation ? parseInt(r.veh.AWN_date_mise_en_circulation.slice(-4)) : null);
+                        const lbcParams = new URLSearchParams({ marque: r.marque, modele: r.modele });
+                        if (r.kmUser)        lbcParams.set("km", r.kmUser);
+                        if (anneeFinal)      lbcParams.set("annee", anneeFinal);
+                        if (chFinal)         lbcParams.set("ch", chFinal);
+                        if (chosenFuelCode)  lbcParams.set("fuel", chosenFuelCode);
+                        if (r.gearbox)       lbcParams.set("gearbox", r.gearbox);
+                        if (r.finition)      lbcParams.set("finition", r.finition);
+                        const lbcRes = await fetch(`/api/leboncoin?${lbcParams.toString()}`);
+                        const lbcData = await lbcRes.json();
+                        const rawAds = lbcData.ads || [];
+                        r.ads = filterAds(rawAds, r.kmUser, anneeFinal, chFinal, r.marque, r.modele, r.finition);
+                        r.stats = computeStats(r.ads);
+                        r.peuResultats = r.finition && r.ads.length < 5;
+                        r.chUser = chFinal; r.anneeUser = anneeFinal;
+                        setResult(r); setState("results");
+                      } catch(e) { setState("error"); setApiErr(e.message); }
+                    }}
+                      style={{width:"100%",padding:"14px 0",borderRadius:14,border: (pendingResult.veh.AWN_energie||"").toUpperCase()===val ? "2px solid #1a3fdb" : "2px solid #e5e7eb",background:"white",color:"#111",fontWeight:700,fontSize:15,cursor:"pointer",transition:"border-color 0.15s"}}
+                      onMouseEnter={e=>e.currentTarget.style.borderColor="#1a3fdb"}
+                      onMouseLeave={e=>e.currentTarget.style.borderColor=(pendingResult.veh.AWN_energie||"").toUpperCase()===val ? "#1a3fdb" : "#e5e7eb"}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={()=>{ setResult(pendingResult); setShowFuelConfirm(false); setPendingResult(null); setState("results"); }}
+                  style={{width:"100%",background:"#f3f4f6",color:"#6b7280",fontWeight:700,fontSize:14,borderRadius:14,padding:"12px 0",border:"none",cursor:"pointer"}}>
+                  Garder « {pendingResult.veh.AWN_energie || "valeur détectée"} »
+                </button>
+              </div>
+            </div>
+          )}
           {/* ═══ MOBILE ═══ */}
           <div className="cc-mobile" style={{ maxWidth:480, margin:"0 auto", minHeight:"100vh" }}>
 
@@ -4299,6 +4372,26 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                 <p style={{ margin:0, fontSize:12, color:"#1a3fdb", fontWeight:600 }}>🔒 Vos données restent privées</p>
                 <p style={{ margin:"3px 0 0", fontSize:11, color:"#3b5bdb", lineHeight:1.5 }}>On ne stocke ni votre plaque, ni vos informations personnelles.</p>
               </div>
+              <div style={{ borderTop:"1px solid var(--border)", paddingTop:12, marginBottom:12 }}>
+                <p style={{ fontSize:10, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 8px" }}>Estimation par modèle</p>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+                  {[["Peugeot 308","/estimation-peugeot-308"],["Renault Clio","/estimation-renault-clio"],["VW Golf","/estimation-volkswagen-golf"],["Peugeot 208","/estimation-peugeot-208"],["Dacia Sandero","/estimation-dacia-sandero"],["Toyota Yaris","/estimation-toyota-yaris"],["Peugeot 3008","/estimation-peugeot-3008"],["Renault Captur","/estimation-renault-captur"],["Dacia Duster","/estimation-dacia-duster"],["Tesla Model 3","/estimation-tesla-model-3"]].map(([label,href])=>(
+                    <a key={href} href={href} style={{ fontSize:10, color:"#1a3fdb", background:"rgba(26,63,219,0.07)", padding:"3px 8px", borderRadius:999, textDecoration:"none" }}>{label}</a>
+                  ))}
+                </div>
+                <p style={{ fontSize:10, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"8px 0" }}>Par ville</p>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+                  {[["Paris","/estimation-voiture-paris"],["Lyon","/estimation-voiture-lyon"],["Marseille","/estimation-voiture-marseille"],["Toulouse","/estimation-voiture-toulouse"],["Bordeaux","/estimation-voiture-bordeaux"],["Nantes","/estimation-voiture-nantes"],["Lille","/estimation-voiture-lille"],["Nice","/estimation-voiture-nice"],["Rennes","/estimation-voiture-rennes"],["Grenoble","/estimation-voiture-grenoble"]].map(([label,href])=>(
+                    <a key={href} href={href} style={{ fontSize:10, color:"#7c3aed", background:"rgba(124,58,237,0.07)", padding:"3px 8px", borderRadius:999, textDecoration:"none" }}>{label}</a>
+                  ))}
+                </div>
+                <p style={{ fontSize:10, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"8px 0" }}>Guides</p>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+                  {[["Vendre au meilleur prix","/blog/comment-vendre-voiture-meilleur-prix"],["Argus fiable ?","/blog/argus-voiture-fiable"],["Diesel ou essence ?","/blog/diesel-ou-essence-occasion"],["CT occasion","/blog/controle-technique-voiture-occasion"]].map(([label,href])=>(
+                    <a key={href} href={href} style={{ fontSize:10, color:"#059669", background:"rgba(5,150,105,0.07)", padding:"3px 8px", borderRadius:999, textDecoration:"none" }}>{label}</a>
+                  ))}
+                </div>
+              </div>
               <p style={{ fontSize:11, color:"var(--text3)", margin:0, textAlign:"center" }}>© 2025 CoteCars ·
                 <a href="/mentions-legales.html" style={{ color:"#8fa0b8", marginLeft:6 }}>Mentions légales</a> ·
                 <a href="/cgu.html" style={{ color:"#8fa0b8", marginLeft:6 }}>CGU</a>
@@ -4419,8 +4512,11 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
               {/* Header sticky */}
               <header style={{ background:"var(--nav-bg)", borderBottom:"0.5px solid var(--border)", padding:"0 28px", height:58, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:10, flexShrink:0 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <span style={{ fontSize:32, fontWeight:800, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1B3FDB"}}>Cars</span></span>
-                  {!showAnnonces && <span style={{ fontSize:13, color:"var(--text3)", fontWeight:500 }}>Estimation auto</span>}
+                  {user && !showAnnonces ? (
+                    <span style={{ fontSize:32, fontWeight:800, color:"var(--text)", letterSpacing:"-0.5px" }}>Bonjour <span style={{color:"#1B3FDB"}}>{(user.displayName || user.email?.split("@")[0] || "").split(" ")[0]}</span></span>
+                  ) : (
+                    <span style={{ fontSize:32, fontWeight:800, color:"var(--text)", letterSpacing:"-0.5px" }}>Cote<span style={{color:"#1B3FDB"}}>Cars</span></span>
+                  )}
                   {showAnnonces && <span style={{ fontSize:13, color:"var(--text3)", fontWeight:500 }}>Annonces</span>}
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:12 }}>
@@ -4558,6 +4654,26 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte avant o
                   <div style={{ background:"var(--badge-bg)", border:"1px solid var(--badge-border)", borderRadius:20, padding:"18px 22px" }}>
                     <p style={{ margin:"0 0 5px", fontSize:14, color:"#1B3FDB", fontWeight:700 }}>🔒 Vos données restent privées</p>
                     <p style={{ margin:0, fontSize:13, color:"#3b5bdb", lineHeight:1.6 }}>On ne stocke ni votre plaque, ni vos informations personnelles.</p>
+                  </div>
+                  <div style={{ borderTop:"1px solid var(--border)", paddingTop:16, marginBottom:8 }}>
+                    <p style={{ fontSize:11, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 10px" }}>Estimation par modèle</p>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                      {[["Peugeot 308","/estimation-peugeot-308"],["Renault Clio","/estimation-renault-clio"],["VW Golf","/estimation-volkswagen-golf"],["Peugeot 208","/estimation-peugeot-208"],["Renault Mégane","/estimation-renault-megane"],["Citroën C3","/estimation-citroen-c3"],["Dacia Sandero","/estimation-dacia-sandero"],["Toyota Yaris","/estimation-toyota-yaris"],["Ford Focus","/estimation-ford-focus"],["VW Polo","/estimation-volkswagen-polo"],["Peugeot 3008","/estimation-peugeot-3008"],["Renault Captur","/estimation-renault-captur"],["Dacia Duster","/estimation-dacia-duster"],["VW Tiguan","/estimation-volkswagen-tiguan"],["BMW Série 3","/estimation-bmw-serie-3"],["Audi A3","/estimation-audi-a3"],["Mercedes Classe A","/estimation-mercedes-classe-a"],["Citroën C5 Aircross","/estimation-citroen-c5-aircross"],["Renault Zoé","/estimation-renault-zoe"],["Tesla Model 3","/estimation-tesla-model-3"]].map(([label,href])=>(
+                        <a key={href} href={href} style={{ fontSize:11, color:"#1a3fdb", background:"rgba(26,63,219,0.07)", padding:"4px 10px", borderRadius:999, textDecoration:"none" }}>{label}</a>
+                      ))}
+                    </div>
+                    <p style={{ fontSize:11, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"14px 0 10px" }}>Guides & Conseils</p>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                      {[["Comment vendre au meilleur prix","/blog/comment-vendre-voiture-meilleur-prix"],["Leboncoin vs CoteCars","/blog/leboncoin-vs-cotecars"],["L'Argus est-il fiable ?","/blog/argus-voiture-fiable"],["Prix occasion 2025","/blog/prix-voiture-occasion-2025"],["Négocier le prix","/blog/negocier-prix-voiture-occasion"],["Particulier vs concessionnaire","/blog/vendre-particulier-ou-concessionnaire"],["Kilométrage : quel seuil ?","/blog/kilometrage-voiture-occasion-seuil"],["Contrôle technique","/blog/controle-technique-voiture-occasion"],["Diesel ou essence ?","/blog/diesel-ou-essence-occasion"],["Meilleur moment vendre","/blog/meilleur-moment-vendre-voiture"]].map(([label,href])=>(
+                        <a key={href} href={href} style={{ fontSize:11, color:"#059669", background:"rgba(5,150,105,0.07)", padding:"4px 10px", borderRadius:999, textDecoration:"none" }}>{label}</a>
+                      ))}
+                    </div>
+                    <p style={{ fontSize:11, fontWeight:700, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.06em", margin:"14px 0 10px" }}>Estimation par ville</p>
+                    <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                      {[["Paris","/estimation-voiture-paris"],["Lyon","/estimation-voiture-lyon"],["Marseille","/estimation-voiture-marseille"],["Toulouse","/estimation-voiture-toulouse"],["Bordeaux","/estimation-voiture-bordeaux"],["Nantes","/estimation-voiture-nantes"],["Strasbourg","/estimation-voiture-strasbourg"],["Montpellier","/estimation-voiture-montpellier"],["Lille","/estimation-voiture-lille"],["Nice","/estimation-voiture-nice"],["Rennes","/estimation-voiture-rennes"],["Grenoble","/estimation-voiture-grenoble"],["Toulon","/estimation-voiture-toulon"],["Dijon","/estimation-voiture-dijon"],["Angers","/estimation-voiture-angers"],["Nîmes","/estimation-voiture-nimes"],["Clermont-Ferrand","/estimation-voiture-clermont-ferrand"],["Le Havre","/estimation-voiture-le-havre"],["Aix-en-Provence","/estimation-voiture-aix-en-provence"],["Reims","/estimation-voiture-reims"]].map(([label,href])=>(
+                        <a key={href} href={href} style={{ fontSize:11, color:"#7c3aed", background:"rgba(124,58,237,0.07)", padding:"4px 10px", borderRadius:999, textDecoration:"none" }}>{label}</a>
+                      ))}
+                    </div>
                   </div>
                   <div style={{ textAlign:"center", paddingTop:8, borderTop:"1px solid var(--border)" }}>
                     <p style={{ fontSize:11, color:"var(--text3)", margin:0 }}>© 2025 CoteCars · <a href="/mentions-legales.html" style={{color:"var(--text3)"}}>Mentions légales</a> · <a href="/cgu.html" style={{color:"var(--text3)"}}>CGU</a></p>

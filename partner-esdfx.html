@@ -401,13 +401,14 @@
 
       async function downloadSession(sess) {
         if (!sess.photos?.length) return;
+        const slug = (sess.vehicleName||"vehicule").replace(/\s/g,"_");
         for (let i=0; i<sess.photos.length; i++) {
+          const proxyUrl = "/api/download-photo?url=" + encodeURIComponent(sess.photos[i]);
           const a = document.createElement("a");
-          a.href = sess.photos[i];
-          a.download = `${sess.vehicleName?.replace(/\s/g,"_")||"vehicule"}_photo_${i+1}.jpg`;
-          a.target = "_blank";
+          a.href = proxyUrl;
+          a.download = `${slug}_photo_${i+1}.jpg`;
           document.body.appendChild(a); a.click(); document.body.removeChild(a);
-          await new Promise(r => setTimeout(r, 400));
+          await new Promise(r => setTimeout(r, 600));
         }
       }
 
@@ -507,11 +508,15 @@
     // ── Modal Détail Session ──────────────────────────────────────
     function SessionDetailModal({ sess, onClose, onClaim }) {
       const slug = (sess.vehicleName || "vehicule").replace(/\s/g, "_");
-      function dlOne(url, i) {
-        const a = document.createElement("a"); a.href=url; a.download=slug+"_photo_"+(i+1)+".jpg"; a.target="_blank";
+      async function dlOne(url, i) {
+        const proxyUrl = "/api/download-photo?url=" + encodeURIComponent(url);
+        const a = document.createElement("a"); a.href=proxyUrl; a.download=slug+"_photo_"+(i+1)+".jpg";
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
       }
-      function dlAll() { (sess.photos||[]).forEach((url,i) => setTimeout(() => dlOne(url,i), i*400)); }
+      async function dlAll() {
+        const photos = sess.photos||[];
+        for (let i=0; i<photos.length; i++) { await dlOne(photos[i],i); await new Promise(r=>setTimeout(r,600)); }
+      }
 
       return (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.55)", zIndex:600, display:"flex", alignItems:"center", justifyContent:"center", padding:16, backdropFilter:"blur(3px)" }}

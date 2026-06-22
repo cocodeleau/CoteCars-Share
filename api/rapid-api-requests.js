@@ -73,9 +73,8 @@ module.exports = async function handler(req, res) {
     if (!raw) return null;
     const r = raw.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     if (r.includes("DIESEL") || r.includes("GAZOLE") || r === "GO") return "GAZOLE";
-    if (r.includes("ELECT") && (r.includes("HYBRID") || r.includes("RECHARG") || r.includes("ELEC"))) return "HYBRIDE";
+    if (r.includes("HYBRID") || r.includes("RECHARG")) return "HYBRIDE";
     if (r.includes("ELECT"))  return "ELECTRIQUE";
-    if (r.includes("HYBRID") || r.includes("ELEC")) return "HYBRIDE";
     if (r.includes("GPL"))    return "GPL";
     if (r.includes("ESSENCE") || r.includes("ESSENC") || r === "SP") return "ESSENCE";
     return null;

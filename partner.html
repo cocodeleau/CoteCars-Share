@@ -383,13 +383,14 @@
 
       async function downloadSession(sess) {
         if (!sess.photos?.length) return;
+        const slug = (sess.vehicleName||"vehicule").replace(/\s/g,"_");
         for (let i=0; i<sess.photos.length; i++) {
+          const proxyUrl = "/api/download-photo?url=" + encodeURIComponent(sess.photos[i]);
           const a = document.createElement("a");
-          a.href = sess.photos[i];
-          a.download = `${sess.vehicleName?.replace(/\s/g,"_")||"vehicule"}_photo_${i+1}.jpg`;
-          a.target = "_blank";
+          a.href = proxyUrl;
+          a.download = `${slug}_photo_${i+1}.jpg`;
           document.body.appendChild(a); a.click(); document.body.removeChild(a);
-          await new Promise(r => setTimeout(r, 400));
+          await new Promise(r => setTimeout(r, 600));
         }
       }
 
@@ -515,19 +516,20 @@
     function SessionDetailModal({ sess, onClose, onClaim }) {
       const vehicleSlug = (sess.vehicleName || "vehicule").replace(/\s/g, "_");
 
-      function downloadOne(url, idx) {
+      async function downloadOne(url, idx) {
+        const proxyUrl = "/api/download-photo?url=" + encodeURIComponent(url);
         const a = document.createElement("a");
-        a.href = url;
+        a.href = proxyUrl;
         a.download = vehicleSlug + "_photo_" + (idx + 1) + ".jpg";
-        a.target = "_blank";
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
       }
 
-      function downloadAll() {
+      async function downloadAll() {
         const photos = sess.photos || [];
-        photos.forEach(function(url, idx) {
-          setTimeout(function() { downloadOne(url, idx); }, idx * 400);
-        });
+        for (let idx=0; idx<photos.length; idx++) {
+          await downloadOne(photos[idx], idx);
+          await new Promise(r => setTimeout(r, 600));
+        }
       }
 
       const photos = sess.photos || [];
