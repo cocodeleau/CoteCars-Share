@@ -1,0 +1,25 @@
+{
+  "routes": [
+    { "src": "/api/firebase-config",         "dest": "/api/firebase-config.js" },
+    { "src": "/api/brevo-form-requests",      "dest": "/api/brevo-form-requests.js" },
+    { "src": "/api/gemini",                   "dest": "/api/gemini.js" },
+    { "src": "/api/lbc-finitions",            "dest": "/api/lbc-finitions-requests.js" },
+    { "src": "/api/leboncoin",                "dest": "/api/lbc-piloterr-requests.js" },
+    { "src": "/api/lbc-marques-codes",        "dest": "/api/lbc-marques-codes.js" },
+    { "src": "/api/rapid-api-requests",       "dest": "/api/rapid-api-requests.js" },
+    { "src": "/api/partner-photo",            "dest": "/api/partner-photo.js" },
+    { "src": "/api/partner-photo-esdfx",      "dest": "/api/partner-photo-esdfx.js" },
+    { "src": "/api/warp-plate",               "dest": "/api/warp-plate.py" },
+    { "src": "/estimation-voiture-(.*)",      "dest": "/seo-villes/estimation-voiture-$1.html" },
+    { "src": "/estimation-(.*)",              "dest": "/seo-pages/estimation-$1.html" },
+    { "src": "/blog/(.*)",                    "dest": "/blog/$1.html" },
+    { "src": "/sitemap.xml",                  "dest": "/sitemap.xml" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)",                         "dest": "/index.html" }
+  ],
+  "functions": {
+    "api/partner-photo.js":       { "maxDuration": 90 },
+    "api/partner-photo-esdfx.js": { "maxDuration": 60 },
+    "api/warp-plate.py":          { "maxDuration": 30 }
+  }
+}
