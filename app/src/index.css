@@ -1305,6 +1305,15 @@ input[type='range'] {
   gap: 8px;
 }
 
+.tool-field-group { display: flex; flex-direction: column; gap: 6px; }
+.tool-field-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
 /* Mode toggle */
 .tool-mode-toggle {
   display: grid;

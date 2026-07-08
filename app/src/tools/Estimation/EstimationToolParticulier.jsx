@@ -55,8 +55,12 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
         const json = await fetchVehicleByPlate(formatted);
         const veh = json.data;
         if (!json.error && veh?.AWN_marque) {
-          setFinitionsList(getFinitions(veh.marque, veh.modele));
+          const list = getFinitions(veh.marque, veh.modele);
+          setFinitionsList(list);
           setVehicle({ marque: veh.marque, modele: veh.modele });
+          const motoNorm = (veh.motorisation || '').toLowerCase();
+          const matched = motoNorm ? list.find(f => motoNorm.includes(f.toLowerCase())) : null;
+          if (matched) setFinition(matched);
         }
       } catch { /* aperçu optionnel, on ignore les erreurs silencieusement */ }
     }
@@ -156,47 +160,58 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
         </div>
 
         {finitionsList.length > 0 && (
-          <select
-            className="tool-input"
-            value={finition}
-            onChange={e => setFinition(e.target.value)}
-            aria-label="Finition"
-          >
-            <option value="">Toutes finitions {vehicle ? `(${vehicle.marque} ${vehicle.modele})` : ''}</option>
-            {finitionsList.map(f => (
-              <option key={f} value={f}>{f}</option>
-            ))}
-          </select>
+          <div className="tool-field-group">
+            <label className="tool-field-label">
+              Finition {finition ? '(détectée automatiquement, modifiable)' : ''}
+            </label>
+            <select
+              className="tool-input"
+              value={finition}
+              onChange={e => setFinition(e.target.value)}
+              aria-label="Finition"
+            >
+              <option value="">Toutes finitions {vehicle ? `(${vehicle.marque} ${vehicle.modele})` : ''}</option>
+              {finitionsList.map(f => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+          </div>
         )}
 
         <div className="tool-row">
-          <div className="km-field">
-            <input
-              className="tool-input"
-              placeholder="Kilométrage"
-              inputMode="numeric"
-              value={km}
-              onChange={e => setKm(e.target.value.replace(/\D/g, '').slice(0, 7))}
-              autoComplete="off"
-              aria-label="Kilométrage"
-            />
-            <span className="km-suffix">km</span>
+          <div className="tool-field-group">
+            <label className="tool-field-label">Kilométrage actuel</label>
+            <div className="km-field">
+              <input
+                className="tool-input"
+                placeholder="Kilométrage"
+                inputMode="numeric"
+                value={km}
+                onChange={e => setKm(e.target.value.replace(/\D/g, '').slice(0, 7))}
+                autoComplete="off"
+                aria-label="Kilométrage"
+              />
+              <span className="km-suffix">km</span>
+            </div>
           </div>
-          <div className="tool-mode-toggle">
-            <button
-              type="button"
-              className={gearbox === '2' ? 'active' : ''}
-              onClick={() => setGearbox('2')}
-            >
-              Automatique
-            </button>
-            <button
-              type="button"
-              className={gearbox === '1' ? 'active' : ''}
-              onClick={() => setGearbox('1')}
-            >
-              Manuelle
-            </button>
+          <div className="tool-field-group">
+            <label className="tool-field-label">Type de boîte</label>
+            <div className="tool-mode-toggle">
+              <button
+                type="button"
+                className={gearbox === '2' ? 'active' : ''}
+                onClick={() => setGearbox('2')}
+              >
+                Automatique
+              </button>
+              <button
+                type="button"
+                className={gearbox === '1' ? 'active' : ''}
+                onClick={() => setGearbox('1')}
+              >
+                Manuelle
+              </button>
+            </div>
           </div>
         </div>
 
@@ -235,7 +250,7 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
             )}
             <div>
               <div className="hero-vehicle-name">{result.veh.marque} {result.veh.modele} — {result.veh.annee}</div>
-              <div className="hero-vehicle-sub">{result.veh.AWN_energie} · {result.veh.puissance}{result.veh.AWN_boite ? ` · ${result.veh.AWN_boite}` : ''}{result.veh.AWN_couleur ? ` · ${result.veh.AWN_couleur}` : ''}</div>
+              <div className="hero-vehicle-sub">{[result.veh.motorisation, result.veh.puissance].filter(Boolean).join(' · ')}</div>
             </div>
           </div>
 
