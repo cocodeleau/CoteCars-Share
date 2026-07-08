@@ -1,8 +1,7 @@
 // api/rapid-api-requests.js
 //
 // SIV via API SIV Autoways (RapidAPI)
-
-const fetch = require("node-fetch");
+// Utilise le fetch natif de Node (18+), comme lbc-piloterr-requests.js.
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin":  "*",
