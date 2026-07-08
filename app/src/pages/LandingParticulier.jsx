@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import ThemeToggle from '../components/shared/ThemeToggle';
 import { useNavigate } from 'react-router-dom';
-import EstimationTool from '../tools/Estimation/EstimationTool';
+import EstimationToolParticulier from '../tools/Estimation/EstimationToolParticulier';
 
 const REVIEWS = [
   { name: 'Julien P.', role: 'Vendeur particulier', text: "J'ai vendu ma voiture au bon prix en une semaine. L'estimation était pile dans la fourchette du marché." },
@@ -101,7 +101,7 @@ export default function LandingParticulier() {
               <span>✓ Résultat en 10 sec</span>
               <span>✓ 100% gratuit</span>
             </div>
-            <EstimationTool dashboardPath="/dashboard" />
+            <EstimationToolParticulier dashboardPath="/dashboard" />
           </div>
         </div>
       </section>
