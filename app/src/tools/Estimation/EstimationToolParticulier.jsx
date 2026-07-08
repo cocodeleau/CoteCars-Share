@@ -120,6 +120,7 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
           modele: veh.modele,
           annee: veh.annee,
           prixMarche: stats.p25,
+          photo: veh.AWN_photo_modele || '',
         }));
       }
       setState('results');
@@ -260,20 +261,23 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
                   onError={() => setPhotoError(true)}
                 />
               )}
-              {result.veh.AWN_logo_marque && (
-                <img
-                  className="hero-vehicle-logo-corner"
-                  src={result.veh.AWN_logo_marque}
-                  alt={result.veh.marque}
-                  onError={e => { e.currentTarget.style.display = 'none'; }}
-                />
-              )}
             </div>
-            <div>
+            <div className="hero-vehicle-info">
               <div className="hero-vehicle-name">{result.veh.marque} {result.veh.modele} — {result.veh.annee}</div>
-              <div className="hero-vehicle-sub">{[result.veh.motorisation, result.veh.puissance].filter(Boolean).join(' · ')}</div>
+              <div className="hero-vehicle-specs">
+                {result.veh.motorisation && <span><strong>Motorisation :</strong> {result.veh.motorisation}</span>}
+                {result.veh.puissance && <span><strong>Puissance :</strong> {result.veh.puissance}</span>}
+              </div>
               <div className="hero-vehicle-disclaimer">Photo non contractuelle · Couleur carte grise : {result.veh.AWN_couleur || '—'}</div>
             </div>
+            {result.veh.AWN_logo_marque && (
+              <img
+                className="hero-vehicle-logo-right"
+                src={result.veh.AWN_logo_marque}
+                alt={result.veh.marque}
+                onError={e => { e.currentTarget.style.display = 'none'; }}
+              />
+            )}
           </div>
 
           {result.stats ? (
@@ -328,19 +332,13 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
         </div>
       )}
 
-      <div className="tool-pills">
-        <span className="tool-pill">⚡ Instantané</span>
-        <span className="tool-pill">🎯 Prix précis</span>
-        <span className="tool-pill">🔒 Privé</span>
-        <span className="tool-pill">✅ Gratuit</span>
-      </div>
-
       {history.length > 0 && (
         <div className="history-section">
           <div className="history-label">Vos dernières recherches</div>
           <div className="history-cards">
             {history.map((h, i) => (
               <div className="history-card" key={i}>
+                {h.photo && <img className="history-card-photo" src={h.photo} alt={h.modele} />}
                 <div className="history-card-plate">{h.plate}</div>
                 <div className="history-card-model">{h.marque} {h.modele}{h.annee ? ` · ${h.annee}` : ''}</div>
                 {h.prixMarche != null && (
@@ -354,6 +352,15 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
           </div>
         </div>
       )}
+
+      <div className="tool-pills">
+        <span className="tool-pill">⚡ Instantané</span>
+        <span className="tool-pill">🎯 Prix précis</span>
+        <span className="tool-pill">🔒 Privé</span>
+        <span className="tool-pill">✅ Gratuit</span>
+        <span className="tool-pill">📊 Données LeBonCoin</span>
+        <span className="tool-pill">🚫 Sans engagement</span>
+      </div>
     </div>
   );
 }

@@ -1303,6 +1303,8 @@ input[type='range'] {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 8px;
 }
 
 .tool-field-group { display: flex; flex-direction: column; gap: 6px; }
@@ -1444,23 +1446,24 @@ input[type='range'] {
 .hero-vehicle-badge {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
   background: var(--bg-3);
   border-radius: var(--radius);
 }
 .hero-vehicle-icon { font-size: 1.3rem; }
 .hero-vehicle-photo {
-  width: 44px;
-  height: 44px;
+  width: 72px;
+  height: 72px;
   object-fit: contain;
   border-radius: var(--radius-sm);
   background: var(--bg-2);
   flex-shrink: 0;
 }
 .hero-vehicle-icon-badge {
-  width: 44px;
-  height: 44px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   background: var(--blue);
   color: white;
@@ -1469,25 +1472,34 @@ input[type='range'] {
   justify-content: center;
   font-family: 'DM Sans', sans-serif;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.6rem;
   flex-shrink: 0;
 }
 .hero-vehicle-visual { position: relative; flex-shrink: 0; }
-.hero-vehicle-logo-corner {
-  position: absolute;
-  bottom: -4px;
-  right: -4px;
-  width: 18px;
-  height: 18px;
+.hero-vehicle-info { flex: 1; min-width: 0; }
+.hero-vehicle-logo-right {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
   border-radius: 50%;
   background: white;
   border: 1px solid var(--border);
-  object-fit: contain;
-  padding: 2px;
+  padding: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+  align-self: flex-start;
 }
-.hero-vehicle-name { font-weight: 700; font-size: 0.9rem; }
-.hero-vehicle-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
-.hero-vehicle-disclaimer { font-size: 0.68rem; color: var(--text-faint); margin-top: 3px; }
+.hero-vehicle-name { font-weight: 700; font-size: 1.1rem; }
+.hero-vehicle-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.hero-vehicle-specs strong { color: var(--text); font-weight: 600; }
+.hero-vehicle-disclaimer { font-size: 0.75rem; color: var(--blue); font-weight: 600; margin-top: 6px; }
 
 .hero-price-row {
   display: grid;
@@ -1585,6 +1597,14 @@ input[type='range'] {
   border-radius: var(--radius);
   padding: 12px;
   text-align: left;
+}
+.history-card-photo {
+  width: 100%;
+  height: 64px;
+  object-fit: contain;
+  background: var(--bg-2);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
 }
 .history-card-plate {
   font-family: 'DM Sans', sans-serif;
