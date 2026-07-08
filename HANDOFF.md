@@ -205,3 +205,4 @@ cd CoteCars-Share
 Crée le projet Vite dans un sous-dossier `/app` (pour garder `/api/` à la racine compatible Vercel), configure React Router pour les routes définies ci-dessus, et pose la structure de dossiers telle que décrite.
 
 Ne pas encore porter de logique métier — juste la structure, le routing, et une page placeholder par route.
+
