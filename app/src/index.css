@@ -1278,6 +1278,37 @@ input[type='range'] {
   gap: 16px;
 }
 
+/* ── Thème rouge (calculateur v2 expérimental) — override scopé de --blue ── */
+.tool-theme-red {
+  --blue: #dc2626;
+  --blue-hover: #b91c1c;
+  border-color: rgba(220,38,38,0.25);
+}
+.tool-v2-badge {
+  align-self: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--blue);
+  background: rgba(220,38,38,0.1);
+  border: 1px solid rgba(220,38,38,0.3);
+  border-radius: 99px;
+  padding: 6px 14px;
+}
+.tool-v2-warning {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--blue);
+  background: rgba(220,38,38,0.08);
+  border: 1px solid rgba(220,38,38,0.2);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+}
+.tool-v2-note {
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+
 /* Tool pills */
 .tool-pills {
   display: flex;

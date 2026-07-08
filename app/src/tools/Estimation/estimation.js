@@ -77,7 +77,7 @@ export function matchesVehicle(subject, marque, modele) {
   return modeleNorm.split(' ').filter(w => w.length > 1).every(mot => s.includes(mot));
 }
 
-const BAD_WORDS = [
+export const BAD_WORDS = [
   'accident', 'accidenté', 'accidente', 'export', 'marchand', 'épave', 'epave', 'panne',
   'cassé', 'casse', '2 places', '2places', 'societe', 'société', 'societé', 'sociéte',
   'utilitaire', 'business', ' ste ', 'ste ', 's.t.e', 'retour de vol', 'retour vol',
