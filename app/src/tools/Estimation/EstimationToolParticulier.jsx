@@ -35,6 +35,7 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
   const [photoError, setPhotoError] = useState(false);
   const [photoLoaded, setPhotoLoaded] = useState(false);
   const [history, setHistory] = useState(() => getHistory());
+  const [historyShowCount, setHistoryShowCount] = useState(3);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -336,7 +337,7 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
         <div className="history-section">
           <div className="history-label">Vos dernières recherches</div>
           <div className="history-cards">
-            {history.map((h, i) => (
+            {history.slice(0, historyShowCount).map((h, i) => (
               <div className="history-card" key={i}>
                 {h.photo && <img className="history-card-photo" src={h.photo} alt={h.modele} />}
                 <div className="history-card-plate">{h.plate}</div>
@@ -350,6 +351,11 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
               </div>
             ))}
           </div>
+          {historyShowCount < history.length && (
+            <button type="button" className="btn btn-ghost btn-sm" style={{ marginTop: 10 }} onClick={() => setHistoryShowCount(c => c + 100)}>
+              Voir plus ({history.length - historyShowCount})
+            </button>
+          )}
         </div>
       )}
 
