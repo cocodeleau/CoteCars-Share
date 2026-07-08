@@ -2,17 +2,7 @@ import { useState } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import ThemeToggle from '../components/shared/ThemeToggle';
 import { useNavigate } from 'react-router-dom';
-import { fetchVehicleByPlate, fetchLbcListings } from '../services/api';
-
-const MOCK_VEHICLE = { marque: 'Renault', modele: 'Clio', annee: 2019, energie: 'Essence', puissance: '90ch' };
-const MOCK_RESULTS = {
-  prices: { agressif: 8900, marche: 10200, haut: 11800 },
-  listings: [
-    { title: 'Renault Clio 1.0 TCe 90 — 2019', km: '52 000 km', location: 'Lyon (69)', price: '9 500 €' },
-    { title: 'Renault Clio Zen 1.0 — 2020', km: '38 000 km', location: 'Marseille (13)', price: '10 900 €' },
-    { title: 'Renault Clio 5 TCe 90 — 2019', km: '67 000 km', location: 'Paris (75)', price: '8 800 €' },
-  ]
-};
+import EstimationTool from '../tools/Estimation/EstimationTool';
 
 const REVIEWS = [
   { name: 'Julien P.', role: 'Vendeur particulier', text: "J'ai vendu ma voiture au bon prix en une semaine. L'estimation était pile dans la fourchette du marché." },
@@ -22,143 +12,6 @@ const REVIEWS = [
   { name: 'Olivia S.', role: 'Vendeuse particulière', text: "Rapide, gratuit, sans inscription. J'ai pu fixer mon prix en quelques minutes au lieu de plusieurs jours." },
   { name: 'Ruben O.', role: 'Achat occasion', text: "La qualité des données est au top. Chaque estimation est claire et directement exploitable." },
 ];
-
-function formatPlate(value) {
-  const raw = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 7);
-  const parts = [raw.slice(0, 2), raw.slice(2, 5), raw.slice(5, 7)].filter(Boolean);
-  return parts.join('-');
-}
-
-function HeroEstimator() {
-  const [plate, setPlate] = useState('');
-  const [km, setKm] = useState('');
-  const [gearbox, setGearbox] = useState('auto');
-  const [state, setState] = useState('idle');
-  const [vehicle, setVehicle] = useState(null);
-  const [results, setResults] = useState(null);
-  const navigate = useNavigate();
-
-  const canSubmit = plate.replace(/-/g, '').length === 7;
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!canSubmit || state === 'loading') return;
-    setState('loading');
-    setVehicle(null);
-    setResults(null);
-    try {
-      const v = await fetchVehicleByPlate(plate).catch(() => MOCK_VEHICLE);
-      setVehicle(v);
-      const r = await fetchLbcListings({ plate, km, vehicle: v, gearbox }).catch(() => MOCK_RESULTS);
-      setResults(r);
-      setState('results');
-    } catch {
-      setState('idle');
-    }
-  }
-
-  return (
-    <div className="hero-estimator">
-      <form className="hero-plate-form-v2" onSubmit={handleSubmit}>
-        <div className="plate-field">
-          <div className="plate-eu">
-            <span className="plate-stars">★</span>
-            <span className="plate-country">F</span>
-          </div>
-          <input
-            className="plate-field-input"
-            placeholder="AA-123-AA"
-            value={plate}
-            onChange={e => setPlate(formatPlate(e.target.value))}
-            maxLength={9}
-            autoComplete="off"
-            aria-label="Plaque d'immatriculation"
-          />
-        </div>
-
-        <div className="tool-row">
-          <div className="km-field">
-            <input
-              className="tool-input"
-              placeholder="Kilométrage"
-              inputMode="numeric"
-              value={km}
-              onChange={e => setKm(e.target.value.replace(/\D/g, '').slice(0, 7))}
-              autoComplete="off"
-              aria-label="Kilométrage"
-            />
-            <span className="km-suffix">km</span>
-          </div>
-          <div className="tool-mode-toggle">
-            <button
-              type="button"
-              className={gearbox === 'auto' ? 'active' : ''}
-              onClick={() => setGearbox('auto')}
-            >
-              Automatique
-            </button>
-            <button
-              type="button"
-              className={gearbox === 'manuelle' ? 'active' : ''}
-              onClick={() => setGearbox('manuelle')}
-            >
-              Manuelle
-            </button>
-          </div>
-        </div>
-
-        <button className="btn btn-primary" type="submit" style={{ width: '100%', justifyContent: 'center' }} disabled={!canSubmit || state === 'loading'}>
-          {state === 'loading' ? (
-            <><span className="spinner-sm" /> Analyse…</>
-          ) : 'Estimer ma voiture →'}
-        </button>
-      </form>
-
-      {state === 'loading' && (
-        <div className="hero-estimator-loading">
-          <div className="spinner" />
-          <span>Analyse des annonces LeBonCoin en cours…</span>
-        </div>
-      )}
-
-      {state === 'results' && vehicle && results && (
-        <div className="hero-estimator-results">
-          <div className="hero-vehicle-badge">
-            <span className="hero-vehicle-icon">🚗</span>
-            <div>
-              <div className="hero-vehicle-name">{vehicle.marque} {vehicle.modele} — {vehicle.annee}</div>
-              <div className="hero-vehicle-sub">{vehicle.energie} · {vehicle.puissance}</div>
-            </div>
-          </div>
-          <div className="hero-price-row">
-            <div className="hero-price-card">
-              <div className="hero-price-label">Agressif</div>
-              <div className="hero-price-val">{results.prices.agressif.toLocaleString('fr-FR')} €</div>
-            </div>
-            <div className="hero-price-card hero-price-market">
-              <div className="hero-price-label">Prix marché</div>
-              <div className="hero-price-val">{results.prices.marche.toLocaleString('fr-FR')} €</div>
-            </div>
-            <div className="hero-price-card">
-              <div className="hero-price-label">Haut</div>
-              <div className="hero-price-val">{results.prices.haut.toLocaleString('fr-FR')} €</div>
-            </div>
-          </div>
-          <button className="btn btn-ghost btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => navigate('/dashboard')}>
-            Voir le détail complet + historique →
-          </button>
-        </div>
-      )}
-
-      <div className="tool-pills">
-        <span className="tool-pill">⚡ Instantané</span>
-        <span className="tool-pill">🎯 Prix précis</span>
-        <span className="tool-pill">🔒 Privé</span>
-        <span className="tool-pill">✅ Gratuit</span>
-      </div>
-    </div>
-  );
-}
 
 const FAQ_ITEMS = [
   { q: "Faut-il créer un compte ?", a: "Non. L'estimation est accessible sans inscription. Créez un compte gratuit uniquement si vous souhaitez conserver l'historique de vos recherches." },
@@ -248,7 +101,7 @@ export default function LandingParticulier() {
               <span>✓ Résultat en 10 sec</span>
               <span>✓ 100% gratuit</span>
             </div>
-            <HeroEstimator />
+            <EstimationTool dashboardPath="/dashboard" />
           </div>
         </div>
       </section>

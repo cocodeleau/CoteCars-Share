@@ -1450,15 +1450,22 @@ input[type='range'] {
   gap: 8px;
 }
 .hero-price-card {
+  width: 100%;
   background: var(--bg-3);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 12px;
   text-align: center;
+  transition: var(--transition);
 }
+.hero-price-card:hover { border-color: var(--border-hover); }
 .hero-price-market {
   border-color: var(--blue);
   background: rgba(21,50,191,0.06);
+}
+.hero-price-chosen {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(21,50,191,0.25);
 }
 .hero-price-label {
   font-size: 0.7rem;
