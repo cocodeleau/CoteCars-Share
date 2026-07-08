@@ -11,11 +11,13 @@ import { matchesVehicle, BAD_WORDS } from './estimation';
 const MIN_SAMPLE = 5;
 const ASKING_TO_SOLD_FACTOR = 0.92; // écart moyen observé entre prix affiché et prix de vente négocié
 
-export function filterAdsV2(ads, kmUser, anneeUser, chUser, marque, modele, finition) {
+export function filterAdsV2(ads, kmUser, anneeUser, chUser, marque, modele, finition, relax = false) {
+  const anneeSpan = relax ? 2 : 1;
+  const chSpanPct = relax ? 0.25 : 0.15;
   const kmTolerance = kmUser ? Math.min(40000, Math.max(15000, Math.round(kmUser * 0.2))) : 30000;
-  const anneeMax = anneeUser ? anneeUser + 1 : null;
-  const chMin = chUser ? Math.round(chUser * 0.85) : null;
-  const chMax = chUser ? Math.round(chUser * 1.15) : null;
+  const anneeMax = anneeUser ? anneeUser + anneeSpan : null;
+  const chMin = chUser ? Math.round(chUser * (1 - chSpanPct)) : null;
+  const chMax = chUser ? Math.round(chUser * (1 + chSpanPct)) : null;
 
   return ads.filter(ad => {
     if (ad.owner?.type !== 'pro') return false;
@@ -32,7 +34,7 @@ export function filterAdsV2(ads, kmUser, anneeUser, chUser, marque, modele, fini
     const regAttr = attrs.find(x => x.key === 'regdate')?.value;
     if (regAttr && anneeUser) {
       const regYear = parseInt(regAttr);
-      if (regYear < anneeUser - 1 || regYear > anneeMax) return false;
+      if (regYear < anneeUser - anneeSpan || regYear > anneeMax) return false;
     }
 
     const chAttr = attrs.find(x => x.key === 'horse_power_din')?.value;
@@ -42,12 +44,22 @@ export function filterAdsV2(ads, kmUser, anneeUser, chUser, marque, modele, fini
     }
 
     if (marque && modele && !matchesVehicle(ad.subject, marque, modele)) return false;
-    if (finition) {
+    if (finition && !relax) {
       const aliases = FINITION_ALIASES[finition] || [finition.toLowerCase()];
       if (!aliases.some(a => subject.includes(a))) return false;
     }
     return true;
   });
+}
+
+// Essaie d'abord les bornes strictes ; si aucune annonce ne passe, élargit
+// automatiquement (année ±2, puissance ±25%, sans contrainte de finition)
+// et le signale via `relaxed: true` plutôt que de renvoyer un résultat vide.
+export function filterAdsV2WithFallback(ads, kmUser, anneeUser, chUser, marque, modele, finition) {
+  const strict = filterAdsV2(ads, kmUser, anneeUser, chUser, marque, modele, finition, false);
+  if (strict.length > 0) return { ads: strict, relaxed: false };
+  const relaxed = filterAdsV2(ads, kmUser, anneeUser, chUser, marque, modele, finition, true);
+  return { ads: relaxed, relaxed: relaxed.length > 0 };
 }
 
 function percentile(sortedArr, p) {

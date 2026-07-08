@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { fetchVehicleByPlate, fetchLbcListings } from '../../services/api';
 import { getFinitions, fuelCodeFromEnergie } from './estimation';
-import { filterAdsV2, computeStatsV2 } from './estimationV2';
+import { filterAdsV2WithFallback, computeStatsV2 } from './estimationV2';
 
 // ── Calculateur v2 (expérimental) — méthodologie améliorée, en comparaison directe ──
 const TEST_PREFILL = { plate: 'DP-607-LQ', km: '200000', gearbox: '1' };
@@ -70,9 +70,9 @@ export default function EstimationToolV2() {
       });
       if (lbcJson.error) throw new Error(lbcJson.error);
 
-      const ads = filterAdsV2(lbcJson.ads || [], kmUser, anneeUser, chUser, veh.marque, veh.modele, finition);
+      const { ads, relaxed } = filterAdsV2WithFallback(lbcJson.ads || [], kmUser, anneeUser, chUser, veh.marque, veh.modele, finition);
       const stats = computeStatsV2(ads);
-      setResult({ veh, stats });
+      setResult({ veh, stats, relaxed });
       setState('results');
     } catch (e) {
       setErr(e.message || 'Erreur inattendue');
@@ -162,6 +162,12 @@ export default function EstimationToolV2() {
             </div>
           </div>
 
+          {result.relaxed && (
+            <div className="tool-v2-warning">
+              🔍 Critères stricts insuffisants (trop peu d'annonces) — recherche élargie automatiquement (année ±2, puissance ±25%, finition ignorée)
+            </div>
+          )}
+
           {result.stats ? (
             <>
               {result.stats.lowSample && (
@@ -188,7 +194,7 @@ export default function EstimationToolV2() {
             </>
           ) : (
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Pas assez d'annonces comparables trouvées pour ce véhicule.
+              Vraiment aucune annonce comparable trouvée, même après élargissement des critères.
             </div>
           )}
         </div>
