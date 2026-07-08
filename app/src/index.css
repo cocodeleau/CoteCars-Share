@@ -1472,8 +1472,22 @@ input[type='range'] {
   font-size: 1.1rem;
   flex-shrink: 0;
 }
+.hero-vehicle-visual { position: relative; flex-shrink: 0; }
+.hero-vehicle-logo-corner {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  border: 1px solid var(--border);
+  object-fit: contain;
+  padding: 2px;
+}
 .hero-vehicle-name { font-weight: 700; font-size: 0.9rem; }
 .hero-vehicle-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+.hero-vehicle-disclaimer { font-size: 0.68rem; color: var(--text-faint); margin-top: 3px; }
 
 .hero-price-row {
   display: grid;
@@ -1541,6 +1555,60 @@ input[type='range'] {
   color: var(--text-muted);
   line-height: 1.6;
   margin-bottom: 8px;
+}
+
+/* ── Historique local (localStorage) ── */
+.history-section {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.history-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.history-cards {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.history-card {
+  flex: 0 0 auto;
+  min-width: 140px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  text-align: left;
+}
+.history-card-plate {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+.history-card-model {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 4px 0 8px;
+}
+.history-card-price-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+}
+.history-card-price {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--blue);
 }
 
 /* ── Responsive ── */

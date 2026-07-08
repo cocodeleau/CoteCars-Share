@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchVehicleByPlate, fetchLbcListings, checkEstimationUsage, consumeEstimationUsage } from '../../services/api';
 import { getFinitions, fuelCodeFromEnergie, filterAds, computeStats } from './estimation';
+import { getHistory, addHistoryEntry } from './history';
 
 function formatPlate(value) {
   const raw = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 7);
@@ -31,8 +32,9 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
   const [chosenPrice, setChosenPrice] = useState(null);
   const [showCount, setShowCount] = useState(4);
   const [usage, setUsage] = useState(null);
-  const [logoError, setLogoError] = useState(false);
-  const [logoLoaded, setLogoLoaded] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
+  const [photoLoaded, setPhotoLoaded] = useState(false);
+  const [history, setHistory] = useState(() => getHistory());
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -72,8 +74,8 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
     setErr('');
     setState('loading');
     setResult(null);
-    setLogoError(false);
-    setLogoLoaded(false);
+    setPhotoError(false);
+    setPhotoLoaded(false);
     try {
       if (!TEST_BYPASS_RATE_LIMIT) {
         const usageResult = await consumeEstimationUsage();
@@ -111,6 +113,15 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
       setResult({ veh, ads, stats });
       setChosenPrice(stats?.p25 ?? null);
       setShowCount(4);
+      if (stats) {
+        setHistory(addHistoryEntry({
+          plate,
+          marque: veh.marque,
+          modele: veh.modele,
+          annee: veh.annee,
+          prixMarche: stats.p25,
+        }));
+      }
       setState('results');
     } catch (e) {
       setErr(e.message || 'Erreur inattendue');
@@ -235,22 +246,33 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
       {state === 'results' && result && (
         <div className="hero-estimator-results">
           <div className="hero-vehicle-badge">
-            <span className="hero-vehicle-icon-badge" style={{ display: logoLoaded && !logoError ? 'none' : 'flex' }}>
-              {result.veh.marque?.charAt(0)}
-            </span>
-            {result.veh.AWN_logo_marque && !logoError && (
-              <img
-                className="hero-vehicle-photo"
-                src={result.veh.AWN_logo_marque}
-                alt={result.veh.marque}
-                style={{ display: logoLoaded ? 'block' : 'none' }}
-                onLoad={() => setLogoLoaded(true)}
-                onError={() => setLogoError(true)}
-              />
-            )}
+            <div className="hero-vehicle-visual">
+              <span className="hero-vehicle-icon-badge" style={{ display: photoLoaded && !photoError ? 'none' : 'flex' }}>
+                {result.veh.marque?.charAt(0)}
+              </span>
+              {result.veh.AWN_photo_modele && !photoError && (
+                <img
+                  className="hero-vehicle-photo"
+                  src={result.veh.AWN_photo_modele}
+                  alt={`${result.veh.marque} ${result.veh.modele}`}
+                  style={{ display: photoLoaded ? 'block' : 'none' }}
+                  onLoad={() => setPhotoLoaded(true)}
+                  onError={() => setPhotoError(true)}
+                />
+              )}
+              {result.veh.AWN_logo_marque && (
+                <img
+                  className="hero-vehicle-logo-corner"
+                  src={result.veh.AWN_logo_marque}
+                  alt={result.veh.marque}
+                  onError={e => { e.currentTarget.style.display = 'none'; }}
+                />
+              )}
+            </div>
             <div>
               <div className="hero-vehicle-name">{result.veh.marque} {result.veh.modele} — {result.veh.annee}</div>
               <div className="hero-vehicle-sub">{[result.veh.motorisation, result.veh.puissance].filter(Boolean).join(' · ')}</div>
+              <div className="hero-vehicle-disclaimer">Photo non contractuelle · Couleur carte grise : {result.veh.AWN_couleur || '—'}</div>
             </div>
           </div>
 
@@ -312,6 +334,26 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
         <span className="tool-pill">🔒 Privé</span>
         <span className="tool-pill">✅ Gratuit</span>
       </div>
+
+      {history.length > 0 && (
+        <div className="history-section">
+          <div className="history-label">Vos dernières recherches</div>
+          <div className="history-cards">
+            {history.map((h, i) => (
+              <div className="history-card" key={i}>
+                <div className="history-card-plate">{h.plate}</div>
+                <div className="history-card-model">{h.marque} {h.modele}{h.annee ? ` · ${h.annee}` : ''}</div>
+                {h.prixMarche != null && (
+                  <>
+                    <div className="history-card-price-label">Prix marché</div>
+                    <div className="history-card-price">{h.prixMarche.toLocaleString('fr-FR')} €</div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
