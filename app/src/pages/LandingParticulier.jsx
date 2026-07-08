@@ -302,18 +302,30 @@ export default function LandingParticulier() {
             <div className="kpi-bento-eyebrow">Indicateur de performance</div>
             <div className="kpi-bento-value">93,3%</div>
             <div className="kpi-bento-label">Satisfaction client</div>
+            <div className="kpi-bento-hover">
+              <p>Calculé à partir des retours de milliers d'utilisateurs ayant estimé leur véhicule avec CoteCars.</p>
+            </div>
           </div>
           <div className="kpi-bento-item kpi-bento-tall">
             <div className="kpi-bento-value">1,2M+</div>
             <div className="kpi-bento-label">Annonces analysées</div>
+            <div className="kpi-bento-hover">
+              <p>Le volume d'annonces LeBonCoin scrutées en continu pour établir des fourchettes de prix toujours à jour.</p>
+            </div>
           </div>
           <div className="kpi-bento-item">
             <div className="kpi-bento-value">98%</div>
             <div className="kpi-bento-label">Fiabilité de l'identification</div>
+            <div className="kpi-bento-hover">
+              <p>Le taux de réussite de l'identification automatique du véhicule à partir de la plaque d'immatriculation.</p>
+            </div>
           </div>
           <div className="kpi-bento-item">
             <div className="kpi-bento-value">&lt; 10 s</div>
             <div className="kpi-bento-label">Temps moyen d'estimation</div>
+            <div className="kpi-bento-hover">
+              <p>Le temps moyen entre la saisie de votre plaque et l'affichage de votre fourchette de prix.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -351,36 +363,32 @@ export default function LandingParticulier() {
           </button>
         </div>
         <div className="how-grid">
-          <div className="how-card how-card-green">
-            <div className="how-card-num">Étape 1</div>
-            <div className="how-icon how-icon-green">🖐️</div>
+          <div className="how-card">
+            <div className="how-card-num">01</div>
             <div className="how-card-body">
               <h3>Entrez votre plaque</h3>
               <p>Saisissez votre plaque d'immatriculation dans l'outil d'estimation. Aucune inscription requise, aucune carte bancaire demandée.</p>
               <p>Vous pouvez aussi préciser le kilométrage et le type de boîte pour affiner encore la précision du résultat.</p>
             </div>
           </div>
-          <div className="how-card how-card-pink">
-            <div className="how-card-num">Étape 2</div>
-            <div className="how-icon how-icon-pink">🔍</div>
+          <div className="how-card">
+            <div className="how-card-num">02</div>
             <div className="how-card-body">
               <h3>On identifie le véhicule</h3>
               <p>Marque, modèle, année, motorisation et puissance sont récupérés automatiquement via les données SIV officielles, en quelques secondes.</p>
               <p>Aucune erreur de saisie possible : l'identification est fiable à 98%.</p>
             </div>
           </div>
-          <div className="how-card how-card-orange">
-            <div className="how-card-num">Étape 3</div>
-            <div className="how-icon how-icon-orange">📊</div>
+          <div className="how-card">
+            <div className="how-card-num">03</div>
             <div className="how-card-body">
               <h3>Analyse du marché</h3>
               <p>On scrute en temps réel les annonces LeBonCoin similaires à votre véhicule : même modèle, même année, kilométrage comparable.</p>
               <p>Plus de 1,2M d'annonces analysées pour établir un vrai prix de marché, pas une cote théorique.</p>
             </div>
           </div>
-          <div className="how-card how-card-purple">
-            <div className="how-card-num">Étape 4</div>
-            <div className="how-icon how-icon-purple">✨</div>
+          <div className="how-card">
+            <div className="how-card-num">04</div>
             <div className="how-card-body">
               <h3>Recevez votre prix</h3>
               <p>Une fourchette claire — prix agressif, prix marché, prix haut — pour vendre au bon tarif ou négocier un achat en toute confiance.</p>
