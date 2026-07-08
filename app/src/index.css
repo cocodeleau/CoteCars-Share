@@ -728,14 +728,13 @@ input, textarea, select { font-family: inherit; }
 
 /* ── CTA banner ── */
 .cta-banner {
-  background: linear-gradient(135deg, var(--blue), #0e23a0);
-  border-radius: var(--radius-xl);
+  background: transparent;
   padding: 64px 48px;
   text-align: center;
   margin: 0 48px 80px;
 }
-.cta-banner h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); color: white; margin-bottom: 12px; }
-.cta-banner p { color: rgba(255,255,255,0.7); margin-bottom: 32px; font-size: 1rem; }
+.cta-banner h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); color: var(--text); margin-bottom: 12px; }
+.cta-banner p { color: var(--text-muted); margin-bottom: 32px; font-size: 1rem; }
 .cta-banner-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
 /* ── Footer ── */
@@ -869,7 +868,7 @@ input[type='range'] {
 .hero-v2-title {
   font-size: clamp(2.2rem, 4.4vw, 3.6rem);
   line-height: 1.15;
-  margin: 16px 0 20px;
+  margin: 16px 0 10px;
   letter-spacing: -0.02em;
   white-space: nowrap;
 }
@@ -891,7 +890,7 @@ input[type='range'] {
   color: var(--text-muted);
   line-height: 1.7;
   max-width: 620px;
-  margin: 0 auto 28px;
+  margin: 0 auto 16px;
   text-align: center;
 }
 
@@ -1075,7 +1074,7 @@ input[type='range'] {
 
 /* ── How does it work ── */
 .how-section {
-  background: var(--bg-2);
+  background: transparent;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   padding-top: 64px;
@@ -1104,15 +1103,28 @@ input[type='range'] {
 }
 .how-start-btn:hover { opacity: 0.85; }
 .how-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 20px;
 }
 .how-card {
-  background: var(--bg-3);
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 28px 32px;
+}
+.how-card-num {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 64px;
+  padding-top: 12px;
 }
 .how-icon {
   width: 48px;
@@ -1122,22 +1134,25 @@ input[type='range'] {
   align-items: center;
   justify-content: center;
   font-size: 1.4rem;
-  margin-bottom: 40px;
+  flex-shrink: 0;
 }
-.how-icon-green { background: rgba(52,199,89,0.15); }
-.how-icon-pink { background: rgba(215,36,131,0.15); }
-.how-icon-orange { background: rgba(255,149,0,0.15); }
-.how-icon-purple { background: rgba(175,82,222,0.15); }
-.how-card h3 { font-size: 1.05rem; margin-bottom: 10px; }
-.how-card p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; }
+.how-icon-green { background: rgba(52,199,89,0.18); }
+.how-icon-pink { background: rgba(215,36,131,0.18); }
+.how-icon-orange { background: rgba(255,149,0,0.18); }
+.how-icon-purple { background: rgba(175,82,222,0.18); }
+.how-card-green { background: rgba(52,199,89,0.07); border-color: rgba(52,199,89,0.25); }
+.how-card-pink { background: rgba(215,36,131,0.07); border-color: rgba(215,36,131,0.25); }
+.how-card-orange { background: rgba(255,149,0,0.07); border-color: rgba(255,149,0,0.25); }
+.how-card-purple { background: rgba(175,82,222,0.07); border-color: rgba(175,82,222,0.25); }
+.how-card-body { flex: 1; }
+.how-card-body h3 { font-size: 1.1rem; margin-bottom: 8px; color: var(--text); }
+.how-card-body p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 6px; }
+.how-card-body p:last-child { margin-bottom: 0; }
 
 /* ── FAQ ── */
 .faq-section {
-  --faq-bg: #0b3b3a;
-  --faq-card: #114744;
-  --faq-border: rgba(255,255,255,0.1);
   --faq-accent: #33d69f;
-  background: var(--faq-bg);
+  background: transparent;
   padding: 80px 48px;
 }
 .faq-inner {
@@ -1163,34 +1178,34 @@ input[type='range'] {
 }
 .faq-title {
   font-size: clamp(2rem, 4vw, 3rem);
-  color: #fff;
+  color: var(--text);
   line-height: 1.1;
   letter-spacing: -0.02em;
   margin-bottom: 20px;
 }
-.faq-title span { color: #b9a7f0; }
+.faq-title span { color: var(--blue); }
 .faq-desc {
-  color: rgba(255,255,255,0.7);
+  color: var(--text-muted);
   font-size: 0.95rem;
   line-height: 1.7;
   margin-bottom: 32px;
   max-width: 460px;
 }
 .faq-help-card {
-  background: var(--faq-card);
-  border: 1px solid var(--faq-border);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 28px;
 }
-.faq-help-card h3 { color: #fff; font-size: 1.2rem; margin-bottom: 12px; }
-.faq-help-card p { color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.6; margin-bottom: 20px; }
+.faq-help-card h3 { color: var(--text); font-size: 1.2rem; margin-bottom: 12px; }
+.faq-help-card p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; margin-bottom: 20px; }
 .faq-help-btn { background: var(--faq-accent); color: #06302e; }
 .faq-help-btn:hover { background: #2bc490; }
 
 .faq-right { display: flex; flex-direction: column; gap: 16px; }
 .faq-item {
-  background: var(--faq-card);
-  border: 1px solid var(--faq-border);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 20px 24px;
   transition: var(--transition);
@@ -1203,7 +1218,7 @@ input[type='range'] {
   gap: 16px;
   background: none;
   border: none;
-  color: #fff;
+  color: var(--text);
   font-family: 'DM Sans', sans-serif;
   font-size: 1.05rem;
   font-weight: 600;
@@ -1225,7 +1240,7 @@ input[type='range'] {
 }
 .faq-item:not(.open) .faq-chevron { transform: rotate(180deg); }
 .faq-a {
-  color: rgba(255,255,255,0.7);
+  color: var(--text-muted);
   font-size: 0.9rem;
   line-height: 1.6;
   margin-top: 14px;
@@ -1476,13 +1491,10 @@ input[type='range'] {
   .reviews-stats { grid-template-columns: repeat(2, 1fr); gap: 20px; }
   .kpi-bento { grid-template-columns: 1fr; grid-template-rows: none; }
   .kpi-bento-featured, .kpi-bento-tall { grid-column: span 1; grid-row: span 1; }
-  .how-grid { grid-template-columns: 1fr; }
   .how-header { flex-direction: column; }
+  .how-card { flex-direction: column; gap: 12px; padding: 24px; }
+  .how-card-num { width: auto; padding-top: 0; }
   .faq-section { padding: 48px 20px; }
   .faq-inner { grid-template-columns: 1fr; gap: 32px; }
   .tool-row { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 1024px) and (min-width: 769px) {
-  .how-grid { grid-template-columns: repeat(2, 1fr); }
 }

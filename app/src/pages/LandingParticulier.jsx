@@ -165,6 +165,12 @@ const FAQ_ITEMS = [
   { q: "D'où viennent les prix ?", a: "Les fourchettes sont calculées à partir des vraies annonces LeBonCoin similaires à votre véhicule, en temps réel — pas d'une cote théorique." },
   { q: "L'estimation est-elle gratuite ?", a: "Oui, totalement gratuite pour les particuliers. Aucune carte bancaire n'est demandée." },
   { q: "Mes données sont-elles protégées ?", a: "Oui. Votre plaque et vos informations ne sont jamais revendues et servent uniquement à réaliser votre estimation." },
+  { q: "Combien de temps prend une estimation ?", a: "Environ 10 secondes entre la saisie de votre plaque et l'affichage de la fourchette de prix." },
+  { q: "L'estimation fonctionne-t-elle pour tous les véhicules ?", a: "Oui, tant que le véhicule est immatriculé en France et dispose d'annonces comparables sur le marché de l'occasion." },
+  { q: "Puis-je utiliser CoteCars pour acheter une voiture ?", a: "Bien sûr. L'estimation vous aide aussi à négocier un achat en connaissant le vrai prix du marché avant de vous déplacer." },
+  { q: "La précision est-elle fiable ?", a: "Nos estimations sont précises à ±5% du prix de vente final, calculées sur plus de 1,2M d'annonces analysées." },
+  { q: "Puis-je refaire une estimation plus tard ?", a: "Oui, autant de fois que vous le souhaitez. Avec un compte gratuit, vous retrouvez l'historique de toutes vos recherches." },
+  { q: "CoteCars propose-t-il une offre pour les professionnels ?", a: "Oui, une offre dédiée aux garages et agences existe avec des outils supplémentaires. Rendez-vous sur l'espace professionnel." },
 ];
 
 function FaqSection({ navigate }) {
@@ -345,25 +351,41 @@ export default function LandingParticulier() {
           </button>
         </div>
         <div className="how-grid">
-          <div className="how-card">
+          <div className="how-card how-card-green">
+            <div className="how-card-num">Étape 1</div>
             <div className="how-icon how-icon-green">🖐️</div>
-            <h3>Entrez votre plaque</h3>
-            <p>Saisissez votre plaque ou les infos du véhicule. Aucune inscription requise.</p>
+            <div className="how-card-body">
+              <h3>Entrez votre plaque</h3>
+              <p>Saisissez votre plaque d'immatriculation dans l'outil d'estimation. Aucune inscription requise, aucune carte bancaire demandée.</p>
+              <p>Vous pouvez aussi préciser le kilométrage et le type de boîte pour affiner encore la précision du résultat.</p>
+            </div>
           </div>
-          <div className="how-card">
+          <div className="how-card how-card-pink">
+            <div className="how-card-num">Étape 2</div>
             <div className="how-icon how-icon-pink">🔍</div>
-            <h3>On identifie le véhicule</h3>
-            <p>Marque, modèle et année récupérés automatiquement via les données SIV officielles.</p>
+            <div className="how-card-body">
+              <h3>On identifie le véhicule</h3>
+              <p>Marque, modèle, année, motorisation et puissance sont récupérés automatiquement via les données SIV officielles, en quelques secondes.</p>
+              <p>Aucune erreur de saisie possible : l'identification est fiable à 98%.</p>
+            </div>
           </div>
-          <div className="how-card">
+          <div className="how-card how-card-orange">
+            <div className="how-card-num">Étape 3</div>
             <div className="how-icon how-icon-orange">📊</div>
-            <h3>Analyse du marché</h3>
-            <p>On scrute les annonces LeBonCoin similaires en temps réel pour établir le vrai prix.</p>
+            <div className="how-card-body">
+              <h3>Analyse du marché</h3>
+              <p>On scrute en temps réel les annonces LeBonCoin similaires à votre véhicule : même modèle, même année, kilométrage comparable.</p>
+              <p>Plus de 1,2M d'annonces analysées pour établir un vrai prix de marché, pas une cote théorique.</p>
+            </div>
           </div>
-          <div className="how-card">
+          <div className="how-card how-card-purple">
+            <div className="how-card-num">Étape 4</div>
             <div className="how-icon how-icon-purple">✨</div>
-            <h3>Recevez votre prix</h3>
-            <p>Une fourchette de prix claire pour vendre au bon tarif ou négocier un achat.</p>
+            <div className="how-card-body">
+              <h3>Recevez votre prix</h3>
+              <p>Une fourchette claire — prix agressif, prix marché, prix haut — pour vendre au bon tarif ou négocier un achat en toute confiance.</p>
+              <p>Créez un compte gratuit pour garder l'historique de toutes vos estimations.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -376,10 +398,10 @@ export default function LandingParticulier() {
         <h2>Gardez l'historique de toutes vos recherches</h2>
         <p>Créez un compte gratuit pour retrouver toutes vos estimations et les comparer dans le temps.</p>
         <div className="cta-banner-btns">
-          <button className="btn btn-lg" style={{ background: 'white', color: 'var(--blue)' }} onClick={() => navigate('/dashboard')}>
+          <button className="btn btn-primary btn-lg" onClick={() => navigate('/dashboard')}>
             Créer un compte gratuit
           </button>
-          <button className="btn btn-lg" style={{ background: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }} onClick={() => navigate('/pros')}>
+          <button className="btn btn-ghost btn-lg" onClick={() => navigate('/pros')}>
             Vous êtes un professionnel ?
           </button>
         </div>
