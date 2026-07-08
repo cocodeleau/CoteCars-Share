@@ -32,6 +32,7 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
   const [showCount, setShowCount] = useState(4);
   const [usage, setUsage] = useState(null);
   const [logoError, setLogoError] = useState(false);
+  const [logoLoaded, setLogoLoaded] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -68,6 +69,7 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
     setState('loading');
     setResult(null);
     setLogoError(false);
+    setLogoLoaded(false);
     try {
       if (!TEST_BYPASS_RATE_LIMIT) {
         const usageResult = await consumeEstimationUsage();
@@ -218,15 +220,18 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
       {state === 'results' && result && (
         <div className="hero-estimator-results">
           <div className="hero-vehicle-badge">
-            {result.veh.AWN_logo_marque && !logoError ? (
+            <span className="hero-vehicle-icon-badge" style={{ display: logoLoaded && !logoError ? 'none' : 'flex' }}>
+              {result.veh.marque?.charAt(0)}
+            </span>
+            {result.veh.AWN_logo_marque && !logoError && (
               <img
                 className="hero-vehicle-photo"
                 src={result.veh.AWN_logo_marque}
                 alt={result.veh.marque}
+                style={{ display: logoLoaded ? 'block' : 'none' }}
+                onLoad={() => setLogoLoaded(true)}
                 onError={() => setLogoError(true)}
               />
-            ) : (
-              <span className="hero-vehicle-icon-badge">{result.veh.marque?.charAt(0)}</span>
             )}
             <div>
               <div className="hero-vehicle-name">{result.veh.marque} {result.veh.modele} — {result.veh.annee}</div>
