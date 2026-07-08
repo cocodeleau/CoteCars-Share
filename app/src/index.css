@@ -358,9 +358,9 @@ input, textarea, select { font-family: inherit; }
   gap: 12px;
   font-size: 0.875rem;
 }
-.listing-title { font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.listing-meta { color: var(--text-muted); font-size: 0.8rem; white-space: nowrap; }
-.listing-price { font-weight: 700; color: var(--text); white-space: nowrap; }
+.listing-title { font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.listing-meta { color: var(--text-muted); font-size: 0.8rem; white-space: nowrap; flex-shrink: 0; }
+.listing-price { font-weight: 700; color: var(--text); white-space: nowrap; text-align: right; flex-shrink: 0; }
 
 /* ── Upload zone ── */
 .upload-zone {
@@ -1476,7 +1476,13 @@ input[type='range'] {
   flex-shrink: 0;
 }
 .hero-vehicle-visual { position: relative; flex-shrink: 0; }
-.hero-vehicle-info { flex: 1; min-width: 0; }
+.hero-vehicle-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
 .hero-vehicle-logo-right {
   width: 32px;
   height: 32px;
