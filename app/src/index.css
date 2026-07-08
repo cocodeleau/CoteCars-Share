@@ -1449,6 +1449,20 @@ input[type='range'] {
   background: var(--bg-2);
   flex-shrink: 0;
 }
+.hero-vehicle-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
 .hero-vehicle-name { font-weight: 700; font-size: 0.9rem; }
 .hero-vehicle-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
 
