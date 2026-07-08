@@ -1441,6 +1441,14 @@ input[type='range'] {
   border-radius: var(--radius);
 }
 .hero-vehicle-icon { font-size: 1.3rem; }
+.hero-vehicle-photo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  flex-shrink: 0;
+}
 .hero-vehicle-name { font-weight: 700; font-size: 0.9rem; }
 .hero-vehicle-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
 

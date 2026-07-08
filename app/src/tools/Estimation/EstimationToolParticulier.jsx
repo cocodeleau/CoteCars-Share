@@ -209,10 +209,18 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
       {state === 'results' && result && (
         <div className="hero-estimator-results">
           <div className="hero-vehicle-badge">
-            <span className="hero-vehicle-icon">🚗</span>
+            {result.veh.AWN_photo_modele ? (
+              <img
+                className="hero-vehicle-photo"
+                src={result.veh.AWN_photo_modele}
+                alt={`${result.veh.marque} ${result.veh.modele}`}
+              />
+            ) : (
+              <span className="hero-vehicle-icon">🚗</span>
+            )}
             <div>
               <div className="hero-vehicle-name">{result.veh.marque} {result.veh.modele} — {result.veh.annee}</div>
-              <div className="hero-vehicle-sub">{result.veh.AWN_energie} · {result.veh.puissance}{result.veh.AWN_boite ? ` · ${result.veh.AWN_boite}` : ''}</div>
+              <div className="hero-vehicle-sub">{result.veh.AWN_energie} · {result.veh.puissance}{result.veh.AWN_boite ? ` · ${result.veh.AWN_boite}` : ''}{result.veh.AWN_couleur ? ` · ${result.veh.AWN_couleur}` : ''}</div>
             </div>
           </div>
 
