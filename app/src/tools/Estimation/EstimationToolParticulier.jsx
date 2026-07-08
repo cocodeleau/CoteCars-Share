@@ -16,6 +16,7 @@ function adKm(ad) {
 
 // ── TEST TEMPORAIRE — à retirer (demander à Corentin quand faire sauter) ──
 const TEST_PREFILL = { plate: 'DP-607-LQ', km: '200000', gearbox: '1' };
+const TEST_BYPASS_RATE_LIMIT = true;
 
 export default function EstimationToolParticulier({ dashboardPath = '/dashboard' }) {
   const [plate, setPlate] = useState(TEST_PREFILL.plate);
@@ -33,10 +34,11 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (TEST_BYPASS_RATE_LIMIT) return;
     checkEstimationUsage().then(setUsage).catch(() => setUsage({ remaining: 1 }));
   }, []);
 
-  const locked = usage && usage.remaining <= 0 && state !== 'results' && state !== 'loading';
+  const locked = !TEST_BYPASS_RATE_LIMIT && usage && usage.remaining <= 0 && state !== 'results' && state !== 'loading';
   const canSubmit = plate.replace(/-/g, '').length === 7 && !!gearbox;
 
   async function handlePlateChange(val) {
@@ -65,11 +67,13 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
     setState('loading');
     setResult(null);
     try {
-      const usageResult = await consumeEstimationUsage();
-      setUsage({ remaining: usageResult.remaining });
-      if (!usageResult.allowed) {
-        setState('idle');
-        return;
+      if (!TEST_BYPASS_RATE_LIMIT) {
+        const usageResult = await consumeEstimationUsage();
+        setUsage({ remaining: usageResult.remaining });
+        if (!usageResult.allowed) {
+          setState('idle');
+          return;
+        }
       }
 
       const sivJson = await fetchVehicleByPlate(plate);
