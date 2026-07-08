@@ -14,6 +14,15 @@ const MOCK_RESULTS = {
   ]
 };
 
+const REVIEWS = [
+  { name: 'Julien P.', role: 'Vendeur particulier', text: "J'ai vendu ma voiture au bon prix en une semaine. L'estimation était pile dans la fourchette du marché." },
+  { name: 'Andréa M.', role: 'Achat occasion', text: "Au lieu de partir dans le flou, j'utilise CoteCars pour cadrer chaque négociation. C'est devenu un réflexe." },
+  { name: 'Denis B.', role: 'Vendeur particulier', text: "CoteCars m'a fait gagner des heures de recherche. La fourchette de prix est fiable et argumentée." },
+  { name: 'Gustave O.', role: 'Achat occasion', text: "Enfin un outil qui donne un vrai prix basé sur des annonces réelles et pas une cote théorique." },
+  { name: 'Olivia S.', role: 'Vendeuse particulière', text: "Rapide, gratuit, sans inscription. J'ai pu fixer mon prix en quelques minutes au lieu de plusieurs jours." },
+  { name: 'Ruben O.', role: 'Achat occasion', text: "La qualité des données est au top. Chaque estimation est claire et directement exploitable." },
+];
+
 function formatPlate(value) {
   const raw = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 7);
   const parts = [raw.slice(0, 2), raw.slice(2, 5), raw.slice(5, 7)].filter(Boolean);
@@ -21,18 +30,15 @@ function formatPlate(value) {
 }
 
 function HeroEstimator() {
-  const [mode, setMode] = useState('auto');
   const [plate, setPlate] = useState('');
   const [km, setKm] = useState('');
-  const [manual, setManual] = useState({ marque: '', modele: '', annee: '' });
+  const [gearbox, setGearbox] = useState('auto');
   const [state, setState] = useState('idle');
   const [vehicle, setVehicle] = useState(null);
   const [results, setResults] = useState(null);
   const navigate = useNavigate();
 
-  const canSubmit = mode === 'auto'
-    ? plate.replace(/-/g, '').length === 7
-    : manual.marque && manual.modele && manual.annee.length === 4;
+  const canSubmit = plate.replace(/-/g, '').length === 7;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -41,14 +47,9 @@ function HeroEstimator() {
     setVehicle(null);
     setResults(null);
     try {
-      let v;
-      if (mode === 'auto') {
-        v = await fetchVehicleByPlate(plate).catch(() => MOCK_VEHICLE);
-      } else {
-        v = { marque: manual.marque, modele: manual.modele, annee: manual.annee, energie: 'Essence', puissance: '—' };
-      }
+      const v = await fetchVehicleByPlate(plate).catch(() => MOCK_VEHICLE);
       setVehicle(v);
-      const r = await fetchLbcListings({ plate, km, vehicle: v }).catch(() => MOCK_RESULTS);
+      const r = await fetchLbcListings({ plate, km, vehicle: v, gearbox }).catch(() => MOCK_RESULTS);
       setResults(r);
       setState('results');
     } catch {
@@ -59,48 +60,21 @@ function HeroEstimator() {
   return (
     <div className="hero-estimator">
       <form className="hero-plate-form-v2" onSubmit={handleSubmit}>
-        {mode === 'auto' ? (
-          <div className="plate-field">
-            <div className="plate-eu">
-              <span className="plate-stars">★</span>
-              <span className="plate-country">F</span>
-            </div>
-            <input
-              className="plate-field-input"
-              placeholder="AA-123-AA"
-              value={plate}
-              onChange={e => setPlate(formatPlate(e.target.value))}
-              maxLength={9}
-              autoComplete="off"
-              aria-label="Plaque d'immatriculation"
-            />
+        <div className="plate-field">
+          <div className="plate-eu">
+            <span className="plate-stars">★</span>
+            <span className="plate-country">F</span>
           </div>
-        ) : (
-          <div className="manual-grid">
-            <input
-              className="tool-input"
-              placeholder="Marque (ex : Renault)"
-              value={manual.marque}
-              onChange={e => setManual(m => ({ ...m, marque: e.target.value }))}
-              autoComplete="off"
-            />
-            <input
-              className="tool-input"
-              placeholder="Modèle (ex : Clio)"
-              value={manual.modele}
-              onChange={e => setManual(m => ({ ...m, modele: e.target.value }))}
-              autoComplete="off"
-            />
-            <input
-              className="tool-input"
-              placeholder="Année"
-              inputMode="numeric"
-              value={manual.annee}
-              onChange={e => setManual(m => ({ ...m, annee: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-              autoComplete="off"
-            />
-          </div>
-        )}
+          <input
+            className="plate-field-input"
+            placeholder="AA-123-AA"
+            value={plate}
+            onChange={e => setPlate(formatPlate(e.target.value))}
+            maxLength={9}
+            autoComplete="off"
+            aria-label="Plaque d'immatriculation"
+          />
+        </div>
 
         <div className="tool-row">
           <div className="km-field">
@@ -118,17 +92,17 @@ function HeroEstimator() {
           <div className="tool-mode-toggle">
             <button
               type="button"
-              className={mode === 'auto' ? 'active' : ''}
-              onClick={() => setMode('auto')}
+              className={gearbox === 'auto' ? 'active' : ''}
+              onClick={() => setGearbox('auto')}
             >
               Automatique
             </button>
             <button
               type="button"
-              className={mode === 'manual' ? 'active' : ''}
-              onClick={() => setMode('manual')}
+              className={gearbox === 'manuelle' ? 'active' : ''}
+              onClick={() => setGearbox('manuelle')}
             >
-              Manuel
+              Manuelle
             </button>
           </div>
         </div>
@@ -256,6 +230,11 @@ export default function LandingParticulier() {
           <h1 className="hero-v2-title">
             Combien vaut vraiment <em>votre voiture ?</em>
           </h1>
+          <p className="hero-v2-desc-center">
+            Obtenez une estimation fiable de votre véhicule en quelques secondes,
+            basée sur les vraies annonces LeBonCoin de votre région — sans inscription
+            et sans engagement.
+          </p>
           <div className="hero-v2-tool-wrap">
             <div className="hero-v2-trust">
               <span>✓ Sans inscription</span>
@@ -292,77 +271,65 @@ export default function LandingParticulier() {
           </div>
         </div>
 
-        <div className="reviews-grid">
-          {[
-            { name: 'Julien P.', role: 'Vendeur particulier', text: "J'ai vendu ma voiture au bon prix en une semaine. L'estimation était pile dans la fourchette du marché." },
-            { name: 'Andréa M.', role: 'Achat occasion', text: "Au lieu de partir dans le flou, j'utilise CoteCars pour cadrer chaque négociation. C'est devenu un réflexe." },
-            { name: 'Denis B.', role: 'Vendeur particulier', text: "CoteCars m'a fait gagner des heures de recherche. La fourchette de prix est fiable et argumentée." },
-            { name: 'Gustave O.', role: 'Achat occasion', text: "Enfin un outil qui donne un vrai prix basé sur des annonces réelles et pas une cote théorique." },
-            { name: 'Olivia S.', role: 'Vendeuse particulière', text: "Rapide, gratuit, sans inscription. J'ai pu fixer mon prix en quelques minutes au lieu de plusieurs jours." },
-            { name: 'Ruben O.', role: 'Achat occasion', text: "La qualité des données est au top. Chaque estimation est claire et directement exploitable." },
-          ].map((r, i) => (
-            <div className="review-card" key={i}>
-              <div className="review-head">
-                <div className="review-avatar">{r.name.charAt(0)}</div>
-                <div>
-                  <div className="review-name">{r.name}</div>
-                  <div className="review-role">{r.role}</div>
+        <div className="reviews-ticker">
+          <div className="reviews-ticker-track">
+            {[...REVIEWS, ...REVIEWS].map((r, i) => (
+              <div className="review-card" key={i}>
+                <div className="review-head">
+                  <div className="review-avatar">{r.name.charAt(0)}</div>
+                  <div>
+                    <div className="review-name">{r.name}</div>
+                    <div className="review-role">{r.role}</div>
+                  </div>
                 </div>
+                <p className="review-text">"{r.text}"</p>
               </div>
-              <p className="review-text">"{r.text}"</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
       {/* KPIs */}
       <section className="section kpi-section">
-        <div className="kpi-panel">
-          <div className="kpi-panel-left">
-            <div className="kpi-panel-eyebrow">Indicateur de performance</div>
-            <div className="kpi-panel-title">2025 Performance <span>CoteCars</span></div>
-            <div className="kpi-panel-big">
-              <span className="kpi-panel-big-value">93,3%</span>
-              <span className="kpi-panel-big-label">▲ Satisfaction<br />client</span>
-            </div>
+        <div className="kpi-bento">
+          <div className="kpi-bento-item kpi-bento-featured">
+            <div className="kpi-bento-eyebrow">Indicateur de performance</div>
+            <div className="kpi-bento-value">93,3%</div>
+            <div className="kpi-bento-label">Satisfaction client</div>
           </div>
-          <div className="kpi-panel-right">
-            <div className="kpi-panel-metric">
-              <div className="kpi-panel-metric-value">1,2M+</div>
-              <div className="kpi-panel-metric-label">Annonces analysées</div>
-            </div>
-            <div className="kpi-panel-metric">
-              <div className="kpi-panel-metric-value">98%</div>
-              <div className="kpi-panel-metric-label">Fiabilité de l'identification</div>
-            </div>
-            <div className="kpi-panel-metric">
-              <div className="kpi-panel-metric-value">&lt; 10 s</div>
-              <div className="kpi-panel-metric-label">Temps moyen d'estimation</div>
-            </div>
+          <div className="kpi-bento-item kpi-bento-tall">
+            <div className="kpi-bento-value">1,2M+</div>
+            <div className="kpi-bento-label">Annonces analysées</div>
+          </div>
+          <div className="kpi-bento-item">
+            <div className="kpi-bento-value">98%</div>
+            <div className="kpi-bento-label">Fiabilité de l'identification</div>
+          </div>
+          <div className="kpi-bento-item">
+            <div className="kpi-bento-value">&lt; 10 s</div>
+            <div className="kpi-bento-label">Temps moyen d'estimation</div>
           </div>
         </div>
       </section>
 
       {/* Video demo */}
       <section className="section video-section">
-        <div className="video-grid">
-          <div className="video-text">
-            <div className="section-label">Démo en vidéo</div>
-            <h2 className="section-title">Découvrez CoteCars en 90 secondes</h2>
-            <p className="section-sub">
-              Une plaque, un clic, une fourchette de prix issue de vraies annonces.
-              Regardez comment CoteCars transforme l'estimation d'un véhicule en une opération instantanée.
-            </p>
-          </div>
-          <div className="video-embed">
-            {/* TODO: remplacer par la vraie URL de la démo vidéo */}
-            <iframe
-              src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-              title="Démo CoteCars"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
+        <div className="video-header">
+          <div className="section-label">Démo en vidéo</div>
+          <h2 className="section-title">Découvrez CoteCars en 90 secondes</h2>
+          <p className="section-sub">
+            Une plaque, un clic, une fourchette de prix issue de vraies annonces.
+            Regardez comment CoteCars transforme l'estimation d'un véhicule en une opération instantanée.
+          </p>
+        </div>
+        <div className="video-embed video-embed-lg">
+          {/* TODO: remplacer par la vraie URL de la démo vidéo */}
+          <iframe
+            src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+            title="Démo CoteCars"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
         </div>
       </section>
 
