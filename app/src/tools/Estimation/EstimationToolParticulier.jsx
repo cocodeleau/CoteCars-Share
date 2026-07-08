@@ -14,10 +14,13 @@ function adKm(ad) {
   return val ? `${parseInt(val).toLocaleString('fr-FR')} km` : null;
 }
 
+// ── TEST TEMPORAIRE — à retirer (demander à Corentin quand faire sauter) ──
+const TEST_PREFILL = { plate: 'DP-607-LQ', km: '200000', gearbox: '1' };
+
 export default function EstimationToolParticulier({ dashboardPath = '/dashboard' }) {
-  const [plate, setPlate] = useState('');
-  const [km, setKm] = useState('');
-  const [gearbox, setGearbox] = useState('2');
+  const [plate, setPlate] = useState(TEST_PREFILL.plate);
+  const [km, setKm] = useState(TEST_PREFILL.km);
+  const [gearbox, setGearbox] = useState(TEST_PREFILL.gearbox);
   const [finition, setFinition] = useState('');
   const [finitionsList, setFinitionsList] = useState([]);
   const [state, setState] = useState('idle');
