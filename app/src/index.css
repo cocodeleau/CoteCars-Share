@@ -1483,6 +1483,35 @@ input[type='range'] {
 }
 .hero-price-market .hero-price-val { color: var(--blue); }
 
+/* ── Estimation quota / paywall ── */
+.hero-estimator-quota {
+  align-self: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--blue);
+  background: rgba(21,50,191,0.08);
+  border: 1px solid rgba(21,50,191,0.2);
+  border-radius: 99px;
+  padding: 6px 14px;
+  text-align: center;
+}
+.hero-estimator-paywall {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 20px 8px;
+}
+.hero-estimator-paywall-icon { font-size: 2rem; }
+.hero-estimator-paywall h3 { font-size: 1.05rem; color: var(--text); }
+.hero-estimator-paywall p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
 /* ── Responsive ── */
 @media (max-width: 1024px) {
   .features-grid { grid-template-columns: repeat(2, 1fr); }

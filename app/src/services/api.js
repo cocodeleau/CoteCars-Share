@@ -13,3 +13,15 @@ export async function fetchLbcListings(params) {
   if (!res.ok) throw new Error('LBC lookup failed');
   return res.json();
 }
+
+export async function checkEstimationUsage() {
+  const res = await fetch('/api/estimation-usage');
+  if (!res.ok) return { remaining: 1 };
+  return res.json();
+}
+
+export async function consumeEstimationUsage() {
+  const res = await fetch('/api/estimation-usage', { method: 'POST' });
+  if (!res.ok) return { allowed: true, remaining: 0 };
+  return res.json();
+}

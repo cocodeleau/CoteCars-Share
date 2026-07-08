@@ -14,6 +14,7 @@ const ROUTES = {
   '/api/leboncoin': 'lbc-piloterr-requests.js',
   '/api/lbc-finitions': 'lbc-finitions-requests.js',
   '/api/lbc-marques-codes': 'lbc-marques-codes.js',
+  '/api/estimation-usage': 'estimation-usage.js',
 };
 
 export default function vercelApiDev() {

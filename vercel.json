@@ -7,6 +7,7 @@
     { "src": "/api/leboncoin",                "dest": "/api/lbc-piloterr-requests.js" },
     { "src": "/api/lbc-marques-codes",        "dest": "/api/lbc-marques-codes.js" },
     { "src": "/api/rapid-api-requests",       "dest": "/api/rapid-api-requests.js" },
+    { "src": "/api/estimation-usage",         "dest": "/api/estimation-usage.js" },
     { "src": "/api/partner-photo",            "dest": "/api/partner-photo.js" },
     { "src": "/api/partner-photo-esdfx",      "dest": "/api/partner-photo-esdfx.js" },
     { "src": "/api/warp-plate",               "dest": "/api/warp-plate.py" },

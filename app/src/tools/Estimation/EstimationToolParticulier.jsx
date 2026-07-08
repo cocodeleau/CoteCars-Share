@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchVehicleByPlate, fetchLbcListings } from '../../services/api';
+import { fetchVehicleByPlate, fetchLbcListings, checkEstimationUsage, consumeEstimationUsage } from '../../services/api';
 import { getFinitions, fuelCodeFromEnergie, filterAds, computeStats } from './estimation';
 
 function formatPlate(value) {
@@ -26,8 +26,14 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
   const [result, setResult] = useState(null);
   const [chosenPrice, setChosenPrice] = useState(null);
   const [showCount, setShowCount] = useState(4);
+  const [usage, setUsage] = useState(null);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    checkEstimationUsage().then(setUsage).catch(() => setUsage({ remaining: 1 }));
+  }, []);
+
+  const locked = usage && usage.remaining <= 0 && state !== 'results' && state !== 'loading';
   const canSubmit = plate.replace(/-/g, '').length === 7 && !!gearbox;
 
   async function handlePlateChange(val) {
@@ -56,6 +62,13 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
     setState('loading');
     setResult(null);
     try {
+      const usageResult = await consumeEstimationUsage();
+      setUsage({ remaining: usageResult.remaining });
+      if (!usageResult.allowed) {
+        setState('idle');
+        return;
+      }
+
       const sivJson = await fetchVehicleByPlate(plate);
       const veh = sivJson.data;
       if (sivJson.error || !veh?.AWN_marque) {
@@ -99,7 +112,22 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
 
   return (
     <div className="hero-estimator">
+      {locked ? (
+        <div className="hero-estimator-paywall">
+          <div className="hero-estimator-paywall-icon">🔒</div>
+          <h3>Estimation gratuite du jour utilisée</h3>
+          <p>Revenez demain pour un nouvel essai gratuit, ou créez un compte pour des estimations illimitées dès maintenant.</p>
+          <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => navigate(dashboardPath)}>
+            Créer un compte gratuit →
+          </button>
+        </div>
+      ) : (
       <form className="hero-plate-form-v2" onSubmit={handleSubmit}>
+        {usage && usage.remaining > 0 && (
+          <div className="hero-estimator-quota">
+            🎁 {usage.remaining} essai{usage.remaining > 1 ? 's' : ''} gratuit{usage.remaining > 1 ? 's' : ''} restant{usage.remaining > 1 ? 's' : ''} aujourd'hui
+          </div>
+        )}
         <div className="plate-field">
           <div className="plate-eu">
             <span className="plate-stars">★</span>
@@ -169,6 +197,7 @@ export default function EstimationToolParticulier({ dashboardPath = '/dashboard'
           ) : 'Estimer ma voiture →'}
         </button>
       </form>
+      )}
 
       {state === 'loading' && (
         <div className="hero-estimator-loading">
