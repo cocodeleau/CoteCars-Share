@@ -11,9 +11,10 @@ import { matchesVehicle, BAD_WORDS } from './estimation';
 const MIN_SAMPLE = 5;
 const ASKING_TO_SOLD_FACTOR = 0.92; // écart moyen observé entre prix affiché et prix de vente négocié
 
-export function filterAdsV2(ads, kmUser, anneeUser, chUser, marque, modele, finition, relax = false) {
-  const anneeSpan = relax ? 2 : 1;
-  const chSpanPct = relax ? 0.25 : 0.15;
+// tier 0 = strict, 1 = élargi, 2 = secours (comme le v1 : pas de plafond d'année)
+export function filterAdsV2(ads, kmUser, anneeUser, chUser, marque, modele, finition, tier = 0) {
+  const anneeSpan = tier === 2 ? Infinity : tier === 1 ? 2 : 1;
+  const chSpanPct = tier === 2 ? 1 : tier === 1 ? 0.25 : 0.15;
   const kmTolerance = kmUser ? Math.min(40000, Math.max(15000, Math.round(kmUser * 0.2))) : 30000;
   const anneeMax = anneeUser ? anneeUser + anneeSpan : null;
   const chMin = chUser ? Math.round(chUser * (1 - chSpanPct)) : null;
@@ -44,7 +45,7 @@ export function filterAdsV2(ads, kmUser, anneeUser, chUser, marque, modele, fini
     }
 
     if (marque && modele && !matchesVehicle(ad.subject, marque, modele)) return false;
-    if (finition && !relax) {
+    if (finition && tier === 0) {
       const aliases = FINITION_ALIASES[finition] || [finition.toLowerCase()];
       if (!aliases.some(a => subject.includes(a))) return false;
     }
@@ -52,14 +53,16 @@ export function filterAdsV2(ads, kmUser, anneeUser, chUser, marque, modele, fini
   });
 }
 
-// Essaie d'abord les bornes strictes ; si aucune annonce ne passe, élargit
-// automatiquement (année ±2, puissance ±25%, sans contrainte de finition)
-// et le signale via `relaxed: true` plutôt que de renvoyer un résultat vide.
+// Essaie d'abord les bornes strictes, puis élargit progressivement (année ±2,
+// puissance ±25%), puis en dernier recours retire le plafond d'année (comme
+// le v1) — chaque palier est signalé à l'utilisateur plutôt que de renvoyer
+// silencieusement un résultat vide.
 export function filterAdsV2WithFallback(ads, kmUser, anneeUser, chUser, marque, modele, finition) {
-  const strict = filterAdsV2(ads, kmUser, anneeUser, chUser, marque, modele, finition, false);
-  if (strict.length > 0) return { ads: strict, relaxed: false };
-  const relaxed = filterAdsV2(ads, kmUser, anneeUser, chUser, marque, modele, finition, true);
-  return { ads: relaxed, relaxed: relaxed.length > 0 };
+  for (const tier of [0, 1, 2]) {
+    const result = filterAdsV2(ads, kmUser, anneeUser, chUser, marque, modele, finition, tier);
+    if (result.length > 0) return { ads: result, tier };
+  }
+  return { ads: [], tier: 2 };
 }
 
 function percentile(sortedArr, p) {

@@ -70,9 +70,9 @@ export default function EstimationToolV2() {
       });
       if (lbcJson.error) throw new Error(lbcJson.error);
 
-      const { ads, relaxed } = filterAdsV2WithFallback(lbcJson.ads || [], kmUser, anneeUser, chUser, veh.marque, veh.modele, finition);
+      const { ads, tier } = filterAdsV2WithFallback(lbcJson.ads || [], kmUser, anneeUser, chUser, veh.marque, veh.modele, finition);
       const stats = computeStatsV2(ads);
-      setResult({ veh, stats, relaxed });
+      setResult({ veh, stats, tier });
       setState('results');
     } catch (e) {
       setErr(e.message || 'Erreur inattendue');
@@ -162,9 +162,14 @@ export default function EstimationToolV2() {
             </div>
           </div>
 
-          {result.relaxed && (
+          {result.tier === 1 && (
             <div className="tool-v2-warning">
-              🔍 Critères stricts insuffisants (trop peu d'annonces) — recherche élargie automatiquement (année ±2, puissance ±25%, finition ignorée)
+              🔍 Critères stricts insuffisants — recherche élargie (année ±2, puissance ±25%, finition ignorée)
+            </div>
+          )}
+          {result.tier === 2 && (
+            <div className="tool-v2-warning">
+              🔍 Encore insuffisant — palier de secours activé (pas de plafond d'année, comme le calculateur bleu). Résultat à interpréter avec prudence.
             </div>
           )}
 
